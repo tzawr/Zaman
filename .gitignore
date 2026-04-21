@@ -1,0 +1,24 @@
+# Dependencies
+node_modules
+.pnp
+.pnp.js
+
+# Build outputs
+dist
+build
+.vite
+
+# Environment variables (SECRETS!)
+.env
+.env.local
+.env.production
+
+# Editor
+.vscode
+.idea
+*.swp
+.DS_Store
+
+# Logs
+*.log
+npm-debug.log*

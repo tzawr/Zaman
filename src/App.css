@@ -1,0 +1,348 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+.app {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  background: #ffffff;
+  color: #1a1a1a;
+  transition: background 0.3s ease, color 0.3s ease;
+}
+
+/* Dark mode */
+.app.dark {
+  background: #0d0d0d;
+  color: #ffffff;
+}
+
+/* Navbar */
+.navbar {
+  padding: 24px 48px;
+  border-bottom: 1px solid #f0f0f0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  transition: border-color 0.3s ease;
+}
+
+.app.dark .navbar {
+  border-bottom: 1px solid #1f1f1f;
+}
+
+.logo {
+  font-size: 28px;
+  font-weight: 700;
+  letter-spacing: -0.5px;
+}
+
+.theme-toggle {
+  background: transparent;
+  border: 1px solid #e0e0e0;
+  border-radius: 50%;
+  width: 44px;
+  height: 44px;
+  font-size: 20px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+.theme-toggle:hover {
+  transform: scale(1.1);
+  border-color: #4A90E2;
+}
+
+.app.dark .theme-toggle {
+  border: 1px solid #333;
+}
+
+.app.dark .theme-toggle:hover {
+  border-color: #4A90E2;
+}
+
+/* Hero */
+.hero {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 80px 24px;
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+.hero-title {
+  font-size: 56px;
+  font-weight: 700;
+  letter-spacing: -1.5px;
+  line-height: 1.1;
+  margin-bottom: 24px;
+}
+
+.accent {
+  color: #4A90E2;
+}
+
+.hero-subtitle {
+  font-size: 20px;
+  color: #666;
+  line-height: 1.6;
+  margin-bottom: 48px;
+  max-width: 560px;
+  transition: color 0.3s ease;
+}
+
+.app.dark .hero-subtitle {
+  color: #a0a0a0;
+}
+
+.cta-button {
+  background: #4A90E2;
+  color: white;
+  border: none;
+  padding: 16px 40px;
+  font-size: 18px;
+  font-weight: 600;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 4px 12px rgba(74, 144, 226, 0.25);
+}
+
+.cta-button:hover {
+  background: #3A7BC8;
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(74, 144, 226, 0.35);
+}
+
+/* Footer */
+.footer {
+  padding: 24px;
+  text-align: center;
+  color: #999;
+  font-size: 14px;
+  border-top: 1px solid #f0f0f0;
+  transition: all 0.3s ease;
+}
+
+.app.dark .footer {
+  color: #666;
+  border-top: 1px solid #1f1f1f;
+}
+
+/* Employees Page */
+.employees-page {
+  flex: 1;
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 48px 24px;
+  width: 100%;
+}
+
+.page-header {
+  margin-bottom: 40px;
+}
+
+.back-button {
+  background: transparent;
+  border: none;
+  color: #4A90E2;
+  font-size: 16px;
+  cursor: pointer;
+  padding: 8px 0;
+  margin-bottom: 16px;
+  font-weight: 500;
+}
+
+.back-button:hover {
+  opacity: 0.7;
+}
+
+.page-title {
+  font-size: 40px;
+  font-weight: 700;
+  letter-spacing: -1px;
+  margin-bottom: 8px;
+}
+
+.page-subtitle {
+  font-size: 16px;
+  color: #666;
+}
+
+.app.dark .page-subtitle {
+  color: #a0a0a0;
+}
+
+/* Add Employee Card */
+.add-employee-card {
+  background: #f9f9f9;
+  border-radius: 16px;
+  padding: 24px;
+  margin-bottom: 32px;
+  transition: background 0.3s ease;
+}
+
+.app.dark .add-employee-card {
+  background: #1a1a1a;
+}
+
+.card-title {
+  font-size: 18px;
+  font-weight: 600;
+  margin-bottom: 16px;
+}
+
+.form-row {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.input {
+  flex: 1;
+  min-width: 140px;
+  padding: 14px 16px;
+  border: 1px solid #e0e0e0;
+  border-radius: 10px;
+  font-size: 15px;
+  background: white;
+  color: #1a1a1a;
+  transition: all 0.2s ease;
+  font-family: inherit;
+}
+
+.input:focus {
+  outline: none;
+  border-color: #4A90E2;
+  box-shadow: 0 0 0 3px rgba(74, 144, 226, 0.15);
+}
+
+.app.dark .input {
+  background: #0d0d0d;
+  border: 1px solid #333;
+  color: white;
+}
+
+.add-button {
+  background: #4A90E2;
+  color: white;
+  border: none;
+  padding: 14px 28px;
+  border-radius: 10px;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.add-button:hover {
+  background: #3A7BC8;
+  transform: translateY(-1px);
+}
+
+/* Employee List */
+.employee-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.empty-state {
+  text-align: center;
+  padding: 60px 20px;
+  color: #999;
+  font-size: 16px;
+  background: #fafafa;
+  border-radius: 16px;
+  border: 2px dashed #e0e0e0;
+}
+
+.app.dark .empty-state {
+  background: #141414;
+  border-color: #2a2a2a;
+  color: #666;
+}
+
+.employee-card {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 20px;
+  background: white;
+  border: 1px solid #f0f0f0;
+  border-radius: 12px;
+  transition: all 0.2s ease;
+}
+
+.employee-card:hover {
+  border-color: #4A90E2;
+  box-shadow: 0 4px 12px rgba(74, 144, 226, 0.1);
+}
+
+.app.dark .employee-card {
+  background: #141414;
+  border-color: #2a2a2a;
+}
+
+.employee-info {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.employee-avatar {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #4A90E2, #6AABF0);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  font-size: 18px;
+}
+
+.employee-name {
+  font-weight: 600;
+  font-size: 16px;
+  margin-bottom: 2px;
+}
+
+.employee-role {
+  font-size: 13px;
+  color: #999;
+}
+
+.remove-button {
+  background: transparent;
+  border: none;
+  color: #e74c3c;
+  font-size: 14px;
+  cursor: pointer;
+  padding: 8px 12px;
+  border-radius: 8px;
+  transition: all 0.2s ease;
+  font-weight: 500;
+}
+
+.remove-button:hover {
+  background: rgba(231, 76, 60, 0.1);
+}
+
+.team-count {
+  text-align: center;
+  margin-top: 32px;
+  color: #999;
+  font-size: 14px;
+}
