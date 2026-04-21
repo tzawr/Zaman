@@ -1,27 +1,69 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { db } from '../firebase'
+import { 
+  collection, 
+  addDoc, 
+  deleteDoc, 
+  doc, 
+  onSnapshot,
+  query,
+  orderBy,
+  serverTimestamp
+} from 'firebase/firestore'
 
 function Employees() {
   const navigate = useNavigate()
   const [employees, setEmployees] = useState([])
   const [newName, setNewName] = useState('')
   const [newRole, setNewRole] = useState('Barista')
+  const [loading, setLoading] = useState(true)
 
-  const addEmployee = () => {
+  // 🔥 Load employees from Firebase in real-time
+  useEffect(() => {
+    const q = query(collection(db, 'employees'), orderBy('createdAt', 'asc'))
+    
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const employeesData = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      }))
+      setEmployees(employeesData)
+      setLoading(false)
+    }, (error) => {
+      console.error('Error loading employees:', error)
+      setLoading(false)
+    })
+
+    // Cleanup listener when component unmounts
+    return () => unsubscribe()
+  }, [])
+
+  // 🔥 Add employee to Firebase
+  const addEmployee = async () => {
     if (newName.trim() === '') return
     
-    const newEmployee = {
-      id: Date.now(),
-      name: newName,
-      role: newRole
+    try {
+      await addDoc(collection(db, 'employees'), {
+        name: newName.trim(),
+        role: newRole,
+        createdAt: serverTimestamp()
+      })
+      setNewName('')
+    } catch (error) {
+      console.error('Error adding employee:', error)
+      alert('Failed to add employee. Try again.')
     }
-    
-    setEmployees([...employees, newEmployee])
-    setNewName('')
   }
 
-  const removeEmployee = (id) => {
-    setEmployees(employees.filter(emp => emp.id !== id))
+  // 🔥 Remove employee from Firebase
+  const removeEmployee = async (id) => {
+    try {
+      await deleteDoc(doc(db, 'employees', id))
+    } catch (error) {
+      console.error('Error removing employee:', error)
+      alert('Failed to remove employee. Try again.')
+    }
   }
 
   return (
@@ -32,7 +74,8 @@ function Employees() {
         </button>
         <h2 className="page-title">Your Team</h2>
         <p className="page-subtitle">
-            Add your team. Use nicknames to keep things private. 🔒        </p>
+          Add the people you schedule. Use nicknames to keep it private.
+        </p>
       </div>
 
       <div className="add-employee-card">
@@ -62,7 +105,11 @@ function Employees() {
       </div>
 
       <div className="employee-list">
-        {employees.length === 0 ? (
+        {loading ? (
+          <div className="empty-state">
+            <p>Loading your team... ⏳</p>
+          </div>
+        ) : employees.length === 0 ? (
           <div className="empty-state">
             <p>No one on the team yet. Add your first employee above 👆</p>
           </div>
@@ -87,7 +134,7 @@ function Employees() {
         )}
       </div>
 
-      {employees.length > 0 && (
+      {!loading && employees.length > 0 && (
         <div className="team-count">
           {employees.length} {employees.length === 1 ? 'person' : 'people'} on your team
         </div>
