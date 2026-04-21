@@ -5,6 +5,7 @@ import Employees from './pages/Employees'
 import SignUp from './pages/SignUp'
 import SignIn from './pages/SignIn'
 import Onboarding from './pages/Onboarding'
+import Availability from './pages/Availability'
 import ProfileMenu from './components/ProfileMenu'
 import './App.css'
 
@@ -22,12 +23,13 @@ function App() {
         </nav>
 
         <Routes>
-          <Route path="/" element={<Landing />} />
-          <Route path="/signup" element={<SignUp />} />
-          <Route path="/signin" element={<SignIn />} />
-          <Route path="/onboarding" element={<Onboarding />} />
-          <Route path="/employees" element={<Employees />} />
-        </Routes>
+  <Route path="/" element={<Landing />} />
+  <Route path="/signup" element={<SignUp />} />
+  <Route path="/signin" element={<SignIn />} />
+  <Route path="/onboarding" element={<Onboarding />} />
+  <Route path="/employees" element={<Employees />} />
+  <Route path="/employees/:employeeId/availability" element={<Availability />} />
+</Routes>
 
         <footer className="footer">
           <p>Built with 💙 by جوجو</p>

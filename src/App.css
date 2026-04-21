@@ -916,3 +916,290 @@
   font-weight: 600;
   margin-bottom: 2px;
 }
+
+/* Clickable employee cards */
+.employee-card.clickable {
+  cursor: pointer;
+}
+
+.employee-card.clickable:hover {
+  border-color: #4A90E2;
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(74, 144, 226, 0.12);
+}
+
+/* Availability Page */
+.availability-page {
+  flex: 1;
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 48px 24px;
+  width: 100%;
+}
+
+.availability-header {
+  margin-bottom: 40px;
+}
+
+.back-link {
+  background: transparent;
+  border: none;
+  color: #4A90E2;
+  font-size: 14px;
+  cursor: pointer;
+  padding: 8px 0;
+  font-weight: 500;
+  margin-bottom: 16px;
+  display: inline-block;
+}
+
+.back-link:hover {
+  opacity: 0.7;
+}
+
+.employee-header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.employee-avatar.large {
+  width: 60px;
+  height: 60px;
+  font-size: 24px;
+}
+
+.no-margin {
+  margin: 0 !important;
+}
+
+.saving-badge {
+  margin-left: auto;
+  font-size: 13px;
+  color: #4A90E2;
+  background: rgba(74, 144, 226, 0.1);
+  padding: 6px 12px;
+  border-radius: 8px;
+  font-weight: 600;
+  animation: pulse 1.2s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+/* Sections */
+.availability-section {
+  margin-bottom: 40px;
+}
+
+.section-title {
+  font-size: 22px;
+  font-weight: 700;
+  margin-bottom: 6px;
+  letter-spacing: -0.4px;
+}
+
+.section-subtitle {
+  font-size: 14px;
+  color: #666;
+  margin-bottom: 20px;
+}
+
+.app.dark .section-subtitle {
+  color: #a0a0a0;
+}
+
+/* Day list */
+.day-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.day-row {
+  display: flex;
+  align-items: center;
+  background: white;
+  border: 1px solid #f0f0f0;
+  border-radius: 14px;
+  padding: 14px 18px;
+  gap: 16px;
+  transition: all 0.2s ease;
+  flex-wrap: wrap;
+}
+
+.app.dark .day-row {
+  background: #141414;
+  border-color: #2a2a2a;
+}
+
+.day-row.available {
+  border-left: 4px solid #10b981;
+}
+
+.day-row.unavailable {
+  border-left: 4px solid #e5e5e5;
+  opacity: 0.7;
+}
+
+.app.dark .day-row.unavailable {
+  border-left-color: #333;
+}
+
+.day-toggle {
+  flex: 1;
+  min-width: 160px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  background: transparent;
+  border: none;
+  padding: 6px 0;
+  cursor: pointer;
+  font-family: inherit;
+  text-align: left;
+  color: inherit;
+}
+
+.day-name {
+  font-size: 16px;
+  font-weight: 600;
+  margin-bottom: 2px;
+}
+
+.day-status {
+  font-size: 12px;
+  color: #666;
+  font-weight: 500;
+}
+
+.day-row.available .day-status {
+  color: #10b981;
+}
+
+.app.dark .day-status {
+  color: #a0a0a0;
+}
+
+.app.dark .day-row.available .day-status {
+  color: #34d399;
+}
+
+/* Time inputs */
+.time-inputs {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.time-input {
+  padding: 10px 12px;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  font-size: 14px;
+  background: white;
+  color: #1a1a1a;
+  font-family: inherit;
+  transition: all 0.2s ease;
+  min-width: 120px;
+}
+
+.time-input:focus {
+  outline: none;
+  border-color: #4A90E2;
+  box-shadow: 0 0 0 3px rgba(74, 144, 226, 0.15);
+}
+
+.app.dark .time-input {
+  background: #0d0d0d;
+  border-color: #333;
+  color: white;
+  color-scheme: dark;
+}
+
+.time-arrow {
+  color: #999;
+  font-weight: 600;
+}
+
+/* Time Off Form */
+.timeoff-form {
+  margin-bottom: 20px;
+}
+
+.time-off-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1.5fr auto;
+  gap: 12px;
+  align-items: end;
+}
+
+@media (max-width: 720px) {
+  .time-off-row {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.time-off-field {
+  display: flex;
+  flex-direction: column;
+}
+
+.auth-label.small {
+  font-size: 12px;
+  margin-top: 0;
+  margin-bottom: 6px;
+}
+
+.time-off-add {
+  height: 48px;
+}
+
+@media (max-width: 720px) {
+  .time-off-add {
+    grid-column: span 2;
+    width: 100%;
+  }
+}
+
+/* Time off list */
+.timeoff-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.timeoff-card {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 14px 18px;
+  background: white;
+  border: 1px solid #f0f0f0;
+  border-radius: 12px;
+  transition: all 0.2s ease;
+}
+
+.app.dark .timeoff-card {
+  background: #141414;
+  border-color: #2a2a2a;
+}
+
+.timeoff-info {
+  flex: 1;
+}
+
+.timeoff-dates {
+  font-size: 15px;
+  font-weight: 600;
+  margin-bottom: 2px;
+}
+
+.timeoff-reason {
+  font-size: 13px;
+  color: #999;
+}

@@ -177,7 +177,11 @@ function Employees() {
           </div>
         ) : (
           employees.map(emp => (
-            <div key={emp.id} className="employee-card">
+            <div 
+              key={emp.id} 
+              className="employee-card clickable"
+              onClick={() => navigate(`/employees/${emp.id}/availability`)}
+            >
               <div className="employee-info">
                 <div className="employee-avatar">{emp.name[0].toUpperCase()}</div>
                 <div>
@@ -187,7 +191,10 @@ function Employees() {
               </div>
               <button 
                 className="remove-button"
-                onClick={() => removeEmployee(emp.id)}
+                onClick={(e) => {
+                  e.stopPropagation()
+                  removeEmployee(emp.id)
+                }}
               >
                 Remove
               </button>
