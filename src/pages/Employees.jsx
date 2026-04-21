@@ -32,8 +32,7 @@ function Employees() {
         </button>
         <h2 className="page-title">Your Team</h2>
         <p className="page-subtitle">
-          Add the people you schedule. Use nicknames to keep it private.
-        </p>
+            Add your team. Use nicknames to keep things private. 🔒        </p>
       </div>
 
       <div className="add-employee-card">
