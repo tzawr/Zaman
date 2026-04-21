@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { db } from '../firebase'
+import { useAuth } from '../AuthContext'
 import { 
   collection, 
   addDoc, 
@@ -8,20 +9,65 @@ import {
   doc, 
   onSnapshot,
   query,
+  where,
   orderBy,
   serverTimestamp
 } from 'firebase/firestore'
 
 function Employees() {
   const navigate = useNavigate()
+  const { currentUser } = useAuth()
   const [employees, setEmployees] = useState([])
+  const [userRoles, setUserRoles] = useState([])
   const [newName, setNewName] = useState('')
-  const [newRole, setNewRole] = useState('Barista')
+  const [newRole, setNewRole] = useState('')
   const [loading, setLoading] = useState(true)
+  const [onboardedChecked, setOnboardedChecked] = useState(false)
 
-  // 🔥 Load employees from Firebase in real-time
+  // Redirect to sign-in if not logged in
   useEffect(() => {
-    const q = query(collection(db, 'employees'), orderBy('createdAt', 'asc'))
+    if (!currentUser) {
+      navigate('/signin')
+    }
+  }, [currentUser, navigate])
+
+  // Load user's custom roles from their profile
+  useEffect(() => {
+    if (!currentUser) return
+
+    const userDocRef = doc(db, 'users', currentUser.uid)
+    const unsubscribe = onSnapshot(userDocRef, (snapshot) => {
+      if (snapshot.exists()) {
+        const data = snapshot.data()
+        if (!data.onboarded) {
+          navigate('/onboarding')
+          return
+        }
+        const rolesList = data.roles || []
+        setUserRoles(rolesList)
+        // Set default role to first one if no role selected yet
+        if (rolesList.length > 0 && !newRole) {
+          setNewRole(rolesList[0].name)
+        }
+        setOnboardedChecked(true)
+      } else {
+        // No user profile yet — redirect to onboarding
+        navigate('/onboarding')
+      }
+    })
+
+    return () => unsubscribe()
+  }, [currentUser, navigate])
+
+  // Load employees for this user
+  useEffect(() => {
+    if (!currentUser) return
+
+    const q = query(
+      collection(db, 'employees'),
+      where('userId', '==', currentUser.uid),
+      orderBy('createdAt', 'asc')
+    )
     
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const employeesData = snapshot.docs.map(doc => ({
@@ -35,16 +81,20 @@ function Employees() {
       setLoading(false)
     })
 
-    // Cleanup listener when component unmounts
     return () => unsubscribe()
-  }, [])
+  }, [currentUser])
 
-  // 🔥 Add employee to Firebase
   const addEmployee = async () => {
     if (newName.trim() === '') return
+    if (!currentUser) return
+    if (!newRole) {
+      alert('Please select a role')
+      return
+    }
     
     try {
       await addDoc(collection(db, 'employees'), {
+        userId: currentUser.uid,
         name: newName.trim(),
         role: newRole,
         createdAt: serverTimestamp()
@@ -56,7 +106,6 @@ function Employees() {
     }
   }
 
-  // 🔥 Remove employee from Firebase
   const removeEmployee = async (id) => {
     try {
       await deleteDoc(doc(db, 'employees', id))
@@ -66,12 +115,19 @@ function Employees() {
     }
   }
 
+  if (!currentUser || !onboardedChecked) {
+    return (
+      <main className="employees-page">
+        <div className="empty-state">
+          <p>Loading... ⏳</p>
+        </div>
+      </main>
+    )
+  }
+
   return (
     <main className="employees-page">
       <div className="page-header">
-        <button className="back-button" onClick={() => navigate('/')}>
-          ← Back
-        </button>
         <h2 className="page-title">Your Team</h2>
         <p className="page-subtitle">
           Add the people you schedule. Use nicknames to keep it private.
@@ -94,9 +150,15 @@ function Employees() {
             value={newRole}
             onChange={(e) => setNewRole(e.target.value)}
           >
-            <option>Barista</option>
-            <option>Shift Supervisor</option>
-            <option>Manager</option>
+            {userRoles.length === 0 ? (
+              <option value="">No roles yet</option>
+            ) : (
+              userRoles.map(role => (
+                <option key={role.id} value={role.name}>
+                  {role.name}
+                </option>
+              ))
+            )}
           </select>
           <button className="add-button" onClick={addEmployee}>
             Add
