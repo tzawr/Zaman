@@ -1,6 +1,15 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { collection, query, where, onSnapshot, doc } from 'firebase/firestore'
+import { 
+  collection, 
+  query, 
+  where, 
+  onSnapshot, 
+  doc, 
+  addDoc, 
+  serverTimestamp,
+  orderBy
+} from 'firebase/firestore'
 import { db } from '../firebase'
 import { useAuth } from '../AuthContext'
 
@@ -11,15 +20,16 @@ function Schedule() {
   const [employees, setEmployees] = useState([])
   const [userSettings, setUserSettings] = useState(null)
   const [prompt, setPrompt] = useState('')
+  const [weekStart, setWeekStart] = useState(getNextMonday())
   const [generating, setGenerating] = useState(false)
   const [schedule, setSchedule] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(true)
+  const [saved, setSaved] = useState(false)
+  const [copied, setCopied] = useState(false)
 
   useEffect(() => {
-    if (!currentUser) {
-      navigate('/signin')
-    }
+    if (!currentUser) navigate('/signin')
   }, [currentUser, navigate])
 
   // Load employees
@@ -56,8 +66,9 @@ function Schedule() {
   async function generateSchedule() {
     setError('')
     setSchedule('')
+    setSaved(false)
+    setCopied(false)
     
-    // Validation
     if (employees.length === 0) {
       setError('Add at least one employee before generating a schedule.')
       return
@@ -71,8 +82,7 @@ function Schedule() {
     try {
       setGenerating(true)
       
-      // Build the prompt for Claude
-      const fullPrompt = buildPrompt(employees, userSettings, prompt)
+      const fullPrompt = buildPrompt(employees, userSettings, prompt, weekStart)
       
       const response = await fetch('/api/generate-schedule', {
         method: 'POST',
@@ -87,12 +97,39 @@ function Schedule() {
       }
       
       setSchedule(data.schedule)
+      
+      // Auto-save the generated schedule
+      await saveSchedule(data.schedule)
+      
     } catch (err) {
       console.error(err)
       setError(err.message || 'Failed to generate schedule. Try again.')
     } finally {
       setGenerating(false)
     }
+  }
+
+  async function saveSchedule(scheduleText) {
+    try {
+      await addDoc(collection(db, 'schedules'), {
+        userId: currentUser.uid,
+        weekStart: weekStart,
+        content: scheduleText,
+        instructions: prompt || null,
+        employeeCount: employees.length,
+        createdAt: serverTimestamp()
+      })
+      setSaved(true)
+    } catch (err) {
+      console.error('Failed to save schedule:', err)
+    }
+  }
+
+  function copyToClipboard() {
+    if (!schedule) return
+    navigator.clipboard.writeText(schedule)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
   }
 
   if (loading) {
@@ -111,14 +148,22 @@ function Schedule() {
 
   return (
     <main className="availability-page">
-      <div className="page-header">
-        <h2 className="page-title">Generate Schedule</h2>
-        <p className="page-subtitle">
-          Let Zaman build your weekly schedule based on everyone's availability.
-        </p>
+      <div className="page-header employees-header">
+        <div>
+          <h2 className="page-title">Generate Schedule</h2>
+          <p className="page-subtitle">
+            Let Zaman build your weekly schedule based on availability.
+          </p>
+        </div>
+        <button 
+          className="settings-button"
+          onClick={() => navigate('/schedules')}
+        >
+          📚 My Schedules
+        </button>
       </div>
 
-      {/* Summary cards */}
+      {/* Summary */}
       <div className="summary-cards">
         <div className="summary-card">
           <p className="summary-label">Team</p>
@@ -139,16 +184,36 @@ function Schedule() {
         </div>
       </div>
 
-      {/* Prompt box */}
+      {/* Week picker */}
       <div className="availability-section">
-        <h3 className="section-title">Special Instructions</h3>
+        <h3 className="section-title">Which week?</h3>
         <p className="section-subtitle">
-          Any extra rules for this week? (Optional)
+          Pick the Monday of the week you want to schedule.
+        </p>
+        
+        <div className="week-picker-row">
+          <input
+            type="date"
+            className="input week-picker"
+            value={weekStart}
+            onChange={(e) => setWeekStart(e.target.value)}
+          />
+          <div className="week-preview">
+            {formatWeekRange(weekStart)}
+          </div>
+        </div>
+      </div>
+
+      {/* Special instructions */}
+      <div className="availability-section">
+        <h3 className="section-title">Special Instructions (optional)</h3>
+        <p className="section-subtitle">
+          Any extra rules for this week?
         </p>
         
         <textarea
           className="prompt-textarea"
-          placeholder="e.g. 'Put Sam and Alex on the same shift Monday'&#10;'Don't schedule Jamie on Friday'&#10;'Prioritize coverage at morning rush (6-9am)'"
+          placeholder="e.g. 'Put Sam and Alex together on Monday'&#10;'Keep shifts under 8 hours this week'&#10;'Alice is training a new hire on Tuesday'"
           value={prompt}
           onChange={(e) => setPrompt(e.target.value)}
           rows={4}
@@ -168,9 +233,7 @@ function Schedule() {
               Generating schedule...
             </>
           ) : (
-            <>
-              🤖 Generate Schedule
-            </>
+            <>🤖 Generate Schedule</>
           )}
         </button>
         
@@ -181,7 +244,6 @@ function Schedule() {
         )}
       </div>
 
-      {/* Error message */}
       {error && (
         <div className="auth-error" style={{ marginTop: '20px' }}>
           {error}
@@ -193,13 +255,24 @@ function Schedule() {
         <div className="availability-section">
           <div className="schedule-header">
             <h3 className="section-title">Your Schedule</h3>
-            <button 
-              className="settings-button"
-              onClick={generateSchedule}
-              disabled={generating}
-            >
-              🔄 Regenerate
-            </button>
+            <div className="schedule-actions">
+              {saved && (
+                <span className="saved-indicator">✓ Auto-saved</span>
+              )}
+              <button 
+                className="settings-button"
+                onClick={copyToClipboard}
+              >
+                {copied ? '✓ Copied!' : '📋 Copy'}
+              </button>
+              <button 
+                className="settings-button"
+                onClick={generateSchedule}
+                disabled={generating}
+              >
+                🔄 Regenerate
+              </button>
+            </div>
           </div>
           <div className="schedule-output">
             <pre>{schedule}</pre>
@@ -210,19 +283,62 @@ function Schedule() {
   )
 }
 
-// Helper: build the prompt from all the data
-function buildPrompt(employees, settings, customInstructions) {
+// Helper: Get next Monday in YYYY-MM-DD format
+function getNextMonday() {
+  const today = new Date()
+  const day = today.getDay()
+  const daysUntilMonday = day === 0 ? 1 : (8 - day) % 7 || 7
+  const nextMonday = new Date(today)
+  nextMonday.setDate(today.getDate() + daysUntilMonday)
+  return nextMonday.toISOString().split('T')[0]
+}
+
+// Helper: format week range for display
+function formatWeekRange(mondayStr) {
+  if (!mondayStr) return ''
+  const monday = new Date(mondayStr + 'T12:00:00')
+  const sunday = new Date(monday)
+  sunday.setDate(monday.getDate() + 6)
+  
+  const format = (d) => d.toLocaleDateString('en-US', { 
+    month: 'short', 
+    day: 'numeric' 
+  })
+  
+  return `${format(monday)} — ${format(sunday)}, ${monday.getFullYear()}`
+}
+
+// Helper: compute date for a given day of week relative to weekStart
+function getDateForDay(weekStart, dayIndex) {
+  const monday = new Date(weekStart + 'T12:00:00')
+  const date = new Date(monday)
+  date.setDate(monday.getDate() + dayIndex)
+  return date.toISOString().split('T')[0]
+}
+
+// Build the prompt from all the data
+function buildPrompt(employees, settings, customInstructions, weekStart) {
   const { operatingHours, coverage, preventClopening, minHoursBetweenShifts, roles } = settings
   
   const days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday']
   
+  // Map days to actual dates
+  const dayDates = {}
+  days.forEach((d, i) => {
+    dayDates[d] = getDateForDay(weekStart, i)
+  })
+  
   let prompt = `You are a professional scheduling assistant. Generate a weekly schedule for a small business team.
+
+## THIS SCHEDULE IS FOR
+Week of ${weekStart} (Monday) through ${getDateForDay(weekStart, 6)} (Sunday).
 
 ## OPERATING HOURS
 ${days.map(d => {
   const day = operatingHours[d]
-  if (!day || !day.open) return `${capitalize(d)}: CLOSED`
-  return `${capitalize(d)}: ${day.start} to ${day.end}`
+  const date = dayDates[d]
+  if (!day || !day.open) return `${capitalize(d)} (${date}): CLOSED`
+  return `${capitalize(d)} (${date}): ${day.start} to ${day.end}`
 }).join('\n')}
 
 ## COVERAGE REQUIREMENTS
@@ -268,35 +384,33 @@ ${employees.map(emp => {
 }).join('\n')}
 
 ## SCHEDULING RULES (STRICT — NEVER VIOLATE)
-- **NEVER schedule someone outside their stated availability hours.** This is an absolute rule. If availability says "NOT AVAILABLE" or the shift is outside their hours, DO NOT schedule them — leave the coverage gap and flag it.
-- **NEVER schedule someone during their time-off dates.** Absolute rule.
-- If minimum coverage can't be met without violating availability, leave the gap and flag it as "COVERAGE GAP — no one available." Do NOT fill it by violating someone's availability.
+- **NEVER schedule someone outside their stated availability hours.** If availability says NOT AVAILABLE or the shift falls outside their hours, do NOT schedule them. Leave the gap and flag it.
+- **NEVER schedule someone during time-off dates that overlap with this week** (${weekStart} to ${getDateForDay(weekStart, 6)}).
+- If minimum coverage can't be met without violating availability, leave the gap and flag it as "COVERAGE GAP — no one available." Do not fill gaps by breaking rules.
 - Try to get each person close to (but not over) their target hours per week.
-- Try to distribute hours fairly across the team.
-${preventClopening ? `- **CLOPENING PREVENTION (strict):** Minimum ${minHoursBetweenShifts || 10} hours between end of one shift and start of next shift for any employee. Never violate.` : ''}
+- Distribute hours fairly across the team.
+${preventClopening ? `- **CLOPENING PREVENTION:** Minimum ${minHoursBetweenShifts || 10} hours between end of one shift and start of next shift for any employee. Never violate.` : ''}
 - Match employees to roles that fit the shift.
-- If team capacity is fundamentally insufficient, provide a clear diagnosis at the end (e.g., "Need 2 more cashiers on Mondays").
 
 ${customInstructions ? `\n## SPECIAL INSTRUCTIONS FROM MANAGER\n${customInstructions}\n` : ''}
 
 ## OUTPUT FORMAT
 For each day, list who works what hours. Format:
 
-**Monday**
+**Monday — ${dayDates.monday}**
 - Sam (Barista): 6:00 AM - 2:00 PM (8 hrs)
 - Alex (Supervisor): 2:00 PM - 10:00 PM (8 hrs)
-- COVERAGE GAP: No one available 10 PM - 11 PM [if applicable]
 
 After the weekly schedule, provide:
 
 ### Weekly Summary
-For each employee: total hours vs target (e.g., "Sam: 32 hrs / target 30 = +2 over")
+Total hours per employee vs target.
 
 ### Schedule Issues
-Any days where coverage minimums couldn't be met, explained with reasons.
+Any coverage gaps, with reasons.
 
 ### Recommendations
-If the team is fundamentally understaffed or has availability gaps, say so clearly. Example: "You need 1 more Cashier available on Fridays" or "Consider reducing Monday coverage minimum to 2 people."
+If team is fundamentally understaffed or has availability gaps, say so clearly with specific suggestions.
 
 Generate the schedule now.`
   

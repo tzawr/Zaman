@@ -139,19 +139,25 @@ function Employees() {
     </p>
   </div>
   <div className="header-buttons">
-    <button 
-      className="settings-button"
-      onClick={() => navigate('/settings')}
-    >
-      ⚙️ Settings
-    </button>
-    <button 
-      className="generate-nav-button"
-      onClick={() => navigate('/schedule')}
-    >
-      🤖 Generate Schedule
-    </button>
-  </div>
+  <button 
+    className="settings-button"
+    onClick={() => navigate('/schedules')}
+  >
+    📚 My Schedules
+  </button>
+  <button 
+    className="settings-button"
+    onClick={() => navigate('/settings')}
+  >
+    ⚙️ Settings
+  </button>
+  <button 
+    className="generate-nav-button"
+    onClick={() => navigate('/schedule')}
+  >
+    🤖 Generate Schedule
+  </button>
+</div>
 </div>
 
       <div className="add-employee-card">

@@ -9,6 +9,7 @@ import Availability from './pages/Availability'
 import Settings from './pages/Settings'
 import Schedule from './pages/Schedule'
 import ProfileMenu from './components/ProfileMenu'
+import Schedules from './pages/Schedules'
 import './App.css'
 
 function App() {
@@ -33,6 +34,7 @@ function App() {
   <Route path="/employees/:employeeId/availability" element={<Availability />} />
   <Route path="/settings" element={<Settings />} />
   <Route path="/schedule" element={<Schedule />} />
+  <Route path="/schedules" element={<Schedules />} />
 </Routes>
 
         <footer className="footer">
