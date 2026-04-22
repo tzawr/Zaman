@@ -1203,3 +1203,544 @@
   font-size: 13px;
   color: #999;
 }
+
+/* Employees page header with Settings button */
+.employees-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.settings-button {
+  background: transparent;
+  border: 1px solid #e0e0e0;
+  color: inherit;
+  padding: 10px 18px;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-family: inherit;
+  white-space: nowrap;
+}
+
+.settings-button:hover {
+  border-color: #4A90E2;
+  color: #4A90E2;
+  transform: translateY(-1px);
+}
+
+.app.dark .settings-button {
+  border-color: #333;
+}
+
+/* Shift Form */
+.shift-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.shift-form-row {
+  display: grid;
+  grid-template-columns: 2fr 1fr 1fr 1fr;
+  gap: 12px;
+  align-items: end;
+}
+
+@media (max-width: 720px) {
+  .shift-form-row {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.flex-1 {
+  flex: 1;
+}
+
+/* Role pills for shift assignment */
+.shift-roles-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.role-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.role-pill {
+  padding: 8px 14px;
+  background: white;
+  border: 1px solid #e0e0e0;
+  border-radius: 20px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  color: inherit;
+  font-family: inherit;
+}
+
+.role-pill:hover {
+  border-color: #4A90E2;
+}
+
+.role-pill.selected {
+  background: #4A90E2;
+  color: white;
+  border-color: #4A90E2;
+}
+
+.app.dark .role-pill {
+  background: #1a1a1a;
+  border-color: #2a2a2a;
+}
+
+.app.dark .role-pill:hover {
+  border-color: #4A90E2;
+}
+
+.app.dark .role-pill.selected {
+  background: #4A90E2;
+  color: white;
+}
+
+.empty-hint {
+  color: #999;
+  font-size: 13px;
+  font-style: italic;
+}
+
+/* Shift Card */
+.shift-card {
+  display: flex;
+  align-items: stretch;
+  background: white;
+  border: 1px solid #f0f0f0;
+  border-radius: 12px;
+  overflow: hidden;
+  transition: all 0.2s ease;
+}
+
+.shift-card:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+}
+
+.app.dark .shift-card {
+  background: #141414;
+  border-color: #2a2a2a;
+}
+
+.shift-color-bar {
+  width: 5px;
+  flex-shrink: 0;
+}
+
+.shift-info {
+  flex: 1;
+  padding: 14px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.shift-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.shift-name {
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.shift-time {
+  font-size: 14px;
+  color: #4A90E2;
+  font-weight: 600;
+}
+
+.shift-meta {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.shift-meta-item {
+  font-size: 13px;
+  color: #666;
+}
+
+.app.dark .shift-meta-item {
+  color: #a0a0a0;
+}
+
+.shift-card .remove-button {
+  align-self: center;
+  margin-right: 14px;
+}
+
+/* Employee form with target hours */
+.employee-form-row {
+  display: grid;
+  grid-template-columns: 1.5fr 1fr 1fr auto;
+  gap: 12px;
+  align-items: center;
+}
+
+@media (max-width: 720px) {
+  .employee-form-row {
+    grid-template-columns: 1fr 1fr;
+  }
+  .employee-form-row .add-button {
+    grid-column: span 2;
+  }
+}
+
+.target-hours-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.target-hours-input {
+  padding-right: 60px;
+  width: 100%;
+}
+
+.target-hours-suffix {
+  position: absolute;
+  right: 12px;
+  font-size: 12px;
+  color: #999;
+  pointer-events: none;
+  font-weight: 500;
+}
+
+.target-hours-badge {
+  color: #4A90E2;
+  font-weight: 600;
+}
+
+/* Coverage input */
+.coverage-input-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.coverage-input {
+  width: 80px;
+  text-align: center;
+}
+
+.coverage-label {
+  font-size: 13px;
+  color: #666;
+  font-weight: 500;
+}
+
+.app.dark .coverage-label {
+  color: #a0a0a0;
+}
+
+/* Rule cards */
+.rule-card {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 20px;
+  background: white;
+  border: 1px solid #f0f0f0;
+  border-radius: 12px;
+  margin-bottom: 10px;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.app.dark .rule-card {
+  background: #141414;
+  border-color: #2a2a2a;
+}
+
+.rule-info {
+  flex: 1;
+  min-width: 200px;
+}
+
+.rule-title {
+  font-size: 15px;
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+
+.rule-description {
+  font-size: 13px;
+  color: #999;
+}
+
+/* Toggle switch */
+.switch {
+  position: relative;
+  display: inline-block;
+  width: 52px;
+  height: 28px;
+  flex-shrink: 0;
+}
+
+.switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.slider {
+  position: absolute;
+  cursor: pointer;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: #e0e0e0;
+  transition: 0.3s;
+  border-radius: 28px;
+}
+
+.slider:before {
+  position: absolute;
+  content: "";
+  height: 22px;
+  width: 22px;
+  left: 3px;
+  bottom: 3px;
+  background-color: white;
+  transition: 0.3s;
+  border-radius: 50%;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.app.dark .slider {
+  background-color: #333;
+}
+
+input:checked + .slider {
+  background-color: #4A90E2;
+}
+
+input:checked + .slider:before {
+  transform: translateX(24px);
+}
+
+/* Header buttons group */
+.header-buttons {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.generate-nav-button {
+  background: #4A90E2;
+  color: white;
+  border: none;
+  padding: 10px 18px;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-family: inherit;
+  white-space: nowrap;
+}
+
+.generate-nav-button:hover {
+  background: #3A7BC8;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(74, 144, 226, 0.25);
+}
+
+/* Summary cards */
+.summary-cards {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  margin-bottom: 32px;
+}
+
+@media (max-width: 600px) {
+  .summary-cards {
+    grid-template-columns: 1fr;
+  }
+}
+
+.summary-card {
+  background: white;
+  border: 1px solid #f0f0f0;
+  border-radius: 14px;
+  padding: 20px;
+  text-align: center;
+}
+
+.app.dark .summary-card {
+  background: #141414;
+  border-color: #2a2a2a;
+}
+
+.summary-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: #999;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 8px;
+}
+
+.summary-value {
+  font-size: 40px;
+  font-weight: 700;
+  color: #4A90E2;
+  line-height: 1;
+  margin-bottom: 4px;
+}
+
+.summary-sublabel {
+  font-size: 13px;
+  color: #999;
+}
+
+/* Prompt textarea */
+.prompt-textarea {
+  width: 100%;
+  min-height: 120px;
+  padding: 16px;
+  border: 1px solid #e0e0e0;
+  border-radius: 12px;
+  font-size: 15px;
+  font-family: inherit;
+  color: inherit;
+  background: white;
+  resize: vertical;
+  line-height: 1.5;
+  transition: all 0.2s ease;
+}
+
+.prompt-textarea:focus {
+  outline: none;
+  border-color: #4A90E2;
+  box-shadow: 0 0 0 3px rgba(74, 144, 226, 0.15);
+}
+
+.app.dark .prompt-textarea {
+  background: #0d0d0d;
+  border-color: #333;
+  color: white;
+}
+
+/* Generate section */
+.generate-section {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 32px 0;
+}
+
+.generate-button {
+  background: linear-gradient(135deg, #4A90E2, #6AABF0);
+  color: white;
+  border: none;
+  padding: 18px 48px;
+  border-radius: 14px;
+  font-size: 17px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-family: inherit;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  box-shadow: 0 6px 20px rgba(74, 144, 226, 0.3);
+}
+
+.generate-button:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 28px rgba(74, 144, 226, 0.4);
+}
+
+.generate-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Spinner */
+.spinner {
+  width: 18px;
+  height: 18px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-top-color: white;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.hint-text {
+  font-size: 14px;
+  color: #999;
+}
+
+.hint-text a {
+  color: #4A90E2;
+  cursor: pointer;
+  font-weight: 600;
+  text-decoration: underline;
+}
+
+/* Schedule output */
+.schedule-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.schedule-header .section-title {
+  margin-bottom: 0;
+}
+
+.schedule-output {
+  background: white;
+  border: 1px solid #f0f0f0;
+  border-radius: 14px;
+  padding: 24px;
+  max-height: 600px;
+  overflow-y: auto;
+}
+
+.app.dark .schedule-output {
+  background: #141414;
+  border-color: #2a2a2a;
+}
+
+.schedule-output pre {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  font-size: 14px;
+  line-height: 1.7;
+  color: inherit;
+  margin: 0;
+}

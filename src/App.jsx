@@ -6,6 +6,8 @@ import SignUp from './pages/SignUp'
 import SignIn from './pages/SignIn'
 import Onboarding from './pages/Onboarding'
 import Availability from './pages/Availability'
+import Settings from './pages/Settings'
+import Schedule from './pages/Schedule'
 import ProfileMenu from './components/ProfileMenu'
 import './App.css'
 
@@ -29,6 +31,8 @@ function App() {
   <Route path="/onboarding" element={<Onboarding />} />
   <Route path="/employees" element={<Employees />} />
   <Route path="/employees/:employeeId/availability" element={<Availability />} />
+  <Route path="/settings" element={<Settings />} />
+  <Route path="/schedule" element={<Schedule />} />
 </Routes>
 
         <footer className="footer">

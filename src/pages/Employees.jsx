@@ -21,17 +21,16 @@ function Employees() {
   const [userRoles, setUserRoles] = useState([])
   const [newName, setNewName] = useState('')
   const [newRole, setNewRole] = useState('')
+  const [newTargetHours, setNewTargetHours] = useState(20)
   const [loading, setLoading] = useState(true)
   const [onboardedChecked, setOnboardedChecked] = useState(false)
 
-  // Redirect to sign-in if not logged in
   useEffect(() => {
     if (!currentUser) {
       navigate('/signin')
     }
   }, [currentUser, navigate])
 
-  // Load user's custom roles from their profile
   useEffect(() => {
     if (!currentUser) return
 
@@ -45,13 +44,11 @@ function Employees() {
         }
         const rolesList = data.roles || []
         setUserRoles(rolesList)
-        // Set default role to first one if no role selected yet
         if (rolesList.length > 0 && !newRole) {
           setNewRole(rolesList[0].name)
         }
         setOnboardedChecked(true)
       } else {
-        // No user profile yet — redirect to onboarding
         navigate('/onboarding')
       }
     })
@@ -59,7 +56,6 @@ function Employees() {
     return () => unsubscribe()
   }, [currentUser, navigate])
 
-  // Load employees for this user
   useEffect(() => {
     if (!currentUser) return
 
@@ -92,14 +88,22 @@ function Employees() {
       return
     }
     
+    const targetHoursNum = parseInt(newTargetHours) || 20
+    if (targetHoursNum < 0 || targetHoursNum > 60) {
+      alert('Target hours must be between 0 and 60')
+      return
+    }
+    
     try {
       await addDoc(collection(db, 'employees'), {
         userId: currentUser.uid,
         name: newName.trim(),
         role: newRole,
+        targetHours: targetHoursNum,
         createdAt: serverTimestamp()
       })
       setNewName('')
+      setNewTargetHours(20)
     } catch (error) {
       console.error('Error adding employee:', error)
       alert('Failed to add employee. Try again.')
@@ -127,16 +131,32 @@ function Employees() {
 
   return (
     <main className="employees-page">
-      <div className="page-header">
-        <h2 className="page-title">Your Team</h2>
-        <p className="page-subtitle">
-          Add the people you schedule. Use nicknames to keep it private.
-        </p>
-      </div>
+<div className="page-header employees-header">
+  <div>
+    <h2 className="page-title">Your Team</h2>
+    <p className="page-subtitle">
+      Add the people you schedule. Use nicknames to keep it private.
+    </p>
+  </div>
+  <div className="header-buttons">
+    <button 
+      className="settings-button"
+      onClick={() => navigate('/settings')}
+    >
+      ⚙️ Settings
+    </button>
+    <button 
+      className="generate-nav-button"
+      onClick={() => navigate('/schedule')}
+    >
+      🤖 Generate Schedule
+    </button>
+  </div>
+</div>
 
       <div className="add-employee-card">
         <h3 className="card-title">Add Someone</h3>
-        <div className="form-row">
+        <div className="form-row employee-form-row">
           <input
             type="text"
             className="input"
@@ -160,6 +180,18 @@ function Employees() {
               ))
             )}
           </select>
+          <div className="target-hours-wrapper">
+            <input
+              type="number"
+              min="0"
+              max="60"
+              className="input target-hours-input"
+              value={newTargetHours}
+              onChange={(e) => setNewTargetHours(e.target.value)}
+              placeholder="Target hrs"
+            />
+            <span className="target-hours-suffix">hrs/wk</span>
+          </div>
           <button className="add-button" onClick={addEmployee}>
             Add
           </button>
@@ -186,7 +218,14 @@ function Employees() {
                 <div className="employee-avatar">{emp.name[0].toUpperCase()}</div>
                 <div>
                   <p className="employee-name">{emp.name}</p>
-                  <p className="employee-role">{emp.role}</p>
+                  <p className="employee-role">
+                    {emp.role}
+                    {emp.targetHours !== undefined && (
+                      <span className="target-hours-badge">
+                        {' • '}{emp.targetHours} hrs/wk
+                      </span>
+                    )}
+                  </p>
                 </div>
               </div>
               <button 

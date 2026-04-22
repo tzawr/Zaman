@@ -109,15 +109,15 @@ function ProfileMenu({ darkMode, setDarkMode }) {
           </button>
 
           <button 
-            className="dropdown-item"
-            onClick={() => {
-              setOpen(false)
-              alert('Settings coming soon! 🔧')
-            }}
-          >
-            <span className="dropdown-icon">⚙️</span>
-            <span>Settings</span>
-          </button>
+  className="dropdown-item"
+  onClick={() => {
+    setOpen(false)
+    navigate('/settings')
+  }}
+>
+  <span className="dropdown-icon">⚙️</span>
+  <span>Settings</span>
+</button>
 
           <div className="dropdown-divider"></div>
 
