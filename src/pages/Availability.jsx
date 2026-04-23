@@ -188,11 +188,11 @@ function Availability() {
       <div className="page-header availability-header">
         <button 
           className="back-link" 
-          onClick={() => navigate('/dashboard')}
+          onClick={() => navigate('/employees')}
           style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}
         >
           <ArrowLeft size={16} aria-hidden />
-          <span>Back to dashboard</span>
+          <span>Back to employees</span>
         </button>
         
         <div className="employee-header">
