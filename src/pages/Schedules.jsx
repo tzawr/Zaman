@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
+import ScheduleTable from '../components/ScheduleTable'
 import {
   Loader2,
   Sparkles,
@@ -9,6 +10,9 @@ import {
   Clipboard,
   ClipboardCheck,
   ArrowLeft,
+  Download,
+  FileText,
+  Image,
 } from 'lucide-react'
 import { 
   collection, 
@@ -22,6 +26,7 @@ import {
 import { db } from '../firebase'
 import { useAuth } from '../AuthContext'
 import { useToast } from '../components/Toast'
+import { exportToCSV, exportToPNG, exportToPDF } from '../utils/exportSchedule'
 
 function Schedules() {
   const navigate = useNavigate()
@@ -33,6 +38,8 @@ function Schedules() {
   const [loading, setLoading] = useState(true)
   const [copied, setCopied] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(null)
+  const [exporting, setExporting] = useState(null)
+  const [exportMenuOpen, setExportMenuOpen] = useState(false)
 
   useEffect(() => {
     if (!currentUser) navigate('/signin')
@@ -88,6 +95,26 @@ function Schedules() {
     })
   }
 
+  async function handleExport(type) {
+    if (!selectedSchedule?.data) return
+    setExporting(type)
+    setExportMenuOpen(false)
+    
+    try {
+      if (type === 'csv') {
+        exportToCSV(selectedSchedule.data, selectedSchedule.weekStart)
+      } else if (type === 'png') {
+        await exportToPNG('schedule-export-target', selectedSchedule.weekStart)
+      } else if (type === 'pdf') {
+        await exportToPDF('schedule-export-target', selectedSchedule.weekStart)
+      }
+    } catch (err) {
+      console.error('Export failed:', err)
+    } finally {
+      setExporting(null)
+    }
+  }
+
   function copyToClipboard(text) {
     if (!text) return
     navigator.clipboard.writeText(text)
@@ -110,8 +137,8 @@ function Schedules() {
 
   if (loading) {
     return (
-      <main className="availability-page">
-        <div className="empty-state">
+<main className="schedules-page-full">       
+   <div className="empty-state">
           <p>Loading schedules... <Loader2 size={16} className="spin" aria-hidden /></p>
         </div>
       </main>
@@ -119,27 +146,28 @@ function Schedules() {
   }
 
   return (
-    <main className="availability-page">
-      <button onClick={() => navigate('/dashboard')} className="back-button">
+<main className="schedules-page-full">
+        <button onClick={() => navigate('/dashboard')} className="back-button">
   <ArrowLeft size={16} />
   <span>Back to dashboard</span>
 </button>
-      <div className="page-header employees-header">
-        <div>
-          <h2 className="page-title">My Schedules</h2>
-          <p className="page-subtitle">
-            All schedules you've generated. Click one to view.
-          </p>
-        </div>
-        <button 
-          className="generate-nav-button"
-          onClick={() => navigate('/schedule')}
-          style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}
-        >
-          <Sparkles size={18} aria-hidden />
-          <span>Generate New</span>
-        </button>
-      </div>
+<div className="schedules-page-header-wrap">
+  <div className="page-header employees-header">
+    <div>
+      <h2 className="page-title">My Schedules</h2>
+      <p className="page-subtitle">
+        All schedules you've generated. Click one to view.
+      </p>
+    </div>
+    <button 
+      className="generate-nav-button"
+      onClick={() => navigate('/schedule')}
+    >
+      <Sparkles size={16} />
+      <span>Generate New</span>
+    </button>
+  </div>
+</div>
 
       {schedules.length === 0 ? (
         <div className="empty-state">
@@ -149,95 +177,135 @@ function Schedules() {
           </p>
         </div>
       ) : (
-        <div className="schedules-grid">
-          {/* List of schedule cards */}
-          <div className="schedule-list">
-            {schedules.map(sched => (
-              <div 
-                key={sched.id}
-                className={`schedule-card ${selectedSchedule?.id === sched.id ? 'selected' : ''}`}
-                onClick={() => setSelectedSchedule(sched)}
-              >
-                <div className="schedule-card-header">
-                  <p className="schedule-week" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <Calendar size={20} aria-hidden />
-                    <span>{formatWeekRange(sched.weekStart)}</span>
-                  </p>
-                  <button 
-                    className="schedule-delete-btn"
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      setConfirmDelete(sched.id)
-                    }}
-                    aria-label="Delete schedule"
-                  >
-                    <X size={16} aria-hidden />
-                  </button>
-                </div>
-                <p className="schedule-meta">
-                  Generated {formatCreatedAt(sched.createdAt)}
-                </p>
-                <p className="schedule-meta">
-                  {sched.employeeCount || '?'} {sched.employeeCount === 1 ? 'person' : 'people'}
-                  {sched.instructions && ' • With custom instructions'}
-                </p>
-              </div>
-            ))}
+<div className="schedules-split">
+  {/* Left sidebar — list */}
+  <aside className="schedules-sidebar">
+    <h3 className="schedules-sidebar-title">All schedules</h3>
+    <div className="schedule-list">
+      {schedules.map(sched => (
+        <div 
+          key={sched.id}
+          className={`schedule-card ${selectedSchedule?.id === sched.id ? 'selected' : ''}`}
+          onClick={() => setSelectedSchedule(sched)}
+        >
+          <div className="schedule-card-header">
+            <p className="schedule-week">
+              <Calendar size={14} style={{ display: 'inline', marginRight: 6, verticalAlign: '-2px' }} />
+              {formatWeekRange(sched.weekStart)}
+            </p>
+            <button 
+              className="schedule-delete-btn"
+              onClick={(e) => {
+                e.stopPropagation()
+                setConfirmDelete(sched.id)
+              }}
+              aria-label="Delete schedule"
+            >
+              <X size={16} />
+            </button>
           </div>
-
-          {/* Detail panel */}
-          <div className="schedule-detail">
-            {selectedSchedule ? (
-              <>
-                <div className="schedule-detail-header">
-                  <div>
-                    <h3 className="section-title no-margin">
-                      {formatWeekRange(selectedSchedule.weekStart)}
-                    </h3>
-                    <p className="schedule-meta">
-                      Generated {formatCreatedAt(selectedSchedule.createdAt)}
-                    </p>
-                  </div>
-                  <button 
-                    className="settings-button"
-                    onClick={() => copyToClipboard(selectedSchedule.content)}
-                    style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}
-                  >
-                    {copied ? (
-                      <>
-                        <ClipboardCheck size={16} aria-hidden />
-                        <span>Copied!</span>
-                      </>
-                    ) : (
-                      <>
-                        <Clipboard size={16} aria-hidden />
-                        <span>Copy</span>
-                      </>
-                    )}
-                  </button>
-                </div>
-                
-                {selectedSchedule.instructions && (
-                  <div className="schedule-instructions">
-                    <p className="instructions-label">Custom instructions:</p>
-                    <p className="instructions-text">{selectedSchedule.instructions}</p>
-                  </div>
-                )}
-                
-                <div className="schedule-output">
-                  <pre>{selectedSchedule.content}</pre>
-                </div>
-              </>
-            ) : (
-              <div className="empty-state">
-                <p style={{ display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'center', flexWrap: 'wrap' }}>
-                  <ArrowLeft size={20} aria-hidden />
-                  <span>Select a schedule to view it.</span>
-                </p>
-              </div>
-            )}
-          </div>
+          <p className="schedule-meta">
+            Generated {formatCreatedAt(sched.createdAt)}
+          </p>
+          <p className="schedule-meta">
+            {sched.employeeCount || '?'} {sched.employeeCount === 1 ? 'person' : 'people'}
+            {sched.instructions && ' • With notes'}
+          </p>
         </div>
+      ))}
+    </div>
+  </aside>
+
+  {/* Main content — schedule view */}
+  <section className="schedules-main">
+    {selectedSchedule ? (
+      <>
+        <div className="schedules-main-header">
+          <div>
+            <h2 className="schedules-main-title">
+              {formatWeekRange(selectedSchedule.weekStart)}
+            </h2>
+            <p className="schedule-meta">
+              Generated {formatCreatedAt(selectedSchedule.createdAt)}
+            </p>
+          </div>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+  {selectedSchedule.data && (
+    <div className="export-dropdown-wrap">
+      <button 
+        className="settings-button"
+        onClick={() => setExportMenuOpen(!exportMenuOpen)}
+        disabled={exporting !== null}
+      >
+        {exporting ? <Loader2 size={16} className="spin" /> : <Download size={16} />}
+        <span>{exporting ? `Exporting ${exporting}...` : 'Export'}</span>
+      </button>
+      {exportMenuOpen && (
+        <>
+          <div 
+            className="export-dropdown-backdrop"
+            onClick={() => setExportMenuOpen(false)}
+          />
+          <div className="export-dropdown">
+            <button className="export-dropdown-item" onClick={() => handleExport('csv')}>
+              <FileText size={15} />
+              <div>
+                <div className="export-item-title">CSV (Excel)</div>
+                <div className="export-item-desc">Open in spreadsheet apps</div>
+              </div>
+            </button>
+            <button className="export-dropdown-item" onClick={() => handleExport('png')}>
+              <Image size={15} />
+              <div>
+                <div className="export-item-title">PNG Image</div>
+                <div className="export-item-desc">Share screenshot</div>
+              </div>
+            </button>
+            <button className="export-dropdown-item" onClick={() => handleExport('pdf')}>
+              <FileText size={15} />
+              <div>
+                <div className="export-item-title">PDF Document</div>
+                <div className="export-item-desc">Print-ready</div>
+              </div>
+            </button>
+          </div>
+        </>
+      )}
+    </div>
+  )}
+  <button 
+    className="settings-button"
+    onClick={() => copyToClipboard(selectedSchedule.content)}
+  >
+    {copied ? <ClipboardCheck size={16} /> : <Clipboard size={16} />}
+    <span>{copied ? 'Copied' : 'Copy'}</span>
+  </button>
+</div>
+        </div>
+
+        {selectedSchedule.instructions && (
+          <div className="schedule-instructions">
+            <p className="instructions-label">Custom instructions</p>
+            <p className="instructions-text">{selectedSchedule.instructions}</p>
+          </div>
+        )}
+
+        {selectedSchedule.data ? (
+          <ScheduleTable data={selectedSchedule.data} />
+        ) : (
+          <div className="schedule-output">
+            <pre>{selectedSchedule.content}</pre>
+          </div>
+        )}
+      </>
+    ) : (
+      <div className="empty-state schedules-empty">
+        <Calendar size={40} />
+        <p>Select a schedule from the list to view it.</p>
+      </div>
+    )}
+  </section>
+</div>
       )}
 
       {/* Confirm delete modal */}
