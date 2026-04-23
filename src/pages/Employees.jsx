@@ -1,275 +1,267 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { BookOpen, Settings, Sparkles, Loader2, ArrowUp } from 'lucide-react'
+import { motion } from 'framer-motion'
+import { ArrowLeft, Plus, Users, Sparkles, BookOpen, Settings as SettingsIcon, ArrowRight } from 'lucide-react'
+import { collection, query, where, onSnapshot, addDoc, deleteDoc, doc, serverTimestamp } from 'firebase/firestore'
 import { db } from '../firebase'
 import { useAuth } from '../AuthContext'
-import { ArrowLeft } from 'lucide-react'
 import { useToast } from '../components/Toast'
-import { 
-  collection, 
-  addDoc, 
-  deleteDoc, 
-  doc, 
-  onSnapshot,
-  query,
-  where,
-  orderBy,
-  serverTimestamp
-} from 'firebase/firestore'
+import PageHero from '../components/PageHero'
+import Section from '../components/Section'
 
 function Employees() {
   const navigate = useNavigate()
   const { currentUser } = useAuth()
   const toast = useToast()
+
   const [employees, setEmployees] = useState([])
-  const [userRoles, setUserRoles] = useState([])
-  const [newName, setNewName] = useState('')
-  const [newRole, setNewRole] = useState('')
-  const [newTargetHours, setNewTargetHours] = useState(20)
+  const [userData, setUserData] = useState(null)
+  const [name, setName] = useState('')
+  const [role, setRole] = useState('')
+  const [targetHours, setTargetHours] = useState(30)
+  const [adding, setAdding] = useState(false)
   const [loading, setLoading] = useState(true)
-  const [onboardedChecked, setOnboardedChecked] = useState(false)
 
   useEffect(() => {
-    if (!currentUser) {
-      navigate('/signin')
-    }
+    if (!currentUser) navigate('/signin')
   }, [currentUser, navigate])
 
   useEffect(() => {
     if (!currentUser) return
-
-    const userDocRef = doc(db, 'users', currentUser.uid)
-    const unsubscribe = onSnapshot(userDocRef, (snapshot) => {
-      if (snapshot.exists()) {
-        const data = snapshot.data()
+    const unsub = onSnapshot(doc(db, 'users', currentUser.uid), (snap) => {
+      if (snap.exists()) {
+        const data = snap.data()
         if (!data.onboarded) {
           navigate('/onboarding')
           return
         }
-        const rolesList = data.roles || []
-        setUserRoles(rolesList)
-        if (rolesList.length > 0 && !newRole) {
-          setNewRole(rolesList[0].name)
+        setUserData(data)
+        if (data.roles && data.roles.length > 0 && !role) {
+          setRole(data.roles[0].name)
         }
-        setOnboardedChecked(true)
-      } else {
-        navigate('/onboarding')
       }
     })
-
-    return () => unsubscribe()
-  }, [currentUser, navigate])
+    return () => unsub()
+  }, [currentUser, navigate, role])
 
   useEffect(() => {
     if (!currentUser) return
-
-    const q = query(
-      collection(db, 'employees'),
-      where('userId', '==', currentUser.uid),
-      orderBy('createdAt', 'asc')
-    )
-    
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const employeesData = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      }))
-      setEmployees(employeesData)
-      setLoading(false)
-    }, (error) => {
-      console.error('Error loading employees:', error)
+    const q = query(collection(db, 'employees'), where('userId', '==', currentUser.uid))
+    const unsub = onSnapshot(q, (snap) => {
+      setEmployees(snap.docs.map(d => ({ id: d.id, ...d.data() })))
       setLoading(false)
     })
-
-    return () => unsubscribe()
+    return () => unsub()
   }, [currentUser])
 
-  const addEmployee = async () => {
-    if (newName.trim() === '') return
-    if (!currentUser) return
-    if (!newRole) {
+  async function addEmployee() {
+    const trimmed = name.trim()
+    if (!trimmed) {
+      toast.info('Please enter a name')
+      return
+    }
+    if (!role) {
       toast.info('Please select a role')
       return
     }
-    
-    const targetHoursNum = parseInt(newTargetHours) || 20
-    if (targetHoursNum < 0 || targetHoursNum > 60) {
-      toast.info('Target hours must be between 0 and 60')
+    const hrs = Number(targetHours)
+    if (isNaN(hrs) || hrs < 0 || hrs > 80) {
+      toast.info('Target hours must be between 0 and 80')
       return
     }
-    
     try {
+      setAdding(true)
       await addDoc(collection(db, 'employees'), {
         userId: currentUser.uid,
-        name: newName.trim(),
-        role: newRole,
-        targetHours: targetHoursNum,
+        name: trimmed,
+        role,
+        targetHours: hrs,
+        availability: {},
+        timeOff: [],
         createdAt: serverTimestamp()
       })
-      setNewName('')
-      setNewTargetHours(20)
-    } catch (error) {
-      console.error('Error adding employee:', error)
-      toast.error('Failed to add employee. Try again.')
+      setName('')
+      toast.success(`Added ${trimmed}`)
+    } catch (err) {
+      console.error(err)
+      toast.error('Failed to add. Try again.')
+    } finally {
+      setAdding(false)
     }
   }
 
-  const removeEmployee = async (id) => {
+  async function removeEmployee(id, empName) {
+    if (!window.confirm(`Remove ${empName}?`)) return
     try {
       await deleteDoc(doc(db, 'employees', id))
-    } catch (error) {
-      console.error('Error removing employee:', error)
-      toast.error('Failed to remove employee. Try again.')
+      toast.success(`Removed ${empName}`)
+    } catch (err) {
+      console.error(err)
+      toast.error('Failed to remove.')
     }
   }
 
-  if (!currentUser || !onboardedChecked) {
-    return (
-      <main className="employees-page">
-        <div className="empty-state">
-          <p>Loading... <Loader2 size={16} className="spin" aria-hidden /></p>
-        </div>
-      </main>
-    )
-  }
+  const rolesList = userData?.roles || []
 
   return (
-    <main className="employees-page">
-      <button onClick={() => navigate('/dashboard')} className="back-button">
-  <ArrowLeft size={16} />
-  <span>Back to dashboard</span>
-</button>
-<div className="page-header employees-header">
-  <div>
-    <h2 className="page-title">Your Team</h2>
-    <p className="page-subtitle">
-      Add the people you schedule. Use nicknames to keep it private.
-    </p>
-  </div>
-  <div className="header-buttons">
-  <button 
-    className="settings-button"
-    onClick={() => navigate('/schedules')}
-    style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}
-  >
-    <BookOpen size={16} aria-hidden />
-    <span>My Schedules</span>
-  </button>
-  <button 
-    className="settings-button"
-    onClick={() => navigate('/settings')}
-    style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}
-  >
-    <Settings size={16} aria-hidden />
-    <span>Settings</span>
-  </button>
-  <button 
-    className="generate-nav-button"
-    onClick={() => navigate('/schedule')}
-    style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}
-  >
-    <Sparkles size={18} aria-hidden />
-    <span>Generate Schedule</span>
-  </button>
-</div>
-</div>
+    <main className="app-page">
+      <button 
+        className="app-back-link"
+        onClick={() => navigate('/dashboard')}
+      >
+        <ArrowLeft size={14} />
+        <span>Back to dashboard</span>
+      </button>
 
-      <div className="add-employee-card">
-        <h3 className="card-title">Add Someone</h3>
-        <div className="form-row employee-form-row">
-          <input
-            type="text"
-            className="input"
-            placeholder="Nickname (e.g. J, Sam, Alex)"
-            value={newName}
-            onChange={(e) => setNewName(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && addEmployee()}
-          />
-          <select 
-            className="input"
-            value={newRole}
-            onChange={(e) => setNewRole(e.target.value)}
+      <PageHero
+        eyebrow="Team"
+        title="Your team"
+        subtitle="The people you schedule. Click anyone to set their availability and time off."
+      >
+        <div className="page-hero-actions">
+          <button 
+            className="landing-cta-primary"
+            onClick={() => navigate('/schedule')}
           >
-            {userRoles.length === 0 ? (
-              <option value="">No roles yet</option>
-            ) : (
-              userRoles.map(role => (
-                <option key={role.id} value={role.name}>
-                  {role.name}
-                </option>
-              ))
-            )}
-          </select>
-          <div className="target-hours-wrapper">
-            <input
-              type="number"
-              min="0"
-              max="60"
-              className="input target-hours-input"
-              value={newTargetHours}
-              onChange={(e) => setNewTargetHours(e.target.value)}
-              placeholder="Target hrs"
-            />
-            <span className="target-hours-suffix">hrs/wk</span>
-          </div>
-          <button className="add-button" onClick={addEmployee}>
-            Add
+            <Sparkles size={16} />
+            <span>Generate schedule</span>
+          </button>
+          <button 
+            className="settings-button"
+            onClick={() => navigate('/schedules')}
+          >
+            <BookOpen size={16} />
+            <span>My schedules</span>
+          </button>
+          <button 
+            className="settings-button"
+            onClick={() => navigate('/settings')}
+          >
+            <SettingsIcon size={16} />
+            <span>Settings</span>
           </button>
         </div>
-      </div>
+      </PageHero>
 
-      <div className="employee-list">
-        {loading ? (
-          <div className="empty-state">
-            <p>Loading your team... <Loader2 size={16} className="spin" aria-hidden /></p>
-          </div>
-        ) : employees.length === 0 ? (
-          <div className="empty-state">
-            <p>
-              No one on the team yet. Add your first employee above{' '}
-              <ArrowUp size={20} style={{ verticalAlign: 'middle' }} aria-hidden />
-            </p>
+      <Section 
+        title="Add a team member" 
+        subtitle="Use nicknames to keep things private."
+        icon={Plus}
+      >
+        {rolesList.length === 0 ? (
+          <div className="empty-inline">
+            <p>You need to set up roles first.</p>
+            <button 
+              className="add-button"
+              onClick={() => navigate('/settings')}
+            >
+              <SettingsIcon size={14} />
+              <span>Go to settings</span>
+            </button>
           </div>
         ) : (
-          employees.map(emp => (
-            <div 
-              key={emp.id} 
-              className="employee-card clickable"
-              onClick={() => navigate(`/employees/${emp.id}/availability`)}
-            >
-              <div className="employee-info">
-                <div className="employee-avatar">{emp.name[0].toUpperCase()}</div>
-                <div>
-                  <p className="employee-name">{emp.name}</p>
-                  <p className="employee-role">
-                    {emp.role}
-                    {emp.targetHours !== undefined && (
-                      <span className="target-hours-badge">
-                        {' • '}{emp.targetHours} hrs/wk
-                      </span>
-                    )}
-                  </p>
-                </div>
+          <div className="employee-form">
+            <div className="employee-form-row">
+              <div className="employee-form-field">
+                <label className="form-label">Name</label>
+                <input
+                  type="text"
+                  className="input"
+                  placeholder="e.g. Sam"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && addEmployee()}
+                />
               </div>
-              <button 
-                className="remove-button"
-                onClick={(e) => {
-                  e.stopPropagation()
-                  removeEmployee(emp.id)
-                }}
-              >
-                Remove
-              </button>
+              <div className="employee-form-field">
+                <label className="form-label">Role</label>
+                <select 
+                  className="input"
+                  value={role}
+                  onChange={(e) => setRole(e.target.value)}
+                >
+                  {rolesList.map(r => (
+                    <option key={r.id} value={r.name}>{r.name}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="employee-form-field employee-form-field-small">
+                <label className="form-label">Target hrs/week</label>
+                <input
+                  type="number"
+                  min="0"
+                  max="80"
+                  className="input"
+                  value={targetHours}
+                  onChange={(e) => setTargetHours(e.target.value)}
+                />
+              </div>
             </div>
-          ))
+            <button 
+              className="add-button employee-add-btn"
+              onClick={addEmployee}
+              disabled={adding}
+            >
+              <Plus size={16} />
+              <span>{adding ? 'Adding...' : 'Add to team'}</span>
+            </button>
+          </div>
         )}
-      </div>
+      </Section>
 
-      {!loading && employees.length > 0 && (
-        <div className="team-count">
-          {employees.length} {employees.length === 1 ? 'person' : 'people'} on your team
-        </div>
-      )}
+      <Section 
+        title={employees.length === 0 ? 'No team members yet' : `${employees.length} ${employees.length === 1 ? 'person' : 'people'} on your team`}
+        subtitle={employees.length === 0 ? 'Add your first person above to get started.' : 'Click a card to manage their availability and time off.'}
+        icon={Users}
+      >
+        {loading ? (
+          <div className="empty-state">
+            <p>Loading team...</p>
+          </div>
+        ) : employees.length === 0 ? (
+          <div className="empty-state app-empty">
+            <Users size={36} />
+            <p>Nobody here yet. Add your first team member above.</p>
+          </div>
+        ) : (
+          <div className="team-grid">
+            {employees.map((emp, i) => (
+              <motion.div
+                key={emp.id}
+                className="team-card"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.3, delay: i * 0.03 }}
+                onClick={() => navigate(`/employees/${emp.id}/availability`)}
+              >
+                <div className="team-card-top">
+                  <div className="employee-avatar">{emp.name[0]?.toUpperCase()}</div>
+                  <div className="team-card-info">
+                    <div className="team-card-name">{emp.name}</div>
+                    <div className="team-card-role">{emp.role}</div>
+                  </div>
+                  <button
+                    className="team-card-remove"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      removeEmployee(emp.id, emp.name)
+                    }}
+                    aria-label={`Remove ${emp.name}`}
+                  >
+                    ×
+                  </button>
+                </div>
+                <div className="team-card-bottom">
+                  <span className="team-card-meta">Target: {emp.targetHours ?? 0}h/wk</span>
+                  <span className="team-card-arrow">
+                    Availability <ArrowRight size={12} />
+                  </span>
+                </div>
+              </motion.div>
+            ))}
+          </div>
+        )}
+      </Section>
     </main>
   )
 }

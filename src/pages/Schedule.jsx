@@ -13,6 +13,9 @@ import {
   Download,
   FileText,
   Image,
+  Users,
+  Target,
+  MessageSquare,
 } from 'lucide-react'
 import { 
   collection, 
@@ -27,6 +30,8 @@ import { db } from '../firebase'
 import { useAuth } from '../AuthContext'
 import ScheduleTable from '../components/ScheduleTable'
 import { exportToCSV, exportToPNG, exportToPDF } from '../utils/exportSchedule'
+import PageHero from '../components/PageHero'
+import Section from '../components/Section'
 
 
 function Schedule() {
@@ -208,7 +213,7 @@ function Schedule() {
 
   if (loading) {
     return (
-      <main className="availability-page">
+      <main className="app-page">
         <div className="empty-state">
           <p>Loading... <Loader2 size={16} className="spin" aria-hidden /></p>
         </div>
@@ -220,121 +225,116 @@ function Schedule() {
     ? Object.values(userSettings.operatingHours).filter(d => d.open).length
     : 0
 
-  return (
-    <main className="availability-page">
-      <button onClick={() => navigate('/dashboard')} className="back-button">
-  <ArrowLeft size={16} />
-  <span>Back to dashboard</span>
-</button>
-      <div className="page-header employees-header">
-        <div>
-          <h2 className="page-title">Generate Schedule</h2>
-          <p className="page-subtitle">
-            Let Zaman build your weekly schedule based on availability.
-          </p>
-        </div>
+    return (
+      <main className="app-page">
         <button 
-          className="settings-button"
-          onClick={() => navigate('/schedules')}
-          style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}
+          className="app-back-link"
+          onClick={() => navigate('/dashboard')}
         >
-          <BookOpen size={16} aria-hidden />
-          <span>My Schedules</span>
+          <ArrowLeft size={14} />
+          <span>Back to dashboard</span>
         </button>
-      </div>
-
-      {/* Summary */}
-      <div className="summary-cards">
-        <div className="summary-card">
-          <p className="summary-label">Team</p>
-          <p className="summary-value">{employees.length}</p>
-          <p className="summary-sublabel">
-            {employees.length === 1 ? 'person' : 'people'}
-          </p>
-        </div>
-        <div className="summary-card">
-          <p className="summary-label">Open Days</p>
-          <p className="summary-value">{openDaysCount}</p>
-          <p className="summary-sublabel">per week</p>
-        </div>
-        <div className="summary-card">
-          <p className="summary-label">Roles</p>
-          <p className="summary-value">{userSettings?.roles?.length || 0}</p>
-          <p className="summary-sublabel">configured</p>
-        </div>
-      </div>
-
-      {/* Week picker */}
-      <div className="availability-section">
-        <h3 className="section-title" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <Calendar size={20} aria-hidden />
-          Which week?
-        </h3>
-        <p className="section-subtitle">
-          Pick the Monday of the week you want to schedule.
-        </p>
-        
-        <div className="week-picker-row">
-          <input
-            type="date"
-            className="input week-picker"
-            value={weekStart}
-            onChange={(e) => setWeekStart(e.target.value)}
-          />
-          <div className="week-preview">
-            {formatWeekRange(weekStart)}
+  
+        <PageHero
+          eyebrow="AI Scheduling"
+          title="Generate schedule"
+          subtitle="Pick a week, add any special rules, and let Zaman build your schedule in seconds."
+        >
+          <div className="page-hero-actions">
+            <button 
+              className="settings-button"
+              onClick={() => navigate('/schedules')}
+            >
+              <BookOpen size={16} />
+              <span>My schedules</span>
+            </button>
           </div>
-        </div>
-      </div>
+        </PageHero>
 
-      {/* Special instructions */}
-      <div className="availability-section">
-        <h3 className="section-title">Special Instructions (optional)</h3>
-        <p className="section-subtitle">
-          Any extra rules for this week?
-        </p>
-        
-        <textarea
-          className="prompt-textarea"
-          placeholder="e.g. 'Put Sam and Alex together on Monday'&#10;'Keep shifts under 8 hours this week'&#10;'Alice is training a new hire on Tuesday'"
-          value={prompt}
-          onChange={(e) => setPrompt(e.target.value)}
-          rows={4}
-        />
-      </div>
+{/* Stats row */}
+<div className="gen-stats">
+  <div className="gen-stat">
+    <Users size={18} />
+    <div>
+      <div className="gen-stat-value">{employees.length}</div>
+      <div className="gen-stat-label">{employees.length === 1 ? 'person' : 'people'}</div>
+    </div>
+  </div>
+  <div className="gen-stat">
+    <Calendar size={18} />
+    <div>
+      <div className="gen-stat-value">{openDaysCount}</div>
+      <div className="gen-stat-label">open days</div>
+    </div>
+  </div>
+  <div className="gen-stat">
+    <Target size={18} />
+    <div>
+      <div className="gen-stat-value">{userSettings?.roles?.length || 0}</div>
+      <div className="gen-stat-label">roles</div>
+    </div>
+  </div>
+</div>
 
-      {/* Generate button */}
-      <div className="generate-section">
-        <button 
-          className="generate-button"
-          onClick={generateSchedule}
-          disabled={generating || employees.length === 0}
-        >
-          {generating ? (
-            <>
-              <span className="spinner"></span>
-              Generating schedule...
-            </>
-          ) : (
-            <>
-              <Sparkles size={18} aria-hidden />
-              <span>Generate Schedule</span>
-            </>
-          )}
-        </button>
-        
-        {employees.length === 0 && (
-          <p className="hint-text">
-            Add team members on the <a onClick={() => navigate('/employees')}>employees page</a> first.
-          </p>
-        )}
-      </div>
+{/* Week + prompt side by side */}
+<div className="gen-input-grid">
+  <Section 
+    title="Which week?" 
+    subtitle="Pick the Monday of the week to schedule."
+    icon={Calendar}
+  >
+    <input
+      type="date"
+      className="input gen-week-input"
+      value={weekStart}
+      onChange={(e) => setWeekStart(e.target.value)}
+    />
+    <div className="gen-week-preview">
+      {formatWeekRange(weekStart)}
+    </div>
+  </Section>
 
-      {error && (
-        <div className="auth-error" style={{ marginTop: '20px' }}>
-          {error}
-        </div>
-      )}
+  <Section 
+    title="Special instructions" 
+    subtitle="Optional — tell Claude any extra rules for this week."
+    icon={MessageSquare}
+  >
+    <textarea
+      className="prompt-textarea gen-prompt"
+      placeholder={`e.g. "Put Sam and Alex together Monday"\n"Keep shifts under 8 hours this week"\n"Alice is training a new hire Tuesday"`}
+      value={prompt}
+      onChange={(e) => setPrompt(e.target.value)}
+      rows={5}
+    />
+  </Section>
+</div>
+
+{/* Generate CTA */}
+<div className="gen-cta-wrap">
+  <div className="gen-cta-glow" aria-hidden />
+  <button 
+    className="generate-button gen-cta"
+    onClick={generateSchedule}
+    disabled={generating || employees.length === 0}
+  >
+    {generating ? (
+      <>
+        <Loader2 size={18} className="spin" />
+        <span>Generating schedule...</span>
+      </>
+    ) : (
+      <>
+        <Sparkles size={18} />
+        <span>Generate schedule</span>
+      </>
+    )}
+  </button>
+  {employees.length === 0 && (
+    <p className="hint-text">
+      <a onClick={() => navigate('/employees')}>Add team members</a> first.
+    </p>
+  )}
+</div>
 
 {scheduleData && (
   <div className="availability-section schedule-output-section">

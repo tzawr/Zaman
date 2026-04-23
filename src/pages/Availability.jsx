@@ -1,10 +1,13 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { Loader2, ArrowLeft, Palmtree, Check, X, ArrowRight } from 'lucide-react'
-import { doc, setDoc, onSnapshot, serverTimestamp } from 'firebase/firestore'
+import { motion } from 'framer-motion'
+import { ArrowLeft, Check, X, ArrowRight, Palmtree, Plus, Clock } from 'lucide-react'
+import { doc, onSnapshot, updateDoc } from 'firebase/firestore'
 import { db } from '../firebase'
 import { useAuth } from '../AuthContext'
 import { useToast } from '../components/Toast'
+import PageHero from '../components/PageHero'
+import Section from '../components/Section'
 
 const DAYS = [
   { key: 'monday', label: 'Monday' },
@@ -16,210 +19,163 @@ const DAYS = [
   { key: 'sunday', label: 'Sunday' }
 ]
 
-const DEFAULT_AVAILABILITY = DAYS.reduce((acc, day) => {
-  acc[day.key] = { available: true, start: '09:00', end: '17:00' }
+const DEFAULT_AVAIL = DAYS.reduce((acc, d) => {
+  acc[d.key] = { available: true, start: '09:00', end: '17:00' }
   return acc
 }, {})
 
 function Availability() {
-  const navigate = useNavigate()
   const { employeeId } = useParams()
+  const navigate = useNavigate()
   const { currentUser } = useAuth()
   const toast = useToast()
-  
+
   const [employee, setEmployee] = useState(null)
-  const [availability, setAvailability] = useState(DEFAULT_AVAILABILITY)
-  const [timeOffList, setTimeOffList] = useState([])
+  const [availability, setAvailability] = useState(DEFAULT_AVAIL)
+  const [timeOff, setTimeOff] = useState([])
   const [newTimeOffStart, setNewTimeOffStart] = useState('')
   const [newTimeOffEnd, setNewTimeOffEnd] = useState('')
   const [newTimeOffReason, setNewTimeOffReason] = useState('')
-  const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
+  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    if (!currentUser) {
-      navigate('/signin')
-    }
+    if (!currentUser) navigate('/signin')
   }, [currentUser, navigate])
 
-  // Load employee + availability data
   useEffect(() => {
     if (!currentUser || !employeeId) return
-
-    const employeeRef = doc(db, 'employees', employeeId)
-    
-    const unsubscribe = onSnapshot(employeeRef, (snapshot) => {
-      if (!snapshot.exists()) {
+    const unsub = onSnapshot(doc(db, 'employees', employeeId), (snap) => {
+      if (!snap.exists()) {
         navigate('/employees')
         return
       }
-      
-      const data = snapshot.data()
-      
+      const data = snap.data()
       if (data.userId !== currentUser.uid) {
         navigate('/employees')
         return
       }
-      
-      setEmployee({ id: snapshot.id, ...data })
-      
-      if (data.availability) {
-        setAvailability(data.availability)
+      setEmployee(data)
+      if (data.availability && Object.keys(data.availability).length > 0) {
+        setAvailability({ ...DEFAULT_AVAIL, ...data.availability })
       }
-      
-      if (data.timeOff) {
-        setTimeOffList(data.timeOff)
-      }
-      
-      setLoading(false)
-    }, (error) => {
-      console.error('Error loading employee:', error)
+      setTimeOff(data.timeOff || [])
       setLoading(false)
     })
-
-    return () => unsubscribe()
+    return () => unsub()
   }, [currentUser, employeeId, navigate])
 
-  // Toggle a day's availability
+  async function saveAvailability(next) {
+    try {
+      setSaving(true)
+      await updateDoc(doc(db, 'employees', employeeId), { availability: next })
+    } catch (err) {
+      toast.error('Failed to save.')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  async function saveTimeOff(next) {
+    try {
+      setSaving(true)
+      await updateDoc(doc(db, 'employees', employeeId), { timeOff: next })
+    } catch (err) {
+      toast.error('Failed to save.')
+    } finally {
+      setSaving(false)
+    }
+  }
+
   function toggleDay(dayKey) {
-    const newAvailability = {
+    const next = {
       ...availability,
-      [dayKey]: {
-        ...availability[dayKey],
-        available: !availability[dayKey].available
-      }
+      [dayKey]: { ...availability[dayKey], available: !availability[dayKey].available }
     }
-    setAvailability(newAvailability)
-    saveAvailability(newAvailability, timeOffList)
+    setAvailability(next)
+    saveAvailability(next)
   }
 
-  // Update a day's start or end time
   function updateTime(dayKey, field, value) {
-    const newAvailability = {
+    const next = {
       ...availability,
-      [dayKey]: {
-        ...availability[dayKey],
-        [field]: value
-      }
+      [dayKey]: { ...availability[dayKey], [field]: value }
     }
-    setAvailability(newAvailability)
-    saveAvailability(newAvailability, timeOffList)
+    setAvailability(next)
+    saveAvailability(next)
   }
 
-  // Add a time off request
   function addTimeOff() {
     if (!newTimeOffStart || !newTimeOffEnd) {
-      toast.info('Please pick both start and end dates')
+      toast.info('Please pick both dates')
       return
     }
-    
     if (newTimeOffEnd < newTimeOffStart) {
-      toast.info('End date must be after start date')
+      toast.info('End must be after start')
       return
     }
-    
-    const newTimeOff = {
+    const entry = {
       id: Date.now().toString(),
       start: newTimeOffStart,
       end: newTimeOffEnd,
       reason: newTimeOffReason.trim() || 'Time off'
     }
-    
-    const updated = [...timeOffList, newTimeOff]
-    setTimeOffList(updated)
-    saveAvailability(availability, updated)
-    
+    const next = [...timeOff, entry]
+    setTimeOff(next)
+    saveTimeOff(next)
     setNewTimeOffStart('')
     setNewTimeOffEnd('')
     setNewTimeOffReason('')
+    toast.success('Time off added')
   }
 
-  // Remove a time off request
   function removeTimeOff(id) {
-    const updated = timeOffList.filter(t => t.id !== id)
-    setTimeOffList(updated)
-    saveAvailability(availability, updated)
+    const next = timeOff.filter(t => t.id !== id)
+    setTimeOff(next)
+    saveTimeOff(next)
   }
 
-  // Save to Firebase
-  async function saveAvailability(newAvailability, newTimeOff) {
-    if (!employeeId) return
-    
-    try {
-      setSaving(true)
-      await setDoc(
-        doc(db, 'employees', employeeId),
-        {
-          availability: newAvailability,
-          timeOff: newTimeOff,
-          availabilityUpdatedAt: serverTimestamp()
-        },
-        { merge: true }
-      )
-      setSaving(false)
-    } catch (error) {
-      console.error('Error saving:', error)
-      setSaving(false)
-      toast.error('Failed to save. Try again.')
-    }
-  }
-
-  // Format date for display
-  function formatDate(isoDate) {
-    if (!isoDate) return ''
-    const [year, month, day] = isoDate.split('-')
-    return `${month}/${day}/${year}`
-  }
-
-  if (loading) {
+  if (loading || !employee) {
     return (
-      <main className="employees-page">
-        <div className="empty-state">
-          <p>Loading availability... <Loader2 size={16} className="spin" aria-hidden /></p>
-        </div>
+      <main className="app-page">
+        <div className="empty-state"><p>Loading...</p></div>
       </main>
     )
   }
 
-  if (!employee) return null
-
   return (
-    <main className="availability-page">
-      <div className="page-header availability-header">
-        <button 
-          className="back-link" 
-          onClick={() => navigate('/employees')}
-          style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}
-        >
-          <ArrowLeft size={16} aria-hidden />
-          <span>Back to employees</span>
-        </button>
-        
-        <div className="employee-header">
-          <div className="employee-avatar large">
-            {employee.name[0].toUpperCase()}
-          </div>
-          <div>
-            <h2 className="page-title no-margin">{employee.name}</h2>
-            <p className="page-subtitle">{employee.role}</p>
-          </div>
-          {saving && <span className="saving-badge">Saving...</span>}
-        </div>
-      </div>
+    <main className="app-page">
+      <button 
+        className="app-back-link"
+        onClick={() => navigate('/employees')}
+      >
+        <ArrowLeft size={14} />
+        <span>Back to team</span>
+      </button>
 
-      {/* Weekly Availability */}
-      <div className="availability-section">
-        <h3 className="section-title">Weekly Availability</h3>
-        <p className="section-subtitle">Tap a day to mark unavailable. Adjust hours as needed.</p>
-        
+      <PageHero
+        eyebrow={employee.role}
+        title={employee.name}
+        subtitle={`Set weekly availability and time off for ${employee.name}. Changes save automatically.`}
+      >
+        {saving && (
+          <span className="saving-pill">
+            <Clock size={12} />
+            Saving...
+          </span>
+        )}
+      </PageHero>
+
+      <Section 
+        title="Weekly availability" 
+        subtitle="What hours are they available each day?"
+        icon={Clock}
+      >
         <div className="day-list">
           {DAYS.map(day => {
-            const dayData = availability[day.key]
+            const d = availability[day.key]
             return (
-              <div 
-                key={day.key} 
-                className={`day-row ${dayData.available ? 'available' : 'unavailable'}`}
-              >
+              <div key={day.key} className={`day-row ${d.available ? 'available' : 'unavailable'}`}>
                 <button 
                   className="day-toggle"
                   onClick={() => toggleDay(day.key)}
@@ -227,7 +183,7 @@ function Availability() {
                 >
                   <span className="day-name">{day.label}</span>
                   <span className="day-status" style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-                    {dayData.available ? (
+                    {d.available ? (
                       <>
                         <Check size={16} aria-hidden />
                         <span>Available</span>
@@ -240,20 +196,19 @@ function Availability() {
                     )}
                   </span>
                 </button>
-                
-                {dayData.available && (
+                {d.available && (
                   <div className="time-inputs">
                     <input
                       type="time"
                       className="time-input"
-                      value={dayData.start}
+                      value={d.start}
                       onChange={(e) => updateTime(day.key, 'start', e.target.value)}
                     />
-                    <span className="time-arrow"><ArrowRight size={16} aria-hidden /></span>
+                    <span className="time-arrow"><ArrowRight size={16} /></span>
                     <input
                       type="time"
                       className="time-input"
-                      value={dayData.end}
+                      value={d.end}
                       onChange={(e) => updateTime(day.key, 'end', e.target.value)}
                     />
                   </div>
@@ -262,17 +217,37 @@ function Availability() {
             )
           })}
         </div>
-      </div>
+      </Section>
 
-      {/* Time Off Section */}
-      <div className="availability-section">
-        <h3 className="section-title">Time Off Requests</h3>
-        <p className="section-subtitle">Specific dates this person can't work.</p>
-        
-        <div className="add-employee-card timeoff-form">
-          <div className="time-off-row">
-            <div className="time-off-field">
-              <label className="auth-label small">Start Date</label>
+      <Section 
+        title="Time off" 
+        subtitle="Vacation, appointments, or any dates they can't work."
+        icon={Palmtree}
+      >
+        {timeOff.length > 0 && (
+          <div className="timeoff-list">
+            {timeOff.map(t => (
+              <div key={t.id} className="timeoff-item">
+                <div className="timeoff-info">
+                  <div className="timeoff-dates">{t.start} → {t.end}</div>
+                  <div className="timeoff-reason">{t.reason}</div>
+                </div>
+                <button 
+                  className="timeoff-remove"
+                  onClick={() => removeTimeOff(t.id)}
+                  aria-label="Remove time off"
+                >
+                  ×
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+
+        <div className="timeoff-form">
+          <div className="timeoff-form-row">
+            <div className="employee-form-field">
+              <label className="form-label">From</label>
               <input
                 type="date"
                 className="input"
@@ -280,8 +255,8 @@ function Availability() {
                 onChange={(e) => setNewTimeOffStart(e.target.value)}
               />
             </div>
-            <div className="time-off-field">
-              <label className="auth-label small">End Date</label>
+            <div className="employee-form-field">
+              <label className="form-label">To</label>
               <input
                 type="date"
                 className="input"
@@ -289,50 +264,23 @@ function Availability() {
                 onChange={(e) => setNewTimeOffEnd(e.target.value)}
               />
             </div>
-            <div className="time-off-field">
-              <label className="auth-label small">Reason (optional)</label>
+            <div className="employee-form-field" style={{ flex: 2 }}>
+              <label className="form-label">Reason (optional)</label>
               <input
                 type="text"
                 className="input"
-                placeholder="Vacation, sick, etc."
+                placeholder="e.g. vacation"
                 value={newTimeOffReason}
                 onChange={(e) => setNewTimeOffReason(e.target.value)}
               />
             </div>
-            <button className="add-button time-off-add" onClick={addTimeOff}>
-              Add
-            </button>
           </div>
+          <button className="add-button" onClick={addTimeOff}>
+            <Plus size={14} />
+            <span>Add time off</span>
+          </button>
         </div>
-
-        <div className="timeoff-list">
-          {timeOffList.length === 0 ? (
-            <div className="empty-state small">
-              <p>No time off requests yet.</p>
-            </div>
-          ) : (
-            timeOffList.map(timeOff => (
-              <div key={timeOff.id} className="timeoff-card">
-                <div className="timeoff-info">
-                  <p className="timeoff-dates" style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                    <Palmtree size={20} aria-hidden />
-                    <span>{formatDate(timeOff.start)}</span>
-                    <ArrowRight size={16} aria-hidden />
-                    <span>{formatDate(timeOff.end)}</span>
-                  </p>
-                  <p className="timeoff-reason">{timeOff.reason}</p>
-                </div>
-                <button 
-                  className="remove-button"
-                  onClick={() => removeTimeOff(timeOff.id)}
-                >
-                  Remove
-                </button>
-              </div>
-            ))
-          )}
-        </div>
-      </div>
+      </Section>
     </main>
   )
 }

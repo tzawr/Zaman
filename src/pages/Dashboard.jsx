@@ -23,6 +23,7 @@ import {
 } from 'firebase/firestore'
 import { db } from '../firebase'
 import { useAuth } from '../AuthContext'
+import PageHero from '../components/PageHero'
 
 function Dashboard() {
   const navigate = useNavigate()
@@ -115,32 +116,22 @@ function Dashboard() {
   }
 
   return (
-    <main className="dashboard-page">
-      <motion.div
-        className="dashboard-header"
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5 }}
-      >
-        <div>
-          <div className="dashboard-eyebrow">
-            {getGreeting()}, {userData?.displayName || 'Manager'}
-          </div>
-          <h1 className="dashboard-title">
-            Welcome to <span className="landing-gradient-text">Zaman</span>
-          </h1>
-          <p className="dashboard-subtitle">
-            Your scheduling command center.
-          </p>
-        </div>
-        <button 
-          className="landing-cta-primary dashboard-cta"
-          onClick={() => navigate('/schedule')}
-        >
-          <Sparkles size={18} />
-          <span>Generate schedule</span>
-        </button>
-      </motion.div>
+<main className="app-page">
+  <PageHero
+  eyebrow={`${getGreeting()}, ${userData?.displayName || 'Manager'}`}
+  title={<>Welcome to <span className="landing-gradient-text">Zaman</span></>}
+  subtitle="Your scheduling command center."
+>
+  <div className="page-hero-actions">
+    <button 
+      className="landing-cta-primary"
+      onClick={() => navigate('/schedule')}
+    >
+      <Sparkles size={18} />
+      <span>Generate schedule</span>
+    </button>
+  </div>
+</PageHero>
 
       {/* Stats row */}
       <motion.div 
