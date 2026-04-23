@@ -242,7 +242,7 @@ function SocialProof() {
     <section className="landing-social">
       <p className="landing-social-label">Built for teams in</p>
       <div className="landing-social-grid">
-        {['Restaurants', 'Cafés', 'Retail', 'Salons', 'Gyms', 'Small Biz'].map((label, i) => (
+        {['Restaurants', 'Cafés', 'Retail', 'Salons', 'Gyms', 'Small Businesses'].map((label, i) => (
           <motion.div
             key={label}
             className="landing-social-chip"
@@ -544,7 +544,7 @@ function Pricing({ onCTA }) {
   className={tier.highlighted ? 'landing-cta-primary' : 'landing-cta-ghost'}
   onClick={() => {
     if (tier.name === 'Business') {
-      window.location.href = 'mailto:contact@zamanapp.com?subject=Zaman Business inquiry'
+      window.location.href = 'mailto:aliseyfiazadsa6@gmail.com?subject=Zaman Business inquiry'
     } else {
       onCTA()
     }

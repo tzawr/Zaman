@@ -27,7 +27,7 @@ function Footer() {
             <div className="footer-col">
               <h4 className="footer-col-title">Company</h4>
               <ul className="footer-list">
-                <li><a href="mailto:contact@zamanapp.com">Contact</a></li>
+                <li><a href="mailto:aliseyfiazadsa6@gmail.com">Contact</a></li>
                 <li><a href="#" onClick={(e) => e.preventDefault()}>About</a></li>
                 <li><a href="#" onClick={(e) => e.preventDefault()}>Blog</a></li>
               </ul>
