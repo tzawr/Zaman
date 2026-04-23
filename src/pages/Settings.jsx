@@ -1,8 +1,10 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { Loader2, ArrowLeft, Check, X, ArrowRight, Pencil, Trash2, Plus } from 'lucide-react'
 import { doc, onSnapshot, setDoc, serverTimestamp } from 'firebase/firestore'
 import { db } from '../firebase'
 import { useAuth } from '../AuthContext'
+import { useToast } from '../components/Toast'
 
 const DAYS = [
   { key: 'monday', label: 'Monday' },
@@ -27,14 +29,21 @@ const DEFAULT_COVERAGE = DAYS.reduce((acc, day) => {
 function Settings() {
   const navigate = useNavigate()
   const { currentUser } = useAuth()
+  const toast = useToast()
   
   const [operatingHours, setOperatingHours] = useState(DEFAULT_HOURS)
   const [coverage, setCoverage] = useState(DEFAULT_COVERAGE)
   const [preventClopening, setPreventClopening] = useState(true)
   const [minHoursBetweenShifts, setMinHoursBetweenShifts] = useState(10)
+  const [roles, setRoles] = useState([])
+  const [userData, setUserData] = useState(null)
   
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
+
+  const [newRoleName, setNewRoleName] = useState('')
+  const [editingRoleId, setEditingRoleId] = useState(null)
+  const [editingRoleName, setEditingRoleName] = useState('')
 
   useEffect(() => {
     if (!currentUser) {
@@ -54,10 +63,12 @@ function Settings() {
           return
         }
         
+        setUserData(data)
         if (data.operatingHours) setOperatingHours(data.operatingHours)
         if (data.coverage) setCoverage(data.coverage)
         if (data.preventClopening !== undefined) setPreventClopening(data.preventClopening)
         if (data.minHoursBetweenShifts) setMinHoursBetweenShifts(data.minHoursBetweenShifts)
+        if (data.roles) setRoles(data.roles)
         
         setLoading(false)
       }
@@ -78,7 +89,7 @@ function Settings() {
     } catch (error) {
       console.error('Error saving:', error)
       setSaving(false)
-      alert('Failed to save. Try again.')
+      toast.error('Failed to save. Try again.')
     }
   }
 
@@ -128,11 +139,95 @@ function Settings() {
     saveToFirebase({ minHoursBetweenShifts: num })
   }
 
+  // ===== ROLE FUNCTIONS =====
+  async function addRole() {
+    const trimmed = newRoleName.trim()
+    if (!trimmed) {
+      toast.info('Please enter a role name')
+      return
+    }
+    
+    if (roles.some(r => r.name.toLowerCase() === trimmed.toLowerCase())) {
+      toast.info('That role already exists')
+      return
+    }
+    
+    const newRole = {
+      id: Date.now().toString(),
+      name: trimmed
+    }
+    
+    try {
+      await saveToFirebase({ roles: [...roles, newRole] })
+      setNewRoleName('')
+      toast.success(`Added "${trimmed}"`)
+    } catch (err) {
+      console.error(err)
+      toast.error('Failed to add role')
+    }
+  }
+
+  function startEditRole(role) {
+    setEditingRoleId(role.id)
+    setEditingRoleName(role.name)
+  }
+
+  async function saveEditRole() {
+    const trimmed = editingRoleName.trim()
+    if (!trimmed) {
+      toast.info('Role name cannot be empty')
+      return
+    }
+    
+    const duplicate = roles.some(
+      r => r.id !== editingRoleId && r.name.toLowerCase() === trimmed.toLowerCase()
+    )
+    if (duplicate) {
+      toast.info('Another role already has that name')
+      return
+    }
+    
+    const updatedRoles = roles.map(r =>
+      r.id === editingRoleId ? { ...r, name: trimmed } : r
+    )
+    
+    try {
+      await saveToFirebase({ roles: updatedRoles })
+      setEditingRoleId(null)
+      setEditingRoleName('')
+      toast.success('Role updated')
+    } catch (err) {
+      console.error(err)
+      toast.error('Failed to update role')
+    }
+  }
+
+  function cancelEditRole() {
+    setEditingRoleId(null)
+    setEditingRoleName('')
+  }
+
+  async function deleteRole(roleId, roleName) {
+    if (!window.confirm(`Delete the "${roleName}" role?`)) {
+      return
+    }
+    
+    const updatedRoles = roles.filter(r => r.id !== roleId)
+    
+    try {
+      await saveToFirebase({ roles: updatedRoles })
+      toast.success(`Deleted "${roleName}"`)
+    } catch (err) {
+      console.error(err)
+      toast.error('Failed to delete role')
+    }
+  }
+
   if (loading) {
     return (
       <main className="availability-page">
         <div className="empty-state">
-          <p>Loading settings... ⏳</p>
+          <p>Loading settings... <Loader2 size={16} className="spin" aria-hidden /></p>
         </div>
       </main>
     )
@@ -141,8 +236,13 @@ function Settings() {
   return (
     <main className="availability-page">
       <div className="page-header availability-header">
-        <button className="back-link" onClick={() => navigate('/employees')}>
-          ← Back to team
+        <button
+          className="back-link"
+          onClick={() => navigate('/dashboard')}
+          style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}
+        >
+          <ArrowLeft size={16} aria-hidden />
+          <span>Back to dashboard</span>
         </button>
         
         <div className="employee-header">
@@ -151,6 +251,92 @@ function Settings() {
             <p className="page-subtitle">Configure how Zaman builds your schedules.</p>
           </div>
           {saving && <span className="saving-badge">Saving...</span>}
+        </div>
+      </div>
+
+      {/* Roles Section */}
+      <div className="availability-section">
+        <h3 className="section-title">Roles</h3>
+        <p className="section-subtitle">
+          The roles you can assign to your team. Add or edit anytime.
+        </p>
+        
+        <div className="roles-list">
+          {roles.map(role => (
+            <div key={role.id} className="role-item">
+              {editingRoleId === role.id ? (
+                <>
+                  <input
+                    type="text"
+                    className="input role-edit-input"
+                    value={editingRoleName}
+                    onChange={(e) => setEditingRoleName(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') saveEditRole()
+                      if (e.key === 'Escape') cancelEditRole()
+                    }}
+                    autoFocus
+                  />
+                  <div className="role-actions">
+                    <button 
+                      className="role-save-btn"
+                      onClick={saveEditRole}
+                    >
+                      <Check size={16} />
+                    </button>
+                    <button 
+                      className="role-cancel-btn"
+                      onClick={cancelEditRole}
+                    >
+                      <X size={16} />
+                    </button>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="role-name">{role.name}</div>
+                  <div className="role-actions">
+                    <button 
+                      className="role-edit-btn"
+                      onClick={() => startEditRole(role)}
+                      aria-label="Edit role"
+                    >
+                      <Pencil size={14} />
+                    </button>
+                    <button 
+                      className="role-delete-btn"
+                      onClick={() => deleteRole(role.id, role.name)}
+                      aria-label="Delete role"
+                    >
+                      <Trash2 size={14} />
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
+          ))}
+          
+          {roles.length === 0 && (
+            <p className="role-empty">No roles yet. Add your first one below.</p>
+          )}
+        </div>
+
+        <div className="role-add-row">
+          <input
+            type="text"
+            className="input"
+            placeholder="e.g. Cashier, Barista, Manager"
+            value={newRoleName}
+            onChange={(e) => setNewRoleName(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && addRole()}
+          />
+          <button 
+            className="add-button"
+            onClick={addRole}
+          >
+            <Plus size={16} />
+            <span>Add role</span>
+          </button>
         </div>
       </div>
 
@@ -173,8 +359,18 @@ function Settings() {
                   aria-label={`Toggle ${day.label}`}
                 >
                   <span className="day-name">{day.label}</span>
-                  <span className="day-status">
-                    {dayData.open ? '✓ Open' : '✕ Closed'}
+                  <span className="day-status" style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                    {dayData.open ? (
+                      <>
+                        <Check size={16} aria-hidden />
+                        <span>Open</span>
+                      </>
+                    ) : (
+                      <>
+                        <X size={16} aria-hidden />
+                        <span>Closed</span>
+                      </>
+                    )}
                   </span>
                 </button>
                 
@@ -186,7 +382,7 @@ function Settings() {
                       value={dayData.start}
                       onChange={(e) => updateHourTime(day.key, 'start', e.target.value)}
                     />
-                    <span className="time-arrow">→</span>
+                    <span className="time-arrow"><ArrowRight size={16} aria-hidden /></span>
                     <input
                       type="time"
                       className="time-input"

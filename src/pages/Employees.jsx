@@ -1,7 +1,10 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { BookOpen, Settings, Sparkles, Loader2, ArrowUp } from 'lucide-react'
 import { db } from '../firebase'
 import { useAuth } from '../AuthContext'
+import { ArrowLeft } from 'lucide-react'
+import { useToast } from '../components/Toast'
 import { 
   collection, 
   addDoc, 
@@ -17,6 +20,7 @@ import {
 function Employees() {
   const navigate = useNavigate()
   const { currentUser } = useAuth()
+  const toast = useToast()
   const [employees, setEmployees] = useState([])
   const [userRoles, setUserRoles] = useState([])
   const [newName, setNewName] = useState('')
@@ -84,13 +88,13 @@ function Employees() {
     if (newName.trim() === '') return
     if (!currentUser) return
     if (!newRole) {
-      alert('Please select a role')
+      toast.info('Please select a role')
       return
     }
     
     const targetHoursNum = parseInt(newTargetHours) || 20
     if (targetHoursNum < 0 || targetHoursNum > 60) {
-      alert('Target hours must be between 0 and 60')
+      toast.info('Target hours must be between 0 and 60')
       return
     }
     
@@ -106,7 +110,7 @@ function Employees() {
       setNewTargetHours(20)
     } catch (error) {
       console.error('Error adding employee:', error)
-      alert('Failed to add employee. Try again.')
+      toast.error('Failed to add employee. Try again.')
     }
   }
 
@@ -115,7 +119,7 @@ function Employees() {
       await deleteDoc(doc(db, 'employees', id))
     } catch (error) {
       console.error('Error removing employee:', error)
-      alert('Failed to remove employee. Try again.')
+      toast.error('Failed to remove employee. Try again.')
     }
   }
 
@@ -123,7 +127,7 @@ function Employees() {
     return (
       <main className="employees-page">
         <div className="empty-state">
-          <p>Loading... ⏳</p>
+          <p>Loading... <Loader2 size={16} className="spin" aria-hidden /></p>
         </div>
       </main>
     )
@@ -131,6 +135,10 @@ function Employees() {
 
   return (
     <main className="employees-page">
+      <button onClick={() => navigate('/dashboard')} className="back-button">
+  <ArrowLeft size={16} />
+  <span>Back to dashboard</span>
+</button>
 <div className="page-header employees-header">
   <div>
     <h2 className="page-title">Your Team</h2>
@@ -142,20 +150,26 @@ function Employees() {
   <button 
     className="settings-button"
     onClick={() => navigate('/schedules')}
+    style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}
   >
-    📚 My Schedules
+    <BookOpen size={16} aria-hidden />
+    <span>My Schedules</span>
   </button>
   <button 
     className="settings-button"
     onClick={() => navigate('/settings')}
+    style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}
   >
-    ⚙️ Settings
+    <Settings size={16} aria-hidden />
+    <span>Settings</span>
   </button>
   <button 
     className="generate-nav-button"
     onClick={() => navigate('/schedule')}
+    style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}
   >
-    🤖 Generate Schedule
+    <Sparkles size={18} aria-hidden />
+    <span>Generate Schedule</span>
   </button>
 </div>
 </div>
@@ -207,11 +221,14 @@ function Employees() {
       <div className="employee-list">
         {loading ? (
           <div className="empty-state">
-            <p>Loading your team... ⏳</p>
+            <p>Loading your team... <Loader2 size={16} className="spin" aria-hidden /></p>
           </div>
         ) : employees.length === 0 ? (
           <div className="empty-state">
-            <p>No one on the team yet. Add your first employee above 👆</p>
+            <p>
+              No one on the team yet. Add your first employee above{' '}
+              <ArrowUp size={20} style={{ verticalAlign: 'middle' }} aria-hidden />
+            </p>
           </div>
         ) : (
           employees.map(emp => (

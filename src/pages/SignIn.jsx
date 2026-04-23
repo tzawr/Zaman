@@ -18,7 +18,7 @@ function SignIn() {
     try {
       setLoading(true)
       await signIn(email, password)
-      navigate('/employees')
+      navigate('/dashboard')
     } catch (err) {
       if (err.code === 'auth/invalid-credential' || err.code === 'auth/wrong-password' || err.code === 'auth/user-not-found') {
         setError('Invalid email or password')
@@ -41,7 +41,7 @@ function SignIn() {
       const userDoc = await getDoc(doc(db, 'users', result.user.uid))
       
       if (userDoc.exists() && userDoc.data().onboarded) {
-        navigate('/employees')
+        navigate('/dashboard')
       } else {
         navigate('/onboarding')
       }

@@ -1,5 +1,16 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
+import {
+  Loader2,
+  BookOpen,
+  Sparkles,
+  Check,
+  Clipboard,
+  ClipboardCheck,
+  RotateCw,
+  Calendar,
+  ArrowLeft,
+} from 'lucide-react'
 import { 
   collection, 
   query, 
@@ -8,7 +19,6 @@ import {
   doc, 
   addDoc, 
   serverTimestamp,
-  orderBy
 } from 'firebase/firestore'
 import { db } from '../firebase'
 import { useAuth } from '../AuthContext'
@@ -136,7 +146,7 @@ function Schedule() {
     return (
       <main className="availability-page">
         <div className="empty-state">
-          <p>Loading... ⏳</p>
+          <p>Loading... <Loader2 size={16} className="spin" aria-hidden /></p>
         </div>
       </main>
     )
@@ -148,6 +158,10 @@ function Schedule() {
 
   return (
     <main className="availability-page">
+      <button onClick={() => navigate('/dashboard')} className="back-button">
+  <ArrowLeft size={16} />
+  <span>Back to dashboard</span>
+</button>
       <div className="page-header employees-header">
         <div>
           <h2 className="page-title">Generate Schedule</h2>
@@ -158,8 +172,10 @@ function Schedule() {
         <button 
           className="settings-button"
           onClick={() => navigate('/schedules')}
+          style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}
         >
-          📚 My Schedules
+          <BookOpen size={16} aria-hidden />
+          <span>My Schedules</span>
         </button>
       </div>
 
@@ -186,7 +202,10 @@ function Schedule() {
 
       {/* Week picker */}
       <div className="availability-section">
-        <h3 className="section-title">Which week?</h3>
+        <h3 className="section-title" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <Calendar size={20} aria-hidden />
+          Which week?
+        </h3>
         <p className="section-subtitle">
           Pick the Monday of the week you want to schedule.
         </p>
@@ -233,7 +252,10 @@ function Schedule() {
               Generating schedule...
             </>
           ) : (
-            <>🤖 Generate Schedule</>
+            <>
+              <Sparkles size={18} aria-hidden />
+              <span>Generate Schedule</span>
+            </>
           )}
         </button>
         
@@ -257,20 +279,36 @@ function Schedule() {
             <h3 className="section-title">Your Schedule</h3>
             <div className="schedule-actions">
               {saved && (
-                <span className="saved-indicator">✓ Auto-saved</span>
+                <span className="saved-indicator" style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                  <Check size={16} aria-hidden />
+                  <span>Auto-saved</span>
+                </span>
               )}
               <button 
                 className="settings-button"
                 onClick={copyToClipboard}
+                style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}
               >
-                {copied ? '✓ Copied!' : '📋 Copy'}
+                {copied ? (
+                  <>
+                    <ClipboardCheck size={16} aria-hidden />
+                    <span>Copied!</span>
+                  </>
+                ) : (
+                  <>
+                    <Clipboard size={16} aria-hidden />
+                    <span>Copy</span>
+                  </>
+                )}
               </button>
               <button 
                 className="settings-button"
                 onClick={generateSchedule}
                 disabled={generating}
+                style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}
               >
-                🔄 Regenerate
+                <RotateCw size={16} aria-hidden />
+                <span>Regenerate</span>
               </button>
             </div>
           </div>

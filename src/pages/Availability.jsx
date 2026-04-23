@@ -1,8 +1,10 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { doc, getDoc, setDoc, onSnapshot, serverTimestamp } from 'firebase/firestore'
+import { Loader2, ArrowLeft, Palmtree, Check, X, ArrowRight } from 'lucide-react'
+import { doc, setDoc, onSnapshot, serverTimestamp } from 'firebase/firestore'
 import { db } from '../firebase'
 import { useAuth } from '../AuthContext'
+import { useToast } from '../components/Toast'
 
 const DAYS = [
   { key: 'monday', label: 'Monday' },
@@ -23,6 +25,7 @@ function Availability() {
   const navigate = useNavigate()
   const { employeeId } = useParams()
   const { currentUser } = useAuth()
+  const toast = useToast()
   
   const [employee, setEmployee] = useState(null)
   const [availability, setAvailability] = useState(DEFAULT_AVAILABILITY)
@@ -106,12 +109,12 @@ function Availability() {
   // Add a time off request
   function addTimeOff() {
     if (!newTimeOffStart || !newTimeOffEnd) {
-      alert('Please pick both start and end dates')
+      toast.info('Please pick both start and end dates')
       return
     }
     
     if (newTimeOffEnd < newTimeOffStart) {
-      alert('End date must be after start date')
+      toast.info('End date must be after start date')
       return
     }
     
@@ -157,7 +160,7 @@ function Availability() {
     } catch (error) {
       console.error('Error saving:', error)
       setSaving(false)
-      alert('Failed to save. Try again.')
+      toast.error('Failed to save. Try again.')
     }
   }
 
@@ -172,7 +175,7 @@ function Availability() {
     return (
       <main className="employees-page">
         <div className="empty-state">
-          <p>Loading availability... ⏳</p>
+          <p>Loading availability... <Loader2 size={16} className="spin" aria-hidden /></p>
         </div>
       </main>
     )
@@ -185,9 +188,11 @@ function Availability() {
       <div className="page-header availability-header">
         <button 
           className="back-link" 
-          onClick={() => navigate('/employees')}
+          onClick={() => navigate('/dashboard')}
+          style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}
         >
-          ← Back to team
+          <ArrowLeft size={16} aria-hidden />
+          <span>Back to dashboard</span>
         </button>
         
         <div className="employee-header">
@@ -221,8 +226,18 @@ function Availability() {
                   aria-label={`Toggle ${day.label}`}
                 >
                   <span className="day-name">{day.label}</span>
-                  <span className="day-status">
-                    {dayData.available ? '✓ Available' : '✕ Off'}
+                  <span className="day-status" style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                    {dayData.available ? (
+                      <>
+                        <Check size={16} aria-hidden />
+                        <span>Available</span>
+                      </>
+                    ) : (
+                      <>
+                        <X size={16} aria-hidden />
+                        <span>Off</span>
+                      </>
+                    )}
                   </span>
                 </button>
                 
@@ -234,7 +249,7 @@ function Availability() {
                       value={dayData.start}
                       onChange={(e) => updateTime(day.key, 'start', e.target.value)}
                     />
-                    <span className="time-arrow">→</span>
+                    <span className="time-arrow"><ArrowRight size={16} aria-hidden /></span>
                     <input
                       type="time"
                       className="time-input"
@@ -299,8 +314,11 @@ function Availability() {
             timeOffList.map(timeOff => (
               <div key={timeOff.id} className="timeoff-card">
                 <div className="timeoff-info">
-                  <p className="timeoff-dates">
-                    🏖️ {formatDate(timeOff.start)} → {formatDate(timeOff.end)}
+                  <p className="timeoff-dates" style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                    <Palmtree size={20} aria-hidden />
+                    <span>{formatDate(timeOff.start)}</span>
+                    <ArrowRight size={16} aria-hidden />
+                    <span>{formatDate(timeOff.end)}</span>
                   </p>
                   <p className="timeoff-reason">{timeOff.reason}</p>
                 </div>

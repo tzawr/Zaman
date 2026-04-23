@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { Moon, Sun, Settings, LogOut } from 'lucide-react'
 import { doc, onSnapshot } from 'firebase/firestore'
 import { db } from '../firebase'
 import { useAuth } from '../AuthContext'
@@ -56,13 +57,6 @@ function ProfileMenu({ darkMode, setDarkMode }) {
     return (
       <div className="navbar-right">
         <button 
-          className="theme-toggle" 
-          onClick={() => setDarkMode(!darkMode)}
-          aria-label="Toggle theme"
-        >
-          {darkMode ? '☀️' : '🌙'}
-        </button>
-        <button 
           className="signin-nav-button"
           onClick={() => navigate('/signin')}
         >
@@ -101,21 +95,13 @@ function ProfileMenu({ darkMode, setDarkMode }) {
           <div className="dropdown-divider"></div>
 
           <button 
-            className="dropdown-item"
-            onClick={() => setDarkMode(!darkMode)}
-          >
-            <span className="dropdown-icon">{darkMode ? '☀️' : '🌙'}</span>
-            <span>{darkMode ? 'Light Mode' : 'Dark Mode'}</span>
-          </button>
-
-          <button 
   className="dropdown-item"
   onClick={() => {
     setOpen(false)
     navigate('/settings')
   }}
 >
-  <span className="dropdown-icon">⚙️</span>
+  <span className="dropdown-icon"><Settings size={16} /></span>
   <span>Settings</span>
 </button>
 
@@ -125,7 +111,7 @@ function ProfileMenu({ darkMode, setDarkMode }) {
             className="dropdown-item dropdown-logout"
             onClick={handleLogOut}
           >
-            <span className="dropdown-icon">🚪</span>
+            <span className="dropdown-icon"><LogOut size={16} /></span>
             <span>Sign Out</span>
           </button>
         </div>

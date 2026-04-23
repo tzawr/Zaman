@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Heart } from 'lucide-react'
 import { BrowserRouter, Routes, Route, Link } from 'react-router-dom'
 import Landing from './pages/Landing'
 import Employees from './pages/Employees'
@@ -10,14 +11,16 @@ import Settings from './pages/Settings'
 import Schedule from './pages/Schedule'
 import ProfileMenu from './components/ProfileMenu'
 import Schedules from './pages/Schedules'
+import Footer from './components/Footer'
+import Dashboard from './pages/Dashboard'
 import './App.css'
 
 function App() {
-  const [darkMode, setDarkMode] = useState(false)
+  const [darkMode, setDarkMode] = useState(true)
 
   return (
     <BrowserRouter>
-      <div className={darkMode ? 'app dark' : 'app'}>
+      <div className="app dark">
         <nav className="navbar">
           <Link to="/" className="logo-link">
             <h1 className="logo">Zaman</h1>
@@ -35,11 +38,10 @@ function App() {
   <Route path="/settings" element={<Settings />} />
   <Route path="/schedule" element={<Schedule />} />
   <Route path="/schedules" element={<Schedules />} />
+  <Route path="/dashboard" element={<Dashboard />} />
 </Routes>
 
-        <footer className="footer">
-          <p>Built with 💙 by جوجو</p>
-        </footer>
+<Footer />
       </div>
     </BrowserRouter>
   )

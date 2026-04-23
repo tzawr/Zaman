@@ -1,5 +1,15 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
+import {
+  Loader2,
+  Sparkles,
+  Rocket,
+  Calendar,
+  X,
+  Clipboard,
+  ClipboardCheck,
+  ArrowLeft,
+} from 'lucide-react'
 import { 
   collection, 
   query, 
@@ -11,10 +21,12 @@ import {
 } from 'firebase/firestore'
 import { db } from '../firebase'
 import { useAuth } from '../AuthContext'
+import { useToast } from '../components/Toast'
 
 function Schedules() {
   const navigate = useNavigate()
   const { currentUser } = useAuth()
+  const toast = useToast()
   
   const [schedules, setSchedules] = useState([])
   const [selectedSchedule, setSelectedSchedule] = useState(null)
@@ -92,7 +104,7 @@ function Schedules() {
       }
     } catch (err) {
       console.error('Failed to delete:', err)
-      alert('Failed to delete. Try again.')
+      toast.error('Failed to delete. Try again.')
     }
   }
 
@@ -100,7 +112,7 @@ function Schedules() {
     return (
       <main className="availability-page">
         <div className="empty-state">
-          <p>Loading schedules... ⏳</p>
+          <p>Loading schedules... <Loader2 size={16} className="spin" aria-hidden /></p>
         </div>
       </main>
     )
@@ -108,6 +120,10 @@ function Schedules() {
 
   return (
     <main className="availability-page">
+      <button onClick={() => navigate('/dashboard')} className="back-button">
+  <ArrowLeft size={16} />
+  <span>Back to dashboard</span>
+</button>
       <div className="page-header employees-header">
         <div>
           <h2 className="page-title">My Schedules</h2>
@@ -118,14 +134,19 @@ function Schedules() {
         <button 
           className="generate-nav-button"
           onClick={() => navigate('/schedule')}
+          style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}
         >
-          🤖 Generate New
+          <Sparkles size={18} aria-hidden />
+          <span>Generate New</span>
         </button>
       </div>
 
       {schedules.length === 0 ? (
         <div className="empty-state">
-          <p>No schedules yet. Click "Generate New" to create your first one 🚀</p>
+          <p>
+            {`No schedules yet. Click "Generate New" to create your first one `}
+            <Rocket size={40} style={{ verticalAlign: 'middle', display: 'inline-block' }} aria-hidden />
+          </p>
         </div>
       ) : (
         <div className="schedules-grid">
@@ -138,8 +159,9 @@ function Schedules() {
                 onClick={() => setSelectedSchedule(sched)}
               >
                 <div className="schedule-card-header">
-                  <p className="schedule-week">
-                    📅 {formatWeekRange(sched.weekStart)}
+                  <p className="schedule-week" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <Calendar size={20} aria-hidden />
+                    <span>{formatWeekRange(sched.weekStart)}</span>
                   </p>
                   <button 
                     className="schedule-delete-btn"
@@ -149,7 +171,7 @@ function Schedules() {
                     }}
                     aria-label="Delete schedule"
                   >
-                    ×
+                    <X size={16} aria-hidden />
                   </button>
                 </div>
                 <p className="schedule-meta">
@@ -179,8 +201,19 @@ function Schedules() {
                   <button 
                     className="settings-button"
                     onClick={() => copyToClipboard(selectedSchedule.content)}
+                    style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}
                   >
-                    {copied ? '✓ Copied!' : '📋 Copy'}
+                    {copied ? (
+                      <>
+                        <ClipboardCheck size={16} aria-hidden />
+                        <span>Copied!</span>
+                      </>
+                    ) : (
+                      <>
+                        <Clipboard size={16} aria-hidden />
+                        <span>Copy</span>
+                      </>
+                    )}
                   </button>
                 </div>
                 
@@ -197,7 +230,10 @@ function Schedules() {
               </>
             ) : (
               <div className="empty-state">
-                <p>👈 Select a schedule to view it.</p>
+                <p style={{ display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'center', flexWrap: 'wrap' }}>
+                  <ArrowLeft size={20} aria-hidden />
+                  <span>Select a schedule to view it.</span>
+                </p>
               </div>
             )}
           </div>

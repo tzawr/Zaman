@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { ArrowRight, ArrowUp, ArrowLeft, X } from 'lucide-react'
 import { doc, setDoc, serverTimestamp } from 'firebase/firestore'
 import { db } from '../firebase'
 import { useAuth } from '../AuthContext'
@@ -79,7 +80,7 @@ function Onboarding() {
         createdAt: serverTimestamp(),
         onboarded: true
       })
-      navigate('/employees')
+      navigate('/dashboard')
     } catch (err) {
       console.error('Onboarding error:', err)
       setError('Failed to save. Try again.')
@@ -125,8 +126,9 @@ function Onboarding() {
   onChange={(e) => setUserRole(e.target.value)}
 />
 
-              <button type="submit" className="auth-button">
-                Continue →
+              <button type="submit" className="auth-button" style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+                <span>Continue</span>
+                <ArrowRight size={16} aria-hidden />
               </button>
             </form>
           </>
@@ -159,7 +161,10 @@ function Onboarding() {
             <div className="role-list">
               {roles.length === 0 ? (
                 <div className="empty-state small">
-                  <p>No roles yet. Add your first above 👆</p>
+                  <p>
+                    No roles yet. Add your first above{' '}
+                    <ArrowUp size={20} style={{ verticalAlign: 'middle' }} aria-hidden />
+                  </p>
                 </div>
               ) : (
                 roles.map(role => (
@@ -170,7 +175,7 @@ function Onboarding() {
                       onClick={() => removeRole(role.id)}
                       aria-label={`Remove ${role.name}`}
                     >
-                      ×
+                      <X size={16} aria-hidden />
                     </button>
                   </div>
                 ))
@@ -182,8 +187,10 @@ function Onboarding() {
                 type="button"
                 className="secondary-button"
                 onClick={() => setStep(1)}
+                style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}
               >
-                ← Back
+                <ArrowLeft size={16} aria-hidden />
+                <span>Back</span>
               </button>
               <button 
                 type="button"
