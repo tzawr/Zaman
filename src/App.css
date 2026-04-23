@@ -5455,3 +5455,22 @@ select.input {
   color: var(--text-secondary);
   margin: 0;
 }
+
+/* Fix date/time picker icons for dark mode */
+input[type="date"],
+input[type="time"] {
+  color-scheme: dark;
+}
+
+input[type="date"]::-webkit-calendar-picker-indicator,
+input[type="time"]::-webkit-calendar-picker-indicator {
+  filter: invert(0.7);
+  cursor: pointer;
+  opacity: 0.4;
+  transition: opacity 0.1s ease;
+}
+
+input[type="date"]::-webkit-calendar-picker-indicator:hover,
+input[type="time"]::-webkit-calendar-picker-indicator:hover {
+  opacity: 0.6;
+}
