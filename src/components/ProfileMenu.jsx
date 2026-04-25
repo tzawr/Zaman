@@ -95,15 +95,27 @@ function ProfileMenu({ darkMode, setDarkMode }) {
           <div className="dropdown-divider"></div>
 
           <button 
-  className="dropdown-item"
-  onClick={() => {
-    setOpen(false)
-    navigate('/settings')
-  }}
->
-  <span className="dropdown-icon"><Settings size={16} /></span>
-  <span>Settings</span>
-</button>
+            className="dropdown-item"
+            onClick={() => {
+              setDarkMode(!darkMode)
+            }}
+          >
+            <span className="dropdown-icon">
+              {darkMode ? <Sun size={16} /> : <Moon size={16} />}
+            </span>
+            <span>{darkMode ? 'Light mode' : 'Dark mode'}</span>
+          </button>
+
+          <button 
+            className="dropdown-item"
+            onClick={() => {
+              setOpen(false)
+              navigate('/settings')
+            }}
+          >
+            <span className="dropdown-icon"><Settings size={16} /></span>
+            <span>Settings</span>
+          </button>
 
           <div className="dropdown-divider"></div>
 

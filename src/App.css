@@ -5474,3 +5474,794 @@ input[type="date"]::-webkit-calendar-picker-indicator:hover,
 input[type="time"]::-webkit-calendar-picker-indicator:hover {
   opacity: 0.6;
 }
+
+/* ========== LIGHT MODE OVERRIDES ========== */
+
+.app.light {
+  --bg-base: #FAFAFA;
+  --bg-surface: #FFFFFF;
+  --bg-elevated: #F5F5F7;
+  --bg-hover: #EEEEF0;
+  --bg-overlay: rgba(255, 255, 255, 0.85);
+
+  --border-subtle: rgba(0, 0, 0, 0.06);
+  --border-default: rgba(0, 0, 0, 0.1);
+  --border-strong: rgba(0, 0, 0, 0.14);
+  --border-accent: rgba(99, 102, 241, 0.3);
+
+  --text-primary: #0A0A0B;
+  --text-secondary: #555560;
+  --text-tertiary: #8A8A95;
+  --text-disabled: #BABAC4;
+
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.08);
+  --shadow-lg: 0 10px 40px rgba(0, 0, 0, 0.1);
+  --shadow-xl: 0 25px 60px rgba(0, 0, 0, 0.15);
+}
+
+/* Reduce noise overlay in light mode */
+.app.light::before {
+  opacity: 0.15;
+  mix-blend-mode: multiply;
+}
+
+/* Navbar in light mode */
+.app.light .navbar {
+  background: rgba(255, 255, 255, 0.85);
+  border-bottom-color: rgba(0, 0, 0, 0.06);
+}
+
+/* Logo gradient still works because it uses var(--text-primary) */
+
+/* Landing — adjust gradient blobs for light mode */
+.app.light .landing-blob {
+  opacity: 0.25;
+  filter: blur(100px);
+}
+
+.app.light .landing-grid-overlay {
+  background-image: 
+    radial-gradient(circle at center, rgba(0, 0, 0, 0.06) 1px, transparent 1px);
+}
+
+/* Hero gradient text fallback (otherwise white-on-white) */
+.app.light .landing-hero-title,
+.app.light .page-hero-title,
+.app.light .landing-section-title,
+.app.light .landing-final-title,
+.app.light .schedules-main-title,
+.app.light .dashboard-title,
+.app.light .auth-title {
+  background: linear-gradient(180deg, #0A0A0B 0%, #555560 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+/* Mockup window in landing for light mode */
+.app.light .mockup-window {
+  background: white;
+  border-color: rgba(0, 0, 0, 0.08);
+  box-shadow: 
+    0 30px 80px rgba(0, 0, 0, 0.12),
+    0 0 80px rgba(99, 102, 241, 0.1);
+}
+
+.app.light .mockup-header {
+  background: #F5F5F7;
+}
+
+.app.light .mockup-day {
+  background: #FAFAFA;
+}
+
+/* Cards everywhere */
+.app.light .schedule-day-column,
+.app.light .schedule-summary,
+.app.light .schedule-issues,
+.app.light .schedule-recommendations,
+.app.light .app-section,
+.app.light .team-card,
+.app.light .dashboard-card,
+.app.light .dashboard-stat,
+.app.light .gen-stat,
+.app.light .landing-step,
+.app.light .landing-feature,
+.app.light .landing-pricing-card,
+.app.light .landing-social-chip,
+.app.light .role-item,
+.app.light .timeoff-item,
+.app.light .schedule-card,
+.app.light .schedules-empty,
+.app.light .auth-card,
+.app.light .schedule-detail-side,
+.app.light .empty-state {
+  background: white;
+  border-color: rgba(0, 0, 0, 0.08);
+}
+
+.app.light .schedule-day-header,
+.app.light .schedule-summary-card,
+.app.light .dashboard-schedule-item,
+.app.light .dashboard-team-member {
+  background: #FAFAFA;
+  border-color: rgba(0, 0, 0, 0.06);
+}
+
+/* Inputs in light mode */
+.app.light .input,
+.app.light .time-input,
+.app.light .prompt-textarea {
+  background: white;
+  border-color: rgba(0, 0, 0, 0.1);
+  color: #0A0A0B;
+}
+
+.app.light .input:focus,
+.app.light .time-input:focus,
+.app.light .prompt-textarea:focus {
+  background: white;
+  border-color: var(--accent-1);
+}
+
+.app.light input[type="date"],
+.app.light input[type="time"] {
+  color-scheme: light;
+}
+
+.app.light input[type="date"]::-webkit-calendar-picker-indicator,
+.app.light input[type="time"]::-webkit-calendar-picker-indicator {
+  filter: none;
+  opacity: 0.5;
+}
+
+.app.light input[type="date"]::-webkit-calendar-picker-indicator:hover,
+.app.light input[type="time"]::-webkit-calendar-picker-indicator:hover {
+  opacity: 1;
+}
+
+/* Settings buttons */
+.app.light .settings-button {
+  background: white;
+  border-color: rgba(0, 0, 0, 0.1);
+  color: #555560;
+}
+
+.app.light .settings-button:hover {
+  background: #F5F5F7;
+  border-color: rgba(0, 0, 0, 0.2);
+  color: #0A0A0B;
+}
+
+/* Ghost CTA */
+.app.light .landing-cta-ghost {
+  border-color: rgba(0, 0, 0, 0.15);
+  color: #0A0A0B;
+}
+
+.app.light .landing-cta-ghost:hover {
+  background: #F5F5F7;
+  border-color: rgba(0, 0, 0, 0.3);
+}
+
+/* Footer */
+.app.light .site-footer {
+  background: #FAFAFA;
+  border-top-color: rgba(0, 0, 0, 0.06);
+}
+
+/* Toast in light mode */
+.app.light .toast {
+  background: white;
+  border-color: rgba(0, 0, 0, 0.08);
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.08);
+  color: #0A0A0B;
+}
+
+/* Modal in light mode */
+.app.light .modal-card,
+.app.light .shift-modal {
+  background: white;
+}
+
+.app.light .profile-dropdown {
+  background: white;
+  border-color: rgba(0, 0, 0, 0.08);
+}
+
+.app.light .export-dropdown {
+  background: white;
+  border-color: rgba(0, 0, 0, 0.08);
+}
+
+/* Onboarding chip + role chip — keep purple accents but adjust bg */
+.app.light .onboarding-role-chip {
+  background: rgba(99, 102, 241, 0.08);
+}
+
+/* Schedule shifts already use rgba colors that work on both bgs */
+
+/* App back link in light mode */
+.app.light .app-back-link:hover {
+  background: white;
+  border-color: rgba(0, 0, 0, 0.08);
+}
+
+/* Day rows */
+.app.light .day-row {
+  background: white;
+  border-color: rgba(0, 0, 0, 0.08);
+}
+
+/* Pricing highlighted card */
+.app.light .landing-pricing-highlighted {
+  background: linear-gradient(180deg, white 0%, rgba(99, 102, 241, 0.04) 100%);
+}
+
+/* Auth blobs in light mode — softer */
+.app.light .auth-blob {
+  opacity: 0.2;
+}
+
+/* Social proof border in light mode */
+.app.light .landing-social {
+  border-top-color: rgba(0, 0, 0, 0.06);
+  border-bottom-color: rgba(0, 0, 0, 0.06);
+}
+
+/* Theme toggle button (for not signed in nav) */
+.theme-toggle-btn {
+  background: transparent;
+  border: 1px solid var(--border-default);
+  color: var(--text-secondary);
+  width: 38px;
+  height: 38px;
+  border-radius: var(--radius-md);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all var(--transition-base);
+}
+
+.theme-toggle-btn:hover {
+  background: var(--bg-elevated);
+  color: var(--text-primary);
+  border-color: var(--border-strong);
+}
+
+/* Schedule shift cards — keep their custom gradient backgrounds in both modes */
+/* (already handled via inline styles using employee colors) */
+
+/* Coverage gap warning */
+.app.light .schedule-gap {
+  background: rgba(245, 158, 11, 0.08);
+  border-color: rgba(245, 158, 11, 0.3);
+  color: #B45309;
+}
+
+/* Schedule output pre block */
+.app.light .schedule-output {
+  background: white;
+  border-color: rgba(0, 0, 0, 0.08);
+}
+
+.app.light .schedule-output pre {
+  color: #0A0A0B;
+}
+
+/* ========== LANDING V2 ULTRA ========== */
+
+.landing-v2 {
+  position: relative;
+  z-index: 2;
+}
+
+/* Cursor spotlight */
+.cursor-spotlight {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 1;
+  transition: background 0.3s ease;
+}
+
+/* Hero v2 */
+.hero-v2 {
+  perspective: 1500px;
+}
+
+.hero-title-v2 {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.hero-line {
+  display: block;
+}
+
+.typing-cursor {
+  display: inline-block;
+  font-weight: 300;
+  margin-left: 2px;
+  color: var(--accent-1);
+  animation: blink 1s step-end infinite;
+}
+
+@keyframes blink {
+  50% { opacity: 0; }
+}
+
+/* Eyebrow with dot */
+.eyebrow-v2 {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.eyebrow-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--accent-1);
+  box-shadow: 0 0 8px var(--accent-1);
+  animation: pulse-dot 2s ease-in-out infinite;
+}
+
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.5; transform: scale(0.8); }
+}
+
+/* Glow CTA button */
+.cta-glow {
+  position: relative;
+  overflow: hidden;
+}
+
+.cta-glow::after {
+  content: '';
+  position: absolute;
+  top: 0; left: -100%;
+  width: 100%; height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+  transition: left 0.6s ease;
+}
+
+.cta-glow:hover::after {
+  left: 100%;
+}
+
+.cta-watch svg {
+  fill: currentColor;
+}
+
+/* Floating shapes */
+.floating-shape {
+  position: absolute;
+  pointer-events: none;
+  z-index: 1;
+  opacity: 0.5;
+}
+
+.shape-circle {
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  border: 1px solid var(--border-accent);
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.1), transparent);
+  top: 15%;
+  left: 8%;
+}
+
+.shape-square {
+  width: 50px;
+  height: 50px;
+  border-radius: 8px;
+  border: 1px solid var(--border-accent);
+  background: linear-gradient(135deg, rgba(139, 92, 246, 0.1), transparent);
+  top: 25%;
+  right: 12%;
+}
+
+.shape-triangle {
+  width: 0;
+  height: 0;
+  border-left: 25px solid transparent;
+  border-right: 25px solid transparent;
+  border-bottom: 43px solid rgba(99, 102, 241, 0.15);
+  bottom: 20%;
+  left: 6%;
+}
+
+/* Mockup v2 */
+.mockup-v2 {
+  transition: transform 0.6s var(--ease-out);
+}
+
+/* Marquee */
+.marquee-section {
+  padding: 60px 0;
+  border-top: 1px solid var(--border-subtle);
+  border-bottom: 1px solid var(--border-subtle);
+  overflow: hidden;
+  text-align: center;
+}
+
+.marquee-label {
+  font-size: 13px;
+  color: var(--text-tertiary);
+  margin-bottom: 24px;
+  text-transform: uppercase;
+  letter-spacing: 0.15em;
+  font-weight: 500;
+}
+
+.marquee {
+  width: 100%;
+  overflow: hidden;
+  position: relative;
+  mask-image: linear-gradient(90deg, transparent, black 10%, black 90%, transparent);
+  -webkit-mask-image: linear-gradient(90deg, transparent, black 10%, black 90%, transparent);
+}
+
+.marquee-track {
+  display: flex;
+  gap: 40px;
+  animation: marquee 40s linear infinite;
+  width: max-content;
+}
+
+@keyframes marquee {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+
+.marquee-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 18px;
+  color: var(--text-secondary);
+  font-weight: 500;
+  letter-spacing: -0.02em;
+  white-space: nowrap;
+}
+
+.marquee-dot {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--accent-1);
+}
+
+/* Steps v2 */
+.steps-v2 {
+  position: relative;
+}
+
+.steps-line {
+  display: none;
+}
+
+.step-v2 {
+  position: relative;
+  z-index: 1;
+}
+
+.step-number-circle {
+  position: absolute;
+  top: 24px;
+  right: 24px;
+  font-size: 56px;
+  font-weight: 800;
+  letter-spacing: -0.04em;
+  line-height: 1;
+  background: linear-gradient(180deg, rgba(99, 102, 241, 0.4) 0%, rgba(99, 102, 241, 0) 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  pointer-events: none;
+  z-index: 1;
+  width: auto;
+  height: auto;
+  border: none;
+  background-color: transparent;
+  box-shadow: none;
+  display: block;
+}
+
+.step-v2 .landing-step-number {
+  display: none;
+}
+
+.step-icon-v2 {
+  margin-top: 16px;
+}
+
+/* Playground demo */
+.playground-section {
+  padding: 80px 24px;
+}
+
+.playground {
+  max-width: 800px;
+  margin: 0 auto;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-xl);
+  overflow: hidden;
+  box-shadow: var(--shadow-lg);
+}
+
+.playground-tabs {
+  display: flex;
+  gap: 4px;
+  padding: 12px;
+  border-bottom: 1px solid var(--border-subtle);
+  background: var(--bg-elevated);
+}
+
+.playground-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--text-secondary);
+  border-radius: var(--radius-md);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  font-family: var(--font-sans);
+}
+
+.playground-tab.active {
+  background: var(--bg-surface);
+  border-color: var(--border-accent);
+  color: var(--accent-1);
+  box-shadow: 0 0 20px var(--accent-glow);
+}
+
+.playground-screen {
+  padding: 40px;
+  min-height: 240px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.playground-content {
+  text-align: center;
+  max-width: 500px;
+}
+
+.playground-prompt {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  background: var(--accent-bg);
+  border: 1px solid var(--border-accent);
+  border-radius: var(--radius-full);
+  color: var(--accent-1);
+  font-size: 13px;
+  font-style: italic;
+  margin-bottom: 20px;
+}
+
+.playground-result p {
+  font-size: 14px;
+  color: var(--text-secondary);
+  line-height: 1.6;
+}
+
+.playground-loading {
+  display: flex;
+  justify-content: center;
+  gap: 6px;
+  margin-bottom: 16px;
+}
+
+.playground-loading .dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--accent-1);
+  animation: loadingDot 1.4s ease-in-out infinite;
+}
+
+.playground-loading .dot:nth-child(2) { animation-delay: 0.2s; }
+.playground-loading .dot:nth-child(3) { animation-delay: 0.4s; }
+
+@keyframes loadingDot {
+  0%, 60%, 100% { opacity: 0.3; transform: scale(0.8); }
+  30% { opacity: 1; transform: scale(1); }
+}
+
+.playground-edit-row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  justify-content: center;
+  margin-bottom: 16px;
+}
+
+.playground-shift {
+  padding: 10px 14px;
+  border: 1px solid;
+  border-radius: var(--radius-md);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.playground-shift.purple {
+  background: rgba(139, 92, 246, 0.15);
+  border-color: rgba(139, 92, 246, 0.3);
+  color: #C4B5FD;
+}
+
+.playground-shift.highlighted {
+  box-shadow: 0 0 30px rgba(139, 92, 246, 0.4);
+  transform: scale(1.05);
+}
+
+.playground-caption {
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.playground-formats {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  margin-bottom: 16px;
+}
+
+.format-pill {
+  padding: 10px 22px;
+  background: linear-gradient(135deg, var(--accent-1), var(--accent-2));
+  border-radius: var(--radius-md);
+  color: white;
+  font-weight: 700;
+  font-size: 13px;
+  letter-spacing: 0.05em;
+  box-shadow: 0 4px 16px rgba(99, 102, 241, 0.3);
+}
+
+/* Features v2 with mouse glow */
+.feature-v2 {
+  position: relative;
+  overflow: hidden;
+}
+
+.feature-glow {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.feature-v2:hover .feature-glow {
+  opacity: 1;
+}
+
+/* Stats v2 with bars */
+.stat-v2 {
+  position: relative;
+}
+
+.stat-bar {
+  margin-top: 16px;
+  height: 4px;
+  background: var(--bg-elevated);
+  border-radius: var(--radius-full);
+  overflow: hidden;
+}
+
+.stat-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--accent-1), var(--accent-2));
+  border-radius: var(--radius-full);
+  transition: width 1.8s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: 0 0 12px var(--accent-glow);
+}
+
+/* Testimonials */
+.testimonials-section {
+  padding: 100px 24px;
+}
+
+.testimonials-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 20px;
+  max-width: 1100px;
+  margin: 0 auto;
+}
+
+.testimonial-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  padding: 28px;
+  position: relative;
+  transition: all var(--transition-base);
+}
+
+.testimonial-card:hover {
+  border-color: var(--border-accent);
+  transform: translateY(-4px);
+  box-shadow: var(--shadow-md), 0 0 40px var(--accent-glow);
+}
+
+.testimonial-quote-icon {
+  color: var(--accent-1);
+  opacity: 0.5;
+  margin-bottom: 12px;
+}
+
+.testimonial-quote {
+  font-size: 15px;
+  line-height: 1.6;
+  color: var(--text-primary);
+  margin-bottom: 24px;
+  letter-spacing: -0.01em;
+  font-weight: 500;
+}
+
+.testimonial-author {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.testimonial-stars {
+  display: flex;
+  gap: 2px;
+  color: #F59E0B;
+}
+
+.testimonial-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+  letter-spacing: -0.01em;
+}
+
+.testimonial-role {
+  font-size: 12px;
+  color: var(--text-tertiary);
+}
+
+/* Final CTA v2 enhanced */
+.final-v2 {
+  padding: 140px 24px;
+}
+
+/* Responsive */
+@media (max-width: 1000px) {
+  .testimonials-grid {
+    grid-template-columns: 1fr;
+  }
+  .floating-shape {
+    display: none;
+  }
+}
+
+@media (max-width: 700px) {
+  .playground-screen {
+    padding: 30px 20px;
+  }
+  .playground-tab span {
+    font-size: 12px;
+  }
+  .marquee-item {
+    font-size: 14px;
+  }
+}

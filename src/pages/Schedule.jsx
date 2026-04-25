@@ -534,11 +534,14 @@ ${employees.map(emp => {
 ## SCHEDULING RULES (STRICT — NEVER VIOLATE)
 - NEVER schedule someone outside their stated availability hours. If availability says NOT AVAILABLE or the shift falls outside their hours, do NOT schedule them.
 - NEVER schedule someone during time-off dates that overlap with this week.
-- If minimum coverage can't be met without violating availability, leave the gap and flag it.
+- **ONE SHIFT PER PERSON PER DAY (CRITICAL):** Each employee should get AT MOST ONE shift per day. NEVER split a person across multiple shifts on the same day (e.g. 4am-12pm then 1pm-9pm). Combine into one continuous shift instead. The ONLY exception is if the manager's special instructions explicitly request split shifts.
+- **MAXIMUM SHIFT LENGTH:** No single shift should exceed 10 hours unless the manager's special instructions explicitly request longer shifts.
+- If minimum coverage can't be met without violating availability OR creating split shifts, leave the gap and flag it. Do NOT fill it by scheduling someone twice in a day.
 - Try to get each person close to (but not over) their target hours per week.
 - Distribute hours fairly across the team.
-${preventClopening ? `- CLOPENING PREVENTION: Minimum ${minHoursBetweenShifts || 10} hours between shifts. Never violate.` : ''}
+${preventClopening ? `- CLOPENING PREVENTION: Minimum ${minHoursBetweenShifts || 10} hours between shifts (across days). Never violate.` : ''}
 - Match employees to roles that fit the shift.
+- If the team is fundamentally too small for the coverage needs, say so honestly in the recommendations rather than creating an unrealistic schedule.
 
 ${customInstructions ? `\n## SPECIAL INSTRUCTIONS FROM MANAGER\n${customInstructions}\n` : ''}
 

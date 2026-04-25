@@ -16,16 +16,29 @@ import Dashboard from './pages/Dashboard'
 import './App.css'
 
 function App() {
-  const [darkMode, setDarkMode] = useState(true)
+  const [darkMode, setDarkMode] = useState(() => {
+    const saved = localStorage.getItem('zaman-theme')
+    if (saved === 'light') return false
+    return true
+  })
+
+  function toggleTheme() {
+    const next = !darkMode
+    setDarkMode(next)
+    localStorage.setItem('zaman-theme', next ? 'dark' : 'light')
+  }
 
   return (
     <BrowserRouter>
-      <div className="app dark">
+      <div className={darkMode ? 'app dark' : 'app light'}>
         <nav className="navbar">
           <Link to="/" className="logo-link">
             <h1 className="logo">Zaman</h1>
           </Link>
-          <ProfileMenu darkMode={darkMode} setDarkMode={setDarkMode} />
+          <ProfileMenu darkMode={darkMode} setDarkMode={(v) => {
+  setDarkMode(v)
+  localStorage.setItem('zaman-theme', v ? 'dark' : 'light')
+}} />
         </nav>
 
         <Routes>
