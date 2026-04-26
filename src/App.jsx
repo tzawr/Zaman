@@ -13,6 +13,10 @@ import ProfileMenu from './components/ProfileMenu'
 import Schedules from './pages/Schedules'
 import Footer from './components/Footer'
 import Dashboard from './pages/Dashboard'
+import Privacy from './pages/Privacy'
+import Terms from './pages/Terms'
+import Security from './pages/Security'
+import About from './pages/About'
 import './App.css'
 
 function App() {
@@ -52,6 +56,10 @@ function App() {
   <Route path="/schedule" element={<Schedule />} />
   <Route path="/schedules" element={<Schedules />} />
   <Route path="/dashboard" element={<Dashboard />} />
+  <Route path="/privacy" element={<Privacy />} />
+  <Route path="/terms" element={<Terms />} />
+  <Route path="/security" element={<Security />} />
+  <Route path="/about" element={<About />} />
 </Routes>
 
 <Footer />

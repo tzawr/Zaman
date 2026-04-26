@@ -28,17 +28,16 @@ function Footer() {
               <h4 className="footer-col-title">Company</h4>
               <ul className="footer-list">
                 <li><a href="mailto:aliseyfiazadsa6@gmail.com">Contact</a></li>
-                <li><a href="#" onClick={(e) => e.preventDefault()}>About</a></li>
-                <li><a href="#" onClick={(e) => e.preventDefault()}>Blog</a></li>
+                <li><Link to="/about">About</Link></li>
               </ul>
             </div>
 
             <div className="footer-col">
               <h4 className="footer-col-title">Legal</h4>
               <ul className="footer-list">
-                <li><a href="#" onClick={(e) => e.preventDefault()}>Privacy</a></li>
-                <li><a href="#" onClick={(e) => e.preventDefault()}>Terms</a></li>
-                <li><a href="#" onClick={(e) => e.preventDefault()}>Security</a></li>
+                <li><Link to="/privacy">Privacy</Link></li>
+                <li><Link to="/terms">Terms</Link></li>
+                <li><Link to="/security">Security</Link></li>
               </ul>
             </div>
           </div>

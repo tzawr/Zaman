@@ -62,8 +62,8 @@ function ScheduleTable({ data, employees = [], roles = [], onUpdate }) {
   }
 
   function handleAddShift(dayKey) {
-    setEditing({ 
-      dayKey, 
+    setEditing({
+      dayKey,
       shift: {
         id: `new-${Date.now()}`,
         employee: '',
@@ -122,9 +122,11 @@ function ScheduleTable({ data, employees = [], roles = [], onUpdate }) {
   className={`schedule-table-wrapper ${onUpdate ? 'schedule-editable' : ''}`}
 >        <div className="schedule-table">
         {DAYS.map(day => {
-          const dayData = data.days[day.key] || { shifts: [], coverageGaps: [], date: '' }
-          const hasGaps = dayData.coverageGaps && dayData.coverageGaps.length > 0
-          
+          const dayData = data.days[day.key] || { shifts: [], emptySlots: [], date: '' }
+          const emptySlots = dayData.emptySlots || []
+          const hasGaps = emptySlots.length > 0
+          const hasShifts = dayData.shifts && dayData.shifts.length > 0
+
           return (
             <div key={day.key} className="schedule-day-column">
               <div className="schedule-day-header">
@@ -136,9 +138,9 @@ function ScheduleTable({ data, employees = [], roles = [], onUpdate }) {
                   </div>
                 )}
               </div>
-              
+
               <div className="schedule-day-shifts">
-                {dayData.shifts && dayData.shifts.length > 0 ? (
+                {hasShifts ? (
                   dayData.shifts.map(shift => {
                     const color = colorForEmployee(shift.employee)
                     return (
@@ -162,27 +164,39 @@ function ScheduleTable({ data, employees = [], roles = [], onUpdate }) {
                       </div>
                     )
                   })
-                ) : (
+                ) : emptySlots.length === 0 && (
                   <div className="schedule-shift-empty">No shifts</div>
                 )}
-                
-                {dayData.coverageGaps && dayData.coverageGaps.map((gap, i) => (
-                  <div key={i} className="schedule-gap">
-                    <AlertTriangle size={12} />
-                    <span>{gap}</span>
+
+                {emptySlots.map((slot, i) => (
+                  <div
+                    key={`empty-${i}`}
+                    className="schedule-shift schedule-shift-empty-slot"
+                    onClick={() => onUpdate && handleAddShift(day.key)}
+                  >
+                    <div className="schedule-shift-empty-slot-role">
+                      {slot.role || 'Open shift'}
+                    </div>
+                    <div className="schedule-shift-time">
+                      <Clock size={11} />
+                      <span>{formatTime(slot.start)} — {formatTime(slot.end)}</span>
+                    </div>
+                    {onUpdate && (
+                      <div className="schedule-shift-empty-slot-cta">Assign +</div>
+                    )}
                   </div>
                 ))}
-                
+
                 {onUpdate && (
-  <button 
-    className="schedule-add-shift"
-    onClick={() => handleAddShift(day.key)}
-    aria-label={`Add shift on ${day.label}`}
-  >
-    <Plus size={14} />
-    <span>Add shift</span>
-  </button>
-)}
+                  <button
+                    className="schedule-add-shift"
+                    onClick={() => handleAddShift(day.key)}
+                    aria-label={`Add shift on ${day.label}`}
+                  >
+                    <Plus size={14} />
+                    <span>Add shift</span>
+                  </button>
+                )}
               </div>
             </div>
           )

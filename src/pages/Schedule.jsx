@@ -132,6 +132,7 @@ function Schedule() {
           cleanedText = cleanedText.replace(/^```\n?/, '').replace(/\n?```$/, '')
         }
         parsed = JSON.parse(cleanedText)
+        parsed = enforceTargetHours(parsed, employees)
       } catch (parseErr) {
         console.error('JSON parse error:', parseErr)
         console.log('Raw response:', data.schedule)
@@ -534,14 +535,13 @@ ${employees.map(emp => {
 ## SCHEDULING RULES (STRICT — NEVER VIOLATE)
 - NEVER schedule someone outside their stated availability hours. If availability says NOT AVAILABLE or the shift falls outside their hours, do NOT schedule them.
 - NEVER schedule someone during time-off dates that overlap with this week.
-- **ONE SHIFT PER PERSON PER DAY (CRITICAL):** Each employee should get AT MOST ONE shift per day. NEVER split a person across multiple shifts on the same day (e.g. 4am-12pm then 1pm-9pm). Combine into one continuous shift instead. The ONLY exception is if the manager's special instructions explicitly request split shifts.
-- **MAXIMUM SHIFT LENGTH:** No single shift should exceed 10 hours unless the manager's special instructions explicitly request longer shifts.
-- If minimum coverage can't be met without violating availability OR creating split shifts, leave the gap and flag it. Do NOT fill it by scheduling someone twice in a day.
-- Try to get each person close to (but not over) their target hours per week.
-- Distribute hours fairly across the team.
-${preventClopening ? `- CLOPENING PREVENTION: Minimum ${minHoursBetweenShifts || 10} hours between shifts (across days). Never violate.` : ''}
+- **ONE SHIFT PER PERSON PER DAY:** Each employee gets AT MOST ONE shift per day. No split shifts unless manager instructions explicitly request it.
+- **TARGET HOURS:** Never schedule an employee for more total hours than their target for the week. Track their running total as you assign shifts. If adding a shift would push them over their target, do not assign them — treat them as ineligible for that slot.
+- **MAXIMUM SHIFT LENGTH:** No single shift longer than 10 hours unless manager instructions say otherwise.
+${preventClopening ? `- **CLOPENING:** Never schedule someone with less than ${minHoursBetweenShifts || 10} hours between a closing shift and the next day's opening.` : ''}
 - Match employees to roles that fit the shift.
-- If the team is fundamentally too small for the coverage needs, say so honestly in the recommendations rather than creating an unrealistic schedule.
+- If a coverage window has no eligible employee (unavailable, on time off, already at target hours, or already scheduled that day), leave it as an empty slot in "emptySlots" — do NOT assign an ineligible person.
+- If the team is too small for coverage needs, say so in recommendations.
 
 ${customInstructions ? `\n## SPECIAL INSTRUCTIONS FROM MANAGER\n${customInstructions}\n` : ''}
 
@@ -556,35 +556,42 @@ Use this EXACT structure:
     "monday": {
       "date": "${dayDates.monday}",
       "shifts": [
-        { "id": "m1", "employee": "Sam", "role": "Barista", "start": "06:00", "end": "14:00", "hours": 8 }
+        { "id": "m1", "employee": "Sam", "role": "Barista", "start": "07:00", "end": "15:00", "hours": 8 }
       ],
-      "coverageGaps": []
+      "emptySlots": []
     },
-    "tuesday": { "date": "${dayDates.tuesday}", "shifts": [], "coverageGaps": [] },
-    "wednesday": { "date": "${dayDates.wednesday}", "shifts": [], "coverageGaps": [] },
-    "thursday": { "date": "${dayDates.thursday}", "shifts": [], "coverageGaps": [] },
-    "friday": { "date": "${dayDates.friday}", "shifts": [], "coverageGaps": [] },
-    "saturday": { "date": "${dayDates.saturday}", "shifts": [], "coverageGaps": [] },
-    "sunday": { "date": "${dayDates.sunday}", "shifts": [], "coverageGaps": [] }
+    "tuesday": { "date": "${dayDates.tuesday}", "shifts": [], "emptySlots": [] },
+    "wednesday": { "date": "${dayDates.wednesday}", "shifts": [], "emptySlots": [] },
+    "thursday": { "date": "${dayDates.thursday}", "shifts": [], "emptySlots": [] },
+    "friday": {
+      "date": "${dayDates.friday}",
+      "shifts": [
+        { "id": "f1", "employee": "Sam", "role": "Barista", "start": "07:00", "end": "15:00", "hours": 8 }
+      ],
+      "emptySlots": [
+        { "start": "15:00", "end": "22:00", "role": "Cashier" }
+      ]
+    },
+    "saturday": { "date": "${dayDates.saturday}", "shifts": [], "emptySlots": [] },
+    "sunday": { "date": "${dayDates.sunday}", "shifts": [], "emptySlots": [] }
   },
   "summary": [
-    { "employee": "Sam", "role": "Barista", "scheduledHours": 32, "targetHours": 30, "difference": 2 }
+    { "employee": "Sam", "role": "Barista", "scheduledHours": 16, "targetHours": 20, "difference": -4 }
   ],
   "issues": [
-    "Friday 18:00-21:00: coverage gap, no one available"
+    "Friday 15:00-22:00: no eligible staff"
   ],
   "recommendations": [
-    "Consider hiring one more cashier available in evenings"
+    "Consider hiring a part-time Cashier available Friday evenings"
   ]
 }
 
 RULES for the JSON:
 - Times in 24-hour format "HH:MM"
-- Each shift has a unique "id" (just use letters/numbers like "m1", "m2", "t1", etc.)
-- "hours" = decimal hours worked (e.g. 8, 8.5)
-- "difference" = scheduledHours - targetHours (can be negative)
-- If no shifts on a day, shifts array is empty []
-- If no coverage gaps, coverageGaps array is empty []
+- Each shift has a unique "id" (e.g. "m1", "t2")
+- "hours" = decimal hours (e.g. 8, 8.5)
+- "difference" = scheduledHours - targetHours (negative = under-scheduled)
+- "emptySlots" = every coverage window you could not fill with an eligible employee. Each entry: { "start": "HH:MM", "end": "HH:MM", "role": "role name or empty string" }. A day can have both shifts AND emptySlots. Use [] when all coverage is met.
 - "issues" is an array of short strings
 - "recommendations" is an array of short strings
 - NO markdown. NO explanations. ONLY the JSON object.
@@ -593,6 +600,54 @@ Generate the JSON schedule now.`
   
   return prompt
 }
+function shiftHours(start, end) {
+  if (!start || !end) return 0
+  const [sh, sm] = start.split(':').map(Number)
+  const [eh, em] = end.split(':').map(Number)
+  let h = (eh + em / 60) - (sh + sm / 60)
+  if (h < 0) h += 24
+  return Math.round(h * 10) / 10
+}
+
+// After the AI responds, enforce target-hour caps in JS.
+// Any shift that would push an employee over their weekly target is removed
+// and moved into emptySlots on that day so the gap is visible in the grid.
+function enforceTargetHours(data, employees) {
+  const targets = {}
+  employees.forEach(emp => {
+    if (emp.targetHours != null) targets[emp.name] = Number(emp.targetHours)
+  })
+
+  const totals = {}
+  const DAYS = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday']
+
+  DAYS.forEach(dayKey => {
+    const day = data.days?.[dayKey]
+    if (!day) return
+    if (!Array.isArray(day.emptySlots)) day.emptySlots = []
+    if (!Array.isArray(day.shifts)) day.shifts = []
+
+    const kept = []
+    day.shifts.forEach(shift => {
+      const target = targets[shift.employee]
+      if (target == null) { kept.push(shift); return }
+
+      const soFar = totals[shift.employee] || 0
+      const hrs = Number(shift.hours) || shiftHours(shift.start, shift.end)
+
+      if (soFar + hrs <= target + 0.05) {
+        kept.push(shift)
+        totals[shift.employee] = soFar + hrs
+      } else {
+        day.emptySlots.push({ start: shift.start, end: shift.end, role: shift.role || '' })
+      }
+    })
+    day.shifts = kept
+  })
+
+  return data
+}
+
 function capitalize(s) {
   return s.charAt(0).toUpperCase() + s.slice(1)
 }

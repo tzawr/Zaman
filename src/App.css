@@ -136,6 +136,12 @@
   border-bottom: 1px solid #1f1f1f;
 }
 
+@media (max-width: 600px) {
+  .navbar {
+    padding: 14px 20px;
+  }
+}
+
 .logo {
   font-size: 22px;
   font-weight: 700;
@@ -327,6 +333,12 @@
   margin: 0 auto;
   padding: 48px 24px;
   width: 100%;
+}
+
+@media (max-width: 600px) {
+  .employees-page {
+    padding: 24px 16px 48px;
+  }
 }
 
 .page-header {
@@ -849,7 +861,7 @@
   border: 1px solid var(--border-default);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-xl);
-  min-width: 260px;
+  min-width: min(260px, calc(100vw - 32px));
   padding: 6px;
   z-index: 100;
   animation: dropdownSlide 0.2s var(--ease-out);
@@ -1163,6 +1175,12 @@
   margin: 0 auto;
   padding: 48px 24px;
   width: 100%;
+}
+
+@media (max-width: 600px) {
+  .availability-page {
+    padding: 24px 16px 48px;
+  }
 }
 
 .availability-header {
@@ -3263,16 +3281,16 @@ input:checked + .slider:before {
     grid-template-columns: 1fr;
     gap: 40px;
   }
-  
+
   .footer-cols {
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: 1fr 1fr;
     gap: 24px;
   }
 }
 
-@media (max-width: 500px) {
+@media (max-width: 400px) {
   .footer-cols {
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: 1fr;
   }
 }
 
@@ -3286,6 +3304,12 @@ input:checked + .slider:before {
   width: 100%;
   position: relative;
   z-index: 2;
+}
+
+@media (max-width: 600px) {
+  .dashboard-page {
+    padding: 24px 16px 60px;
+  }
 }
 
 .dashboard-header {
@@ -3984,6 +4008,42 @@ input:checked + .slider:before {
   margin-top: 2px;
 }
 
+/* Empty slot — same card shape as a filled shift, but blank */
+.schedule-shift-empty-slot {
+  background: transparent !important;
+  border: 1px dashed var(--border-strong) !important;
+  color: var(--text-tertiary) !important;
+  cursor: default;
+}
+
+.schedule-editable .schedule-shift-empty-slot {
+  cursor: pointer;
+}
+
+.schedule-editable .schedule-shift-empty-slot:hover {
+  border-color: rgba(99, 102, 241, 0.4) !important;
+  background: var(--accent-bg) !important;
+}
+
+.schedule-shift-empty-slot-role {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-tertiary);
+}
+
+.schedule-shift-empty-slot-cta {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--accent-1);
+  margin-top: 4px;
+  opacity: 0;
+  transition: opacity var(--transition-fast);
+}
+
+.schedule-editable .schedule-shift-empty-slot:hover .schedule-shift-empty-slot-cta {
+  opacity: 1;
+}
+
 /* Summary */
 .schedule-summary {
   background: var(--bg-surface);
@@ -4485,6 +4545,12 @@ select.input {
   }
 }
 
+@media (max-width: 600px) {
+  .schedules-page-full {
+    padding: 20px 16px 48px;
+  }
+}
+
 /* ========== EXPORT DROPDOWN ========== */
 
 .export-dropdown-wrap {
@@ -4560,6 +4626,12 @@ select.input {
   width: 100%;
   position: relative;
   z-index: 2;
+}
+
+@media (max-width: 600px) {
+  .app-page {
+    padding: 24px 16px 60px;
+  }
 }
 
 .app-page-narrow {
@@ -4960,6 +5032,7 @@ select.input {
   }
   .page-hero-actions button {
     flex: 1;
+    min-width: 120px;
     justify-content: center;
   }
 }
@@ -6264,4 +6337,45 @@ input[type="time"]::-webkit-calendar-picker-indicator:hover {
   .marquee-item {
     font-size: 14px;
   }
+}
+
+/* ========== LEGAL / PROSE SECTION BODY ========== */
+
+.legal-text {
+  font-size: 14px;
+  line-height: 1.75;
+  color: var(--text-secondary);
+  letter-spacing: -0.01em;
+}
+
+.legal-text p {
+  margin: 0 0 14px;
+}
+
+.legal-text p:last-child {
+  margin-bottom: 0;
+}
+
+.legal-text ul,
+.legal-text ol {
+  padding-left: 20px;
+  margin: 0 0 14px;
+}
+
+.legal-text li {
+  margin-bottom: 6px;
+}
+
+.legal-text strong {
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+.legal-text a {
+  color: var(--accent-1);
+  text-decoration: none;
+}
+
+.legal-text a:hover {
+  text-decoration: underline;
 }
