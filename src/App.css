@@ -3153,7 +3153,20 @@ input:checked + .slider:before {
   }
   
   .landing-hero {
-    padding: 40px 20px 80px;
+    padding: 60px 20px 80px;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+  }
+
+  .landing-hero-content {
+    max-width: 100%;
+  }
+
+  .landing-hero-mockup {
+    width: 100%;
+    max-width: 100%;
+    margin-top: 48px;
   }
 }
 
