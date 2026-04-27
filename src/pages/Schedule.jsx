@@ -630,10 +630,7 @@ ${employees.map(emp => {
 
   let header = `\n### ${emp.name} (${emp.role}`
   if (targetHrs != null) {
-    header += `, target: ${targetHrs}h/week`
-    if (maxPerDay != null) {
-      header += `, HARD LIMIT: max ${maxPerDay}h on any single day across ${numAvailable} available days — do NOT exceed this`
-    }
+    header += `, Weekly budget: ${effectiveWeekly}h — distribute across ${numAvailable} available days`
   } else {
     header += ', target: not specified'
   }
@@ -650,9 +647,7 @@ ${employees.map(emp => {
       } else if (!day.available) {
         empInfo += `  ${capitalize(d)}: NOT AVAILABLE\n`
       } else {
-        const windowHrs = shiftHours(day.start, day.end)
-        const cap = maxPerDay != null ? Math.min(maxPerDay, windowHrs) : windowHrs
-        empInfo += `  ${capitalize(d)}: ${day.start} to ${day.end} (max shift: ${cap}h)\n`
+        empInfo += `  ${capitalize(d)}: ${day.start} to ${day.end}\n`
       }
     })
   } else {
@@ -674,7 +669,7 @@ ${employees.map(emp => {
 - NEVER schedule someone during time-off dates that overlap with this week.
 - **ONE SHIFT PER PERSON PER DAY:** Each employee gets AT MOST ONE shift per day. No split shifts unless manager instructions explicitly request it.
 - **TARGET HOURS:** Never schedule an employee for more total hours than their target for the week. Track their running total as you assign shifts. If adding a shift would push them over their target, do not assign them — treat them as ineligible for that slot.
-- **MAXIMUM SHIFT LENGTH:** No single shift longer than 10 hours unless manager instructions say otherwise.
+- **MAXIMUM SHIFT LENGTH:** No single shift longer than 8 hours.
 ${preventClopening ? `- **CLOPENING:** Never schedule someone with less than ${minHoursBetweenShifts || 10} hours between a closing shift and the next day's opening.` : ''}
 - Match employees to roles that fit the shift.
 - If a coverage window has no eligible employee (unavailable, on time off, already at target hours, or already scheduled that day), leave it as an empty slot in "emptySlots" — do NOT assign an ineligible person.
@@ -724,7 +719,7 @@ Use this EXACT structure:
 }
 
 RULES for the JSON:
-- Times in 24-hour format "HH:MM"
+- Times in 24-hour format "HH:MM". All times MUST be on the hour or half hour (e.g. 06:00, 08:30, 14:00). NEVER generate times like 09:42 or 14:18.
 - Each shift has a unique "id" (e.g. "m1", "t2")
 - "hours" = decimal hours (e.g. 8, 8.5)
 - "difference" = scheduledHours - targetHours (negative = under-scheduled)
