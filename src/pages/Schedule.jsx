@@ -555,9 +555,33 @@ ${roles?.map(r => `- ${r.name}`).join('\n') || 'No roles defined'}
 
 ## EMPLOYEES
 ${employees.map(emp => {
-  const targetHrs = emp.targetHours !== undefined ? emp.targetHours : 'not specified'
-  let empInfo = `\n### ${emp.name} (${emp.role}, target: ${targetHrs} hrs/week)\n`
-  
+  const targetHrs = emp.targetHours !== undefined ? emp.targetHours : null
+
+  // Count days this employee is actually available this week
+  const availableDays = days.filter(d => {
+    const av = emp.availability?.[d]
+    return av && av.available !== false
+  })
+  const numAvailable = availableDays.length
+
+  // Per-day budget: spread target evenly across available days
+  const maxPerDay = (targetHrs != null && numAvailable > 0)
+    ? Math.round((targetHrs / numAvailable) * 10) / 10
+    : null
+
+  let header = `\n### ${emp.name} (${emp.role}`
+  if (targetHrs != null) {
+    header += `, target: ${targetHrs}h/week`
+    if (maxPerDay != null) {
+      header += `, HARD LIMIT: max ${maxPerDay}h on any single day — do NOT exceed this`
+    }
+  } else {
+    header += ', target: not specified'
+  }
+  header += ')\n'
+
+  let empInfo = header
+
   if (emp.availability) {
     empInfo += 'Availability:\n'
     days.forEach(d => {
@@ -567,20 +591,22 @@ ${employees.map(emp => {
       } else if (!day.available) {
         empInfo += `  ${capitalize(d)}: NOT AVAILABLE\n`
       } else {
-        empInfo += `  ${capitalize(d)}: ${day.start} to ${day.end}\n`
+        const windowHrs = shiftHours(day.start, day.end)
+        const cap = maxPerDay != null ? Math.min(maxPerDay, windowHrs) : windowHrs
+        empInfo += `  ${capitalize(d)}: ${day.start} to ${day.end} (max shift: ${cap}h)\n`
       }
     })
   } else {
     empInfo += 'Availability: not set\n'
   }
-  
+
   if (emp.timeOff && emp.timeOff.length > 0) {
     empInfo += 'Time off requests:\n'
     emp.timeOff.forEach(t => {
       empInfo += `  - ${t.start} to ${t.end} (${t.reason || 'time off'})\n`
     })
   }
-  
+
   return empInfo
 }).join('\n')}
 
@@ -718,6 +744,27 @@ function enforceTargetHours(data, employees) {
       difference: Math.round((scheduled - target) * 10) / 10,
     }
   })
+
+  // Rebuild issues — remove AI-generated over-target claims (enforcement
+  // already fixed those) and replace with accurate post-enforcement issues.
+  const enforcedIssues = []
+
+  // Flag anyone still over target after enforcement (shouldn't happen, but catch it)
+  data.summary.forEach(s => {
+    if (s.targetHours > 0 && s.difference > 0.05) {
+      enforcedIssues.push(`${s.employee} is ${s.difference}h over their ${s.targetHours}h target`)
+    }
+  })
+
+  // Keep coverage-gap issues from the AI (empty slot warnings), drop hour complaints
+  const hourPattern = /[+-]\d+(\.\d+)?\s*h/i
+  const overTargetPattern = /over\s*(target|hours?)|exceed|too many hours/i
+  ;(data.issues || []).forEach(issue => {
+    const isOverTargetClaim = hourPattern.test(issue) || overTargetPattern.test(issue)
+    if (!isOverTargetClaim) enforcedIssues.push(issue)
+  })
+
+  data.issues = enforcedIssues
 
   return data
 }
