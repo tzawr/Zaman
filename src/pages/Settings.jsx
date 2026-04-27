@@ -1,9 +1,15 @@
 import { useState, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { Loader2, ArrowLeft, Check, X, ArrowRight, Pencil, Trash2, Plus, Clock, Shield, Target, Users, Eye } from 'lucide-react'
+import { Loader2, ArrowLeft, Check, X, ArrowRight, Pencil, Trash2, Plus, Clock, Shield, Target, Users, Eye, KeyRound, Lock } from 'lucide-react'
 import { doc, onSnapshot, setDoc, serverTimestamp } from 'firebase/firestore'
-import { db } from '../firebase'
+import {
+  updatePassword,
+  reauthenticateWithCredential,
+  EmailAuthProvider,
+  sendPasswordResetEmail,
+} from 'firebase/auth'
+import { db, auth } from '../firebase'
 import { useAuth } from '../AuthContext'
 import { useToast } from '../components/Toast'
 import PageHero from '../components/PageHero'
@@ -48,6 +54,14 @@ function Settings() {
   const [newRoleName, setNewRoleName] = useState('')
   const [editingRoleId, setEditingRoleId] = useState(null)
   const [editingRoleName, setEditingRoleName] = useState('')
+
+  const [showPasswordChange, setShowPasswordChange] = useState(false)
+  const [currentPassword, setCurrentPassword] = useState('')
+  const [newPassword, setNewPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
+  const [passwordChangeMsg, setPasswordChangeMsg] = useState('')
+  const [passwordChangeLoading, setPasswordChangeLoading] = useState(false)
+  const [passwordResetSent, setPasswordResetSent] = useState(false)
 
   useEffect(() => {
     if (!currentUser) navigate('/signin')
@@ -143,6 +157,42 @@ function Settings() {
     const next = roles.filter(r => r.id !== id)
     await saveToFirebase({ roles: next })
     toast.success(`Deleted "${name}"`)
+  }
+
+  const hasPasswordProvider = currentUser?.providerData?.some(p => p.providerId === 'password')
+
+  async function handlePasswordChange() {
+    if (newPassword.length < 6) { setPasswordChangeMsg('New password must be at least 6 characters.'); return }
+    if (newPassword !== confirmPassword) { setPasswordChangeMsg('Passwords do not match.'); return }
+    if (!currentPassword) { setPasswordChangeMsg('Enter your current password.'); return }
+    setPasswordChangeLoading(true)
+    setPasswordChangeMsg('')
+    try {
+      const cred = EmailAuthProvider.credential(currentUser.email, currentPassword)
+      await reauthenticateWithCredential(currentUser, cred)
+      await updatePassword(currentUser, newPassword)
+      setCurrentPassword(''); setNewPassword(''); setConfirmPassword('')
+      setShowPasswordChange(false)
+      toast.success('Password changed!')
+    } catch (err) {
+      if (err.code === 'auth/wrong-password' || err.code === 'auth/invalid-credential') {
+        setPasswordChangeMsg('Current password is incorrect.')
+      } else {
+        setPasswordChangeMsg(err.message || 'Failed to change password.')
+      }
+    } finally {
+      setPasswordChangeLoading(false)
+    }
+  }
+
+  async function handlePasswordResetEmail() {
+    try {
+      await sendPasswordResetEmail(auth, currentUser.email)
+      setPasswordResetSent(true)
+      toast.success('Reset email sent!')
+    } catch {
+      toast.error('Failed to send reset email.')
+    }
   }
 
   if (loading) {
@@ -373,6 +423,73 @@ function Settings() {
           </label>
         </div>
       </Section>
+
+      {hasPasswordProvider && (
+        <Section
+          title="Account security"
+          subtitle="Change your password or send a reset link."
+          icon={Lock}
+        >
+          <div className="rule-card">
+            <div className="rule-info">
+              <p className="rule-title">Password</p>
+              <p className="rule-description">Change your account password.</p>
+            </div>
+            <button
+              className="settings-button"
+              onClick={() => { setShowPasswordChange(v => !v); setPasswordChangeMsg('') }}
+            >
+              {showPasswordChange ? 'Cancel' : 'Change'}
+            </button>
+          </div>
+          {showPasswordChange && (
+            <div className="security-form">
+              <input
+                type="password"
+                className="input"
+                placeholder="Current password"
+                value={currentPassword}
+                onChange={(e) => setCurrentPassword(e.target.value)}
+                autoComplete="current-password"
+              />
+              <input
+                type="password"
+                className="input"
+                placeholder="New password (min. 6 characters)"
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                autoComplete="new-password"
+              />
+              <input
+                type="password"
+                className="input"
+                placeholder="Confirm new password"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                autoComplete="new-password"
+              />
+              {passwordChangeMsg && <div className="auth-error">{passwordChangeMsg}</div>}
+              <button
+                className="landing-cta-primary auth-submit"
+                onClick={handlePasswordChange}
+                disabled={passwordChangeLoading}
+                style={{ justifyContent: 'center' }}
+              >
+                <KeyRound size={14} />
+                <span>{passwordChangeLoading ? 'Changing...' : 'Change password'}</span>
+              </button>
+              <button
+                className="link-button"
+                style={{ fontSize: 12, marginTop: 2, textAlign: 'left' }}
+                onClick={handlePasswordResetEmail}
+                disabled={passwordResetSent}
+              >
+                {passwordResetSent ? 'Reset email sent!' : 'Forgot current password? Send a reset link instead'}
+              </button>
+            </div>
+          )}
+        </Section>
+      )}
 
     </main>
   )

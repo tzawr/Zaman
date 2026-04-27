@@ -115,7 +115,7 @@ function SignIn() {
           <div className="auth-field">
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <label className="form-label">Password</label>
-              <Link to="/forgot-password" style={{ fontSize: 12, opacity: 0.6 }}>Forgot password?</Link>
+              <Link to="/forgot-password" className="forgot-password-link">Forgot password?</Link>
             </div>
             <input
               type="password"

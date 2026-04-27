@@ -809,6 +809,21 @@
   text-decoration: underline;
 }
 
+.forgot-password-link {
+  font-size: 13px;
+  font-weight: 600;
+  color: #4A90E2;
+  text-decoration: none;
+  padding: 2px 8px;
+  border-radius: 6px;
+  transition: background 0.15s, color 0.15s;
+}
+
+.forgot-password-link:hover {
+  background: rgba(74, 144, 226, 0.12);
+  text-decoration: none;
+}
+
 /* Navbar right section */
 .navbar-right {
   display: flex;
