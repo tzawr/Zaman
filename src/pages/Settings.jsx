@@ -163,9 +163,9 @@ function Settings() {
       </button>
 
       <PageHero
-        eyebrow="Configuration"
-        title="Settings"
-        subtitle="Tell Zaman how your business operates. Zaman uses these rules every time it builds a schedule."
+        eyebrow="Your workspace"
+        title="Workspace"
+        subtitle="Configure how your business operates. Zaman uses these rules every time it builds a schedule."
       >
         {saving && (
           <span className="saving-pill">
@@ -175,8 +175,8 @@ function Settings() {
         )}
       </PageHero>
 
-      <Section 
-        title="Roles" 
+      <Section
+        title="Roles"
         subtitle="The roles you can assign to your team."
         icon={Users}
       >
@@ -240,8 +240,8 @@ function Settings() {
         </div>
       </Section>
 
-      <Section 
-        title="Operating hours" 
+      <Section
+        title="Operating hours"
         subtitle="When your business is open for service."
         icon={Clock}
       >
@@ -279,8 +279,8 @@ function Settings() {
         </div>
       </Section>
 
-      <Section 
-        title="Coverage minimums" 
+      <Section
+        title="Coverage minimums"
         subtitle="How many people need to be working at any given time."
         icon={Target}
       >
@@ -313,8 +313,8 @@ function Settings() {
         </div>
       </Section>
 
-      <Section 
-        title="Scheduling rules" 
+      <Section
+        title="Scheduling rules"
         subtitle="Constraints Zaman will always respect when building schedules."
         icon={Shield}
       >
@@ -373,6 +373,7 @@ function Settings() {
           </label>
         </div>
       </Section>
+
     </main>
   )
 }

@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Moon, Sun, Settings, LogOut, Calendar, LayoutDashboard, Users, Sparkles, BookOpen, Link2 } from 'lucide-react'
+import { Moon, Sun, SlidersHorizontal, LogOut, Calendar, LayoutDashboard, Users, BookOpen, Link2, UserCircle } from 'lucide-react'
 import { doc, onSnapshot } from 'firebase/firestore'
 import { db } from '../firebase'
 import { useAuth } from '../AuthContext'
@@ -95,7 +95,6 @@ function ProfileMenu({ darkMode, setDarkMode }) {
             <>
               <NavItem icon={LayoutDashboard} label="Dashboard"           onClick={() => go('/dashboard')} />
               <NavItem icon={Users}           label="Your team"           onClick={() => go('/employees')} />
-              <NavItem icon={Sparkles}        label="Generate schedule"   onClick={() => go('/schedule')} />
               <NavItem icon={BookOpen}        label="Schedule history"    onClick={() => go('/schedules')} />
               <NavItem icon={Link2}           label="Invite team"         onClick={() => go('/invite')} />
             </>
@@ -111,8 +110,9 @@ function ProfileMenu({ darkMode, setDarkMode }) {
             <span>{darkMode ? 'Light mode' : 'Dark mode'}</span>
           </button>
 
+          <NavItem icon={UserCircle} label="Profile" onClick={() => go('/profile')} />
           {!isEmployee && (
-            <NavItem icon={Settings} label="Settings" onClick={() => go('/settings')} />
+            <NavItem icon={SlidersHorizontal} label="Workspace" onClick={() => go('/settings')} />
           )}
 
           <div className="dropdown-divider" />

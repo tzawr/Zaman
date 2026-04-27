@@ -22,11 +22,14 @@ import InviteAccept from './pages/InviteAccept'
 import MySchedule from './pages/MySchedule'
 import Invite from './pages/Invite'
 import VerifyEmail from './pages/VerifyEmail'
+import ForgotPassword from './pages/ForgotPassword'
+import Profile from './pages/Profile'
 import './App.css'
 
 function ProtectedRoute({ children }) {
-  const { currentUser } = useAuth()
+  const { currentUser, userData } = useAuth()
   if (!currentUser) return <Navigate to="/signin" replace />
+  if (userData === undefined) return null
   if (!currentUser.emailVerified) return <Navigate to="/verify-email" replace />
   return children
 }
@@ -62,6 +65,7 @@ function App() {
   <Route path="/signup" element={<SignUp />} />
   <Route path="/signin" element={<SignIn />} />
   <Route path="/verify-email" element={<VerifyEmail />} />
+  <Route path="/forgot-password" element={<ForgotPassword />} />
   <Route path="/invite/:token" element={<InviteAccept />} />
   <Route path="/privacy" element={<Privacy />} />
   <Route path="/terms" element={<Terms />} />
@@ -77,6 +81,7 @@ function App() {
   <Route path="/schedules" element={<ProtectedRoute><Schedules /></ProtectedRoute>} />
   <Route path="/invite" element={<ProtectedRoute><Invite /></ProtectedRoute>} />
   <Route path="/my-schedule" element={<ProtectedRoute><MySchedule /></ProtectedRoute>} />
+  <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
 </Routes>
 
 <Footer />

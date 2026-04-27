@@ -2,12 +2,13 @@ import { useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { ArrowRight, Sparkles, Check } from 'lucide-react'
+import { sendEmailVerification } from 'firebase/auth'
 import { useAuth } from '../AuthContext'
 import { useToast } from '../components/Toast'
 
 function SignUp() {
   const navigate = useNavigate()
-  const { signUp, signInWithGoogle, sendVerificationEmail } = useAuth()
+  const { signUp, signInWithGoogle } = useAuth()
   const toast = useToast()
   
   const [email, setEmail] = useState('')
@@ -25,7 +26,7 @@ function SignUp() {
     setLoading(true)
     try {
       const cred = await signUp(email, password)
-      await sendVerificationEmail(cred.user)
+      await sendEmailVerification(cred.user)
       navigate('/verify-email')
     } catch (err) {
       setError(prettyError(err.code) || err.message || 'Something went wrong.')

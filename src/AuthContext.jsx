@@ -5,9 +5,9 @@ import {
   createUserWithEmailAndPassword,
   signInWithPopup,
   signOut,
-  sendEmailVerification
 } from 'firebase/auth'
-import { auth, googleProvider } from './firebase'
+import { doc, onSnapshot } from 'firebase/firestore'
+import { auth, googleProvider, db } from './firebase'
 
 const AuthContext = createContext()
 
@@ -17,35 +17,40 @@ export function useAuth() {
 
 export function AuthProvider({ children }) {
   const [currentUser, setCurrentUser] = useState(null)
+  const [userData, setUserData] = useState(undefined) // undefined = loading
   const [loading, setLoading] = useState(true)
 
-  // Listen for auth state changes (login, logout, session restore)
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
+    const unsub = onAuthStateChanged(auth, (user) => {
       setCurrentUser(user)
-      setLoading(false)
+      if (!user) {
+        setUserData(null)
+        setLoading(false)
+      }
     })
-    return unsubscribe
+    return unsub
   }, [])
 
-  // Sign up with email/password
+  // Load Firestore user doc whenever auth user changes
+  useEffect(() => {
+    if (!currentUser) return
+    const unsub = onSnapshot(doc(db, 'users', currentUser.uid), (snap) => {
+      setUserData(snap.exists() ? snap.data() : null)
+      setLoading(false)
+    })
+    return () => unsub()
+  }, [currentUser])
+
   async function signUp(email, password) {
     return createUserWithEmailAndPassword(auth, email, password)
   }
 
-  // Sign in with email/password
   async function signIn(email, password) {
     return signInWithEmailAndPassword(auth, email, password)
   }
 
-  // Sign in with Google
   async function signInWithGoogle() {
     return signInWithPopup(auth, googleProvider)
-  }
-
-  async function sendVerificationEmail(user) {
-    const target = user || auth.currentUser
-    if (target) return sendEmailVerification(target)
   }
 
   async function logOut() {
@@ -54,11 +59,11 @@ export function AuthProvider({ children }) {
 
   const value = {
     currentUser,
+    userData,
     signUp,
     signIn,
     signInWithGoogle,
-    sendVerificationEmail,
-    logOut
+    logOut,
   }
 
   return (

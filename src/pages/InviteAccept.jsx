@@ -4,12 +4,13 @@ import { motion } from 'framer-motion'
 import { ArrowRight, UserCheck } from 'lucide-react'
 import { doc, getDoc, setDoc, updateDoc, serverTimestamp } from 'firebase/firestore'
 import { db } from '../firebase'
+import { sendEmailVerification } from 'firebase/auth'
 import { useAuth } from '../AuthContext'
 
 function InviteAccept() {
   const { token } = useParams()
   const navigate = useNavigate()
-  const { currentUser, signUp, signIn, sendVerificationEmail } = useAuth()
+  const { currentUser, signUp, signIn } = useAuth()
 
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -70,7 +71,7 @@ function InviteAccept() {
       let cred
       if (mode === 'signup') {
         cred = await signUp(email, password)
-        await sendVerificationEmail(cred.user)
+        await sendEmailVerification(cred.user)
         // Accept the invite now so the link can't be reused, access is gated by email verification
         await acceptInvite(cred.user.uid, cred.user.email)
         navigate('/verify-email')

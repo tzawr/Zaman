@@ -16,6 +16,8 @@ import {
   Users,
   Target,
   MessageSquare,
+  Zap,
+  GraduationCap,
 } from 'lucide-react'
 import { 
   collection, 
@@ -33,6 +35,23 @@ import { exportToCSV, exportToPNG, exportToPDF } from '../utils/exportSchedule'
 import PageHero from '../components/PageHero'
 import Section from '../components/Section'
 
+
+const AI_EXAMPLES = [
+  'Put Sam and Alex on the same shift every day this week',
+  'Keep all shifts under 8 hours — everyone needs rest',
+  'Alice is training a new hire — pair them on every shift',
+  'Prioritize full-time staff for Friday and Saturday nights',
+  'No one should work more than 5 days in a row',
+]
+
+const AI_UNDERSTANDS = [
+  { icon: Users, text: 'Names & team relationships' },
+  { icon: MessageSquare, text: 'Natural language rules' },
+  { icon: Calendar, text: 'Dates & time-off exceptions' },
+  { icon: Target, text: 'Hours, coverage & fairness' },
+  { icon: GraduationCap, text: 'Training & mentoring situations' },
+  { icon: Zap, text: 'Complex multi-step constraints' },
+]
 
 function Schedule() {
   const navigate = useNavigate()
@@ -277,13 +296,13 @@ function Schedule() {
   </div>
 </div>
 
-{/* Week + prompt side by side */}
-<div className="gen-input-grid">
-  <Section 
-    title="Which week?" 
-    subtitle="Pick the Monday of the week to schedule."
-    icon={Calendar}
-  >
+{/* Week picker */}
+<Section
+  title="Which week?"
+  subtitle="Pick the Monday of the week to schedule."
+  icon={Calendar}
+>
+  <div style={{ display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
     <input
       type="date"
       className="input gen-week-input"
@@ -293,21 +312,60 @@ function Schedule() {
     <div className="gen-week-preview">
       {formatWeekRange(weekStart)}
     </div>
-  </Section>
+  </div>
+</Section>
 
-  <Section 
-    title="Special instructions" 
-    subtitle="Optional — tell Zaman any extra rules for this week."
-    icon={MessageSquare}
-  >
-    <textarea
-      className="prompt-textarea gen-prompt"
-      placeholder={`e.g. "Put Sam and Alex together Monday"\n"Keep shifts under 8 hours this week"\n"Alice is training a new hire Tuesday"`}
-      value={prompt}
-      onChange={(e) => setPrompt(e.target.value)}
-      rows={5}
-    />
-  </Section>
+{/* AI-powered special instructions */}
+<div className="ai-instr-wrap">
+  <div className="ai-instr-glow" aria-hidden />
+
+  <div className="ai-instr-header">
+    <div className="ai-instr-badge">
+      <Sparkles size={11} />
+      <span>Zaman AI</span>
+    </div>
+    <div>
+      <h2 className="ai-instr-title">Special instructions</h2>
+      <p className="ai-instr-subtitle">
+        Describe anything in plain English — names, exceptions, relationships, preferences.
+        Zaman reads it all and builds around it. No other scheduler can do this.
+      </p>
+    </div>
+  </div>
+
+  <textarea
+    className="ai-instr-textarea"
+    placeholder={`Try: "Alice is training a new hire this week — keep them together on every shift"\n\nOr: "Sam and Jordan can't work together. Give extra hours to full-time staff Friday."`}
+    value={prompt}
+    onChange={(e) => setPrompt(e.target.value)}
+    rows={4}
+  />
+
+  <div className="ai-chip-row">
+    <span className="ai-chip-label">Try an example:</span>
+    {AI_EXAMPLES.map(ex => (
+      <button
+        key={ex}
+        className="ai-chip"
+        onClick={() => setPrompt(p => p ? p + '\n' + ex : ex)}
+        type="button"
+      >
+        {ex}
+      </button>
+    ))}
+  </div>
+
+  <div className="ai-understands">
+    <div className="ai-understands-label">What Zaman reads</div>
+    <div className="ai-understands-grid">
+      {AI_UNDERSTANDS.map(item => (
+        <div key={item.text} className="ai-understands-item">
+          <item.icon size={14} />
+          <span>{item.text}</span>
+        </div>
+      ))}
+    </div>
+  </div>
 </div>
 
 {/* Generate CTA */}

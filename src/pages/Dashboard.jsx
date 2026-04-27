@@ -4,7 +4,7 @@ import { motion } from 'framer-motion'
 import {
   Users,
   Calendar,
-  Settings as SettingsIcon,
+  SlidersHorizontal,
   Sparkles,
   BookOpen,
   ArrowRight,
@@ -221,9 +221,9 @@ function Dashboard() {
             onClick={() => navigate('/schedules')}
           />
           <DashCard
-            icon={SettingsIcon}
-            title="Settings"
-            description="Hours, coverage, rules"
+            icon={SlidersHorizontal}
+            title="Workspace"
+            description="Hours, roles, coverage & rules"
             onClick={() => navigate('/settings')}
           />
           <DashCard
