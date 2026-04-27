@@ -564,16 +564,19 @@ ${employees.map(emp => {
   })
   const numAvailable = availableDays.length
 
-  // Per-day budget: spread target evenly across available days
-  const maxPerDay = (targetHrs != null && numAvailable > 0)
-    ? Math.round((targetHrs / numAvailable) * 10) / 10
+  // Managers are scheduled to their full target. Non-managers get an 80%
+  // daily cap so there is headroom for coverage without burning their budget.
+  const isManager = emp.role?.toLowerCase() === 'manager'
+  const effectiveWeekly = (targetHrs != null && !isManager) ? targetHrs * 0.8 : targetHrs
+  const maxPerDay = (effectiveWeekly != null && numAvailable > 0)
+    ? Math.round((effectiveWeekly / numAvailable) * 10) / 10
     : null
 
   let header = `\n### ${emp.name} (${emp.role}`
   if (targetHrs != null) {
     header += `, target: ${targetHrs}h/week`
     if (maxPerDay != null) {
-      header += `, HARD LIMIT: max ${maxPerDay}h on any single day — do NOT exceed this`
+      header += `, HARD LIMIT: max ${maxPerDay}h on any single day across ${numAvailable} available days — do NOT exceed this`
     }
   } else {
     header += ', target: not specified'
