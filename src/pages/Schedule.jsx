@@ -150,7 +150,18 @@ function Schedule() {
         } else if (cleanedText.startsWith('```')) {
           cleanedText = cleanedText.replace(/^```\n?/, '').replace(/\n?```$/, '')
         }
-        parsed = JSON.parse(cleanedText)
+
+        console.log('AI response length:', cleanedText.length, '| ends with }:', cleanedText.endsWith('}'))
+
+        try {
+          parsed = JSON.parse(cleanedText)
+        } catch {
+          // Response was cut off — attempt repair by finding the last complete day
+          parsed = repairTruncatedSchedule(cleanedText)
+          if (!parsed) throw new Error('unrepairable')
+          console.log('Repaired truncated schedule, days present:', Object.keys(parsed.days || {}))
+        }
+
         parsed = enforceTargetHours(parsed, employees)
       } catch (parseErr) {
         console.error('JSON parse error:', parseErr)
@@ -523,6 +534,51 @@ function getDateForDay(weekStart, dayIndex) {
   const date = new Date(monday)
   date.setDate(monday.getDate() + dayIndex)
   return date.toISOString().split('T')[0]
+}
+
+// Attempt to recover a truncated JSON schedule by finding the last complete
+// day block and closing all open objects. Returns a parsed object or null.
+function repairTruncatedSchedule(text) {
+  const DAY_ORDER = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday']
+
+  // Pull weekStart from the raw text if present
+  const weekStartMatch = text.match(/"weekStart"\s*:\s*"([^"]+)"/)
+  const weekStart = weekStartMatch ? weekStartMatch[1] : ''
+
+  // Find which days appear to have a complete shifts array by looking for
+  // the closing pattern of a day block: ], "emptySlots": [...] }
+  const completedDays = {}
+  for (const day of DAY_ORDER) {
+    // Match the full day block: "monday": { ... }
+    const dayPattern = new RegExp(`"${day}"\\s*:\\s*\\{[^}]*"shifts"\\s*:\\s*\\[[^\\]]*\\][^}]*\\}`, 's')
+    const match = text.match(dayPattern)
+    if (match) {
+      try {
+        const dayJson = `{${match[0]}}`
+        const dayObj = JSON.parse(dayJson)
+        completedDays[day] = dayObj[day]
+      } catch {
+        // Day block is itself malformed — skip it
+      }
+    }
+  }
+
+  if (Object.keys(completedDays).length === 0) return null
+
+  // Pull summary if it made it into the text
+  let summary = []
+  const summaryMatch = text.match(/"summary"\s*:\s*(\[[^\]]*\])/)
+  if (summaryMatch) {
+    try { summary = JSON.parse(summaryMatch[1]) } catch {}
+  }
+
+  return {
+    weekStart,
+    days: completedDays,
+    summary,
+    issues: ['Schedule was partially generated — some days may be missing.'],
+    recommendations: [],
+  }
 }
 
 function buildPrompt(employees, settings, customInstructions, weekStart) {
