@@ -703,6 +703,22 @@ function enforceTargetHours(data, employees) {
   })
 
   console.log('enforceTargetHours final totals', totals)
+
+  // Rebuild summary from enforced totals — the AI's summary has the raw
+  // unenforced numbers and is what the UI renders directly, so it must
+  // be replaced here or the display will show the pre-strip values.
+  data.summary = employees.map(emp => {
+    const scheduled = Math.round((totals[emp.name] || 0) * 10) / 10
+    const target = emp.targetHours || 0
+    return {
+      employee: emp.name,
+      role: emp.role || '',
+      scheduledHours: scheduled,
+      targetHours: target,
+      difference: Math.round((scheduled - target) * 10) / 10,
+    }
+  })
+
   return data
 }
 
