@@ -1,10 +1,11 @@
 import { createContext, useContext, useEffect, useState } from 'react'
-import { 
+import {
   onAuthStateChanged,
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
   signInWithPopup,
-  signOut
+  signOut,
+  sendEmailVerification
 } from 'firebase/auth'
 import { auth, googleProvider } from './firebase'
 
@@ -42,7 +43,11 @@ export function AuthProvider({ children }) {
     return signInWithPopup(auth, googleProvider)
   }
 
-  // Sign out
+  async function sendVerificationEmail(user) {
+    const target = user || auth.currentUser
+    if (target) return sendEmailVerification(target)
+  }
+
   async function logOut() {
     return signOut(auth)
   }
@@ -52,6 +57,7 @@ export function AuthProvider({ children }) {
     signUp,
     signIn,
     signInWithGoogle,
+    sendVerificationEmail,
     logOut
   }
 

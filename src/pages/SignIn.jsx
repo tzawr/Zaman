@@ -29,6 +29,10 @@ function SignIn() {
     setLoading(true)
     try {
       const cred = await signIn(email, password)
+      if (!cred.user.emailVerified) {
+        navigate('/verify-email')
+        return
+      }
       navigate(await getRedirectPath(cred.user.uid))
     } catch (err) {
       setError(prettyError(err.code))

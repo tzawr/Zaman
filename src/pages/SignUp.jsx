@@ -7,7 +7,7 @@ import { useToast } from '../components/Toast'
 
 function SignUp() {
   const navigate = useNavigate()
-  const { signUp, signInWithGoogle } = useAuth()
+  const { signUp, signInWithGoogle, sendVerificationEmail } = useAuth()
   const toast = useToast()
   
   const [email, setEmail] = useState('')
@@ -24,10 +24,11 @@ function SignUp() {
     }
     setLoading(true)
     try {
-      await signUp(email, password)
-      navigate('/onboarding')
+      const cred = await signUp(email, password)
+      await sendVerificationEmail(cred.user)
+      navigate('/verify-email')
     } catch (err) {
-      setError(prettyError(err.code))
+      setError(prettyError(err.code) || err.message || 'Something went wrong.')
       setLoading(false)
     }
   }

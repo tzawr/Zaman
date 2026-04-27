@@ -9,7 +9,7 @@ import { useAuth } from '../AuthContext'
 function InviteAccept() {
   const { token } = useParams()
   const navigate = useNavigate()
-  const { currentUser, signUp, signIn } = useAuth()
+  const { currentUser, signUp, signIn, sendVerificationEmail } = useAuth()
 
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -20,6 +20,10 @@ function InviteAccept() {
   // If already signed in, accept the invite immediately
   useEffect(() => {
     if (!currentUser) return
+    if (!currentUser.emailVerified) {
+      setError('Please verify your email before accepting an invite. Check your inbox.')
+      return
+    }
     setLoading(true)
     acceptInvite(currentUser.uid, currentUser.email).catch(err => {
       setError(err.message || 'Failed to accept invite.')
@@ -66,8 +70,17 @@ function InviteAccept() {
       let cred
       if (mode === 'signup') {
         cred = await signUp(email, password)
+        await sendVerificationEmail(cred.user)
+        // Accept the invite now so the link can't be reused, access is gated by email verification
+        await acceptInvite(cred.user.uid, cred.user.email)
+        navigate('/verify-email')
+        return
       } else {
         cred = await signIn(email, password)
+        if (!cred.user.emailVerified) {
+          navigate('/verify-email')
+          return
+        }
       }
       await acceptInvite(cred.user.uid, cred.user.email)
     } catch (err) {

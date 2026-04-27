@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Heart } from 'lucide-react'
-import { BrowserRouter, Routes, Route, Link } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, Link, Navigate } from 'react-router-dom'
+import { useAuth } from './AuthContext'
 import Landing from './pages/Landing'
 import Employees from './pages/Employees'
 import SignUp from './pages/SignUp'
@@ -20,7 +21,15 @@ import About from './pages/About'
 import InviteAccept from './pages/InviteAccept'
 import MySchedule from './pages/MySchedule'
 import Invite from './pages/Invite'
+import VerifyEmail from './pages/VerifyEmail'
 import './App.css'
+
+function ProtectedRoute({ children }) {
+  const { currentUser } = useAuth()
+  if (!currentUser) return <Navigate to="/signin" replace />
+  if (!currentUser.emailVerified) return <Navigate to="/verify-email" replace />
+  return children
+}
 
 function App() {
   const [darkMode, setDarkMode] = useState(() => {
@@ -52,20 +61,22 @@ function App() {
   <Route path="/" element={<Landing />} />
   <Route path="/signup" element={<SignUp />} />
   <Route path="/signin" element={<SignIn />} />
-  <Route path="/onboarding" element={<Onboarding />} />
-  <Route path="/employees" element={<Employees />} />
-  <Route path="/employees/:employeeId/availability" element={<Availability />} />
-  <Route path="/settings" element={<Settings />} />
-  <Route path="/schedule" element={<Schedule />} />
-  <Route path="/schedules" element={<Schedules />} />
-  <Route path="/dashboard" element={<Dashboard />} />
+  <Route path="/verify-email" element={<VerifyEmail />} />
+  <Route path="/invite/:token" element={<InviteAccept />} />
   <Route path="/privacy" element={<Privacy />} />
   <Route path="/terms" element={<Terms />} />
   <Route path="/security" element={<Security />} />
   <Route path="/about" element={<About />} />
-  <Route path="/invite/:token" element={<InviteAccept />} />
-  <Route path="/invite" element={<Invite />} />
-  <Route path="/my-schedule" element={<MySchedule />} />
+
+  <Route path="/onboarding" element={<ProtectedRoute><Onboarding /></ProtectedRoute>} />
+  <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+  <Route path="/employees" element={<ProtectedRoute><Employees /></ProtectedRoute>} />
+  <Route path="/employees/:employeeId/availability" element={<ProtectedRoute><Availability /></ProtectedRoute>} />
+  <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
+  <Route path="/schedule" element={<ProtectedRoute><Schedule /></ProtectedRoute>} />
+  <Route path="/schedules" element={<ProtectedRoute><Schedules /></ProtectedRoute>} />
+  <Route path="/invite" element={<ProtectedRoute><Invite /></ProtectedRoute>} />
+  <Route path="/my-schedule" element={<ProtectedRoute><MySchedule /></ProtectedRoute>} />
 </Routes>
 
 <Footer />
