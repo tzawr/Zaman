@@ -297,7 +297,7 @@ function Schedule() {
 
   <Section 
     title="Special instructions" 
-    subtitle="Optional — tell Claude any extra rules for this week."
+    subtitle="Optional — tell Zaman any extra rules for this week."
     icon={MessageSquare}
   >
     <textarea

@@ -271,7 +271,7 @@ function ScheduleTable({ data, employees = [], roles = [], onUpdate }) {
         <div className="schedule-recommendations">
           <h4 className="schedule-recommendations-title">
             <Sparkles size={16} />
-            <span>AI Recommendations</span>
+            <span>Zaman Recommendations</span>
           </h4>
           <ul className="schedule-recommendations-list">
             {data.recommendations.map((rec, i) => (

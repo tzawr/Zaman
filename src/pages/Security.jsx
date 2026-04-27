@@ -39,7 +39,7 @@ function Security() {
             </li>
           </ul>
           <p>
-            Schedule generation uses the OpenAI API. We send only the minimum necessary data
+            Schedule generation uses Zaman's scheduling engine. We send only the minimum necessary data
             (employee names, roles, availability) — never contact information or credentials.
           </p>
         </div>

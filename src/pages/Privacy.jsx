@@ -20,7 +20,7 @@ function Privacy() {
             <li><strong>Usage data</strong> — pages visited and features used, to improve the product.</li>
           </ul>
           <p>
-            We do not sell your data to anyone. We do not use your scheduling data to train AI
+            We do not sell your data to anyone. We do not use your scheduling data to train
             models without your explicit consent.
           </p>
         </div>
@@ -36,7 +36,7 @@ function Privacy() {
             <li>Detect and prevent fraud or abuse.</li>
           </ul>
           <p>
-            Schedule generation uses the OpenAI API. We send only employee names, roles, and
+            Schedule generation uses Zaman's scheduling engine. We send only employee names, roles, and
             availability — no contact information or passwords — to generate a schedule.
           </p>
         </div>

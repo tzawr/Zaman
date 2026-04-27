@@ -118,7 +118,7 @@ function Hero({ onCTA, isSignedIn }) {
         >
           <span className="eyebrow-dot" />
           <Sparkles size={13} />
-          <span>AI scheduling, reimagined</span>
+          <span>Scheduling, reimagined</span>
         </motion.div>
 
         <motion.h1 
@@ -139,8 +139,8 @@ function Hero({ onCTA, isSignedIn }) {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.7, delay: 0.3, ease: 'easeOut' }}
         >
-          Zaman is the AI scheduling assistant for shift managers. 
-          Add your team, set availability, and let AI build your week 
+          Zaman is the scheduling assistant built for shift managers.
+          Add your team, set availability, and let Zaman build your week
           in seconds — not hours.
         </motion.p>
 
@@ -269,7 +269,7 @@ function MockupCard() {
           <div className="mockup-title">Week of April 28</div>
           <div className="mockup-badge">
             <Sparkles size={12} />
-            <span>AI generated</span>
+            <span>Zaman generated</span>
           </div>
         </div>
 
@@ -345,8 +345,8 @@ function HowItWorks() {
     {
       icon: Sparkles,
       number: '03',
-      title: 'AI builds your week',
-      description: 'Claude analyzes every constraint and generates a schedule in seconds. Review, tweak, publish.',
+      title: 'Zaman builds your week',
+      description: 'Zaman analyzes every constraint and generates a schedule in seconds. Review, tweak, publish.',
     },
   ]
 
@@ -355,7 +355,7 @@ function HowItWorks() {
       <SectionHeader 
         eyebrow="How it works"
         title="From chaos to schedule in minutes"
-        description="Three steps. Zero spreadsheets. Real AI that respects your constraints."
+        description="Three steps. Zero spreadsheets. Zaman respects every constraint."
       />
 
       <div className="landing-steps steps-v2">
@@ -439,7 +439,7 @@ function PlaygroundDemo() {
                 <div className="playground-loading">
                   <span className="dot" /><span className="dot" /><span className="dot" />
                 </div>
-                <p>Claude analyzed 7 employees, 4 roles, 12 availability constraints, and built your week in 8 seconds.</p>
+                <p>Zaman analyzed 7 employees, 4 roles, 12 availability constraints, and built your week in 8 seconds.</p>
               </div>
             </motion.div>
           )}
@@ -484,11 +484,11 @@ function PlaygroundDemo() {
 // ========== FEATURES ==========
 function Features() {
   const features = [
-    { icon: Brain, title: 'Real AI reasoning', description: 'Powered by Claude. Understands availability, time off, roles, and custom rules.' },
+    { icon: Brain, title: 'Smart scheduling', description: 'Zaman understands availability, time off, roles, and your custom rules.' },
     { icon: Clock, title: 'Hours, not blocks', description: 'Set exact hours per person per day. Sam Mon 4am-9pm, Tue 10am-11pm.' },
     { icon: Shield, title: 'Clopening prevention', description: 'No more closing at 10pm and opening at 6am. Min gaps enforced automatically.' },
     { icon: MessageSquare, title: 'Prompt anything', description: '"Put Sam and Alex together Monday." "Jamie is training a new hire." Just type.' },
-    { icon: TrendingUp, title: 'Target hours', description: 'Set each person\'s target. AI distributes fairly and flags over-scheduling.' },
+    { icon: TrendingUp, title: 'Target hours', description: "Set each person's target. Zaman distributes fairly and flags over-scheduling." },
     { icon: Zap, title: 'Seconds, not hours', description: 'Generate a full week in under 30 seconds. Regenerate with new rules instantly.' },
   ]
 
@@ -637,7 +637,7 @@ function Testimonials() {
       role: "Coffee shop, 12 staff",
     },
     {
-      quote: "The AI actually listens to my rules. No more weird shifts I have to fix manually.",
+      quote: "Zaman actually listens to my rules. No more weird shifts I have to fix manually.",
       author: "Restaurant Owner",
       role: "Bistro, 18 staff",
     },
@@ -694,7 +694,7 @@ function Pricing({ onCTA }) {
       price: '$0',
       period: 'forever',
       description: 'Perfect for testing with your team.',
-      features: ['Up to 5 employees', '1 schedule generation per week', 'Basic AI scheduling', 'Email support'],
+      features: ['Up to 5 employees', '1 schedule generation per week', 'Basic scheduling', 'Email support'],
       cta: 'Start free',
       highlighted: false,
     },
@@ -703,7 +703,7 @@ function Pricing({ onCTA }) {
       price: '$9',
       period: 'per month',
       description: 'For growing small businesses.',
-      features: ['Up to 25 employees', 'Unlimited schedule generations', 'Custom AI instructions', 'Schedule history', 'Priority support'],
+      features: ['Up to 25 employees', 'Unlimited schedule generations', 'Custom scheduling rules', 'Schedule history', 'Priority support'],
       cta: 'Start Pro',
       highlighted: true,
     },

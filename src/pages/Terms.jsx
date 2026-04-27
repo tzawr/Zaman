@@ -17,7 +17,7 @@ function Terms() {
             By creating an account you agree to these Terms. If you don't agree, don't use the
             service.
           </p>
-          <p>Zaman is an AI-assisted employee scheduling tool for shift managers and their teams.</p>
+          <p>Zaman is an employee scheduling tool for shift managers and their teams.</p>
           <ul>
             <li>You must be 18 or older to create a manager account.</li>
             <li>You're responsible for keeping your credentials secure.</li>
@@ -41,7 +41,7 @@ function Terms() {
         </div>
       </Section>
 
-      <Section title="Employees & AI schedules" icon={Users} delay={0.15}>
+      <Section title="Employees & schedules" icon={Users} delay={0.15}>
         <div className="legal-text">
           <p>
             Manager accounts may invite employees. Employee accounts are free and provide read-only
@@ -49,9 +49,9 @@ function Terms() {
             are sent only to individuals who've agreed to participate.
           </p>
           <p>
-            AI-generated schedules are a starting point — you remain solely responsible for
+            Zaman-generated schedules are a starting point — you remain solely responsible for
             reviewing, approving, and communicating final schedules to your team. Zaman makes no
-            guarantee that AI-generated schedules comply with labor laws, union agreements, or other
+            guarantee that generated schedules comply with labor laws, union agreements, or other
             regulatory requirements.
           </p>
         </div>

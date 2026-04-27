@@ -10,7 +10,7 @@ function Footer() {
           <div className="footer-brand">
             <h3 className="footer-logo">Zaman</h3>
             <p className="footer-tagline">
-              AI scheduling for teams that have better things to do.
+              Smarter scheduling for teams that have better things to do.
             </p>
           </div>
 

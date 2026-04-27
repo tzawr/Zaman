@@ -210,7 +210,7 @@ function Dashboard() {
           <DashCard
             icon={Sparkles}
             title="Generate schedule"
-            description="Build a new week with AI"
+            description="Build a new week with Zaman"
             onClick={() => navigate('/schedule')}
             highlighted
           />

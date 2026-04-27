@@ -14,7 +14,7 @@ function About() {
       <Section title="What we're building" icon={Zap} delay={0.05}>
         <div className="legal-text">
           <p>
-            Zaman is an AI-powered scheduling tool for shift managers who spend too much of their
+            Zaman is a smart scheduling tool for shift managers who spend too much of their
             week staring at a spreadsheet, texting employees about availability, and rebuilding the
             same schedule from scratch every week.
           </p>
@@ -30,14 +30,14 @@ function About() {
         <div className="legal-text">
           <p>
             Managers add their team, set each employee's availability and roles, then describe what
-            they need for the week. Zaman's AI generates a complete draft schedule in seconds.
+            they need for the week. Zaman generates a complete draft schedule in seconds.
           </p>
           <p>
             From there, managers can edit, export as CSV or PDF, and share with their team.
             Employees log in to see only their own shifts — nothing else.
           </p>
           <p>
-            The AI handles the hard part — balancing availability, minimum coverage, role
+            Zaman handles the hard part — balancing availability, minimum coverage, role
             requirements, and anti-clopening rules — so managers spend minutes on a schedule,
             not hours.
           </p>

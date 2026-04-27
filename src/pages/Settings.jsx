@@ -165,7 +165,7 @@ function Settings() {
       <PageHero
         eyebrow="Configuration"
         title="Settings"
-        subtitle="Tell Zaman how your business operates. The AI uses these rules every time it builds a schedule."
+        subtitle="Tell Zaman how your business operates. Zaman uses these rules every time it builds a schedule."
       >
         {saving && (
           <span className="saving-pill">
@@ -315,7 +315,7 @@ function Settings() {
 
       <Section 
         title="Scheduling rules" 
-        subtitle="Constraints Claude will always respect when building schedules."
+        subtitle="Constraints Zaman will always respect when building schedules."
         icon={Shield}
       >
         <div className="rule-card">
