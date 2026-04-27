@@ -312,6 +312,9 @@ function Profile() {
 
   return (
     <main className="app-page">
+      {/* Always in the DOM so reCAPTCHA never tries to access a null node */}
+      <div id="recaptcha-container" style={{ display: 'none' }} />
+
       <button className="app-back-link" onClick={() => navigate(isEmployee ? '/my-schedule' : '/dashboard')}>
         <ArrowLeft size={14} />
         <span>Back</span>
@@ -533,8 +536,6 @@ function Profile() {
             </div>
           </div>
         )}
-        <div id="recaptcha-container" />
-
         {/* Password change */}
         {hasPasswordProvider && (
           <>
