@@ -665,10 +665,13 @@ function shiftHours(start, end) {
 // Any shift that would push an employee over their weekly target is removed
 // and moved into emptySlots on that day so the gap is visible in the grid.
 function enforceTargetHours(data, employees) {
+  console.log('enforceTargetHours running', data)
+
   const targets = {}
   employees.forEach(emp => {
     if (emp.targetHours != null) targets[emp.name] = Number(emp.targetHours)
   })
+  console.log('enforceTargetHours targets map', targets)
 
   const totals = {}
   const DAYS = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday']
@@ -686,17 +689,20 @@ function enforceTargetHours(data, employees) {
 
       const soFar = totals[shift.employee] || 0
       const hrs = Number(shift.hours) || shiftHours(shift.start, shift.end)
+      const newTotal = soFar + hrs
 
-      if (soFar + hrs <= target + 0.05) {
+      if (newTotal <= target + 0.05) {
         kept.push(shift)
-        totals[shift.employee] = soFar + hrs
+        totals[shift.employee] = newTotal
       } else {
+        console.log('stripping shift for', shift.employee, 'hours would be', newTotal, 'target is', target)
         day.emptySlots.push({ start: shift.start, end: shift.end, role: shift.role || '' })
       }
     })
     day.shifts = kept
   })
 
+  console.log('enforceTargetHours final totals', totals)
   return data
 }
 
