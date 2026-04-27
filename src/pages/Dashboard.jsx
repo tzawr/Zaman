@@ -1,22 +1,23 @@
 import { useState, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useLocation } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { 
-  Users, 
-  Calendar, 
-  Settings as SettingsIcon, 
-  Sparkles, 
+import {
+  Users,
+  Calendar,
+  Settings as SettingsIcon,
+  Sparkles,
   BookOpen,
   ArrowRight,
-  TrendingUp,
   Clock,
-  Target
+  Target,
+  Link2,
+  CalendarDays
 } from 'lucide-react'
-import { 
-  collection, 
-  query, 
-  where, 
-  onSnapshot, 
+import {
+  collection,
+  query,
+  where,
+  onSnapshot,
   doc,
   orderBy,
   limit
@@ -27,6 +28,7 @@ import PageHero from '../components/PageHero'
 
 function Dashboard() {
   const navigate = useNavigate()
+  const location = useLocation()
   const { currentUser } = useAuth()
   
   const [userData, setUserData] = useState(null)
@@ -47,6 +49,11 @@ function Dashboard() {
         const data = snapshot.data()
         if (!data.onboarded) {
           navigate('/onboarding')
+          return
+        }
+        // Only redirect employees if they didn't intentionally open manager mode
+        if (data.accountType === 'employee' && !location.state?.managerMode) {
+          navigate('/my-schedule')
           return
         }
         setUserData(data)
@@ -219,6 +226,21 @@ function Dashboard() {
             description="Hours, coverage, rules"
             onClick={() => navigate('/settings')}
           />
+          <DashCard
+            icon={Link2}
+            title="Invite team members"
+            description="Send each person a link to join"
+            onClick={() => navigate('/invite')}
+          />
+          {userData?.accountType === 'employee' && (
+            <DashCard
+              icon={CalendarDays}
+              title="My Schedule"
+              description="Go back to your personal shifts"
+              onClick={() => navigate('/my-schedule')}
+              highlighted
+            />
+          )}
         </div>
       </motion.div>
 

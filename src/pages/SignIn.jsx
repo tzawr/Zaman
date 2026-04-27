@@ -2,8 +2,16 @@ import { useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { ArrowRight, Sparkles } from 'lucide-react'
+import { doc, getDoc } from 'firebase/firestore'
+import { db } from '../firebase'
 import { useAuth } from '../AuthContext'
 import { useToast } from '../components/Toast'
+
+async function getRedirectPath(uid) {
+  const snap = await getDoc(doc(db, 'users', uid))
+  if (snap.exists() && snap.data().accountType === 'employee') return '/my-schedule'
+  return '/dashboard'
+}
 
 function SignIn() {
   const navigate = useNavigate()
@@ -20,8 +28,8 @@ function SignIn() {
     setError('')
     setLoading(true)
     try {
-      await signIn(email, password)
-      navigate('/dashboard')
+      const cred = await signIn(email, password)
+      navigate(await getRedirectPath(cred.user.uid))
     } catch (err) {
       setError(prettyError(err.code))
       setLoading(false)
@@ -32,8 +40,8 @@ function SignIn() {
     setError('')
     setLoading(true)
     try {
-      await signInWithGoogle()
-      navigate('/dashboard')
+      const cred = await signInWithGoogle()
+      navigate(await getRedirectPath(cred.user.uid))
     } catch (err) {
       setError(prettyError(err.code))
       setLoading(false)

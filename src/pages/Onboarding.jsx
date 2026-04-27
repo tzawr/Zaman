@@ -30,7 +30,7 @@ function Onboarding() {
       if (snap.exists()) {
         const data = snap.data()
         if (data.onboarded) {
-          navigate('/dashboard')
+          navigate(data.accountType === 'employee' ? '/my-schedule' : '/dashboard')
           return
         }
         if (data.displayName) setDisplayName(data.displayName)

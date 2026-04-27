@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { ArrowLeft, Plus, Users, Sparkles, BookOpen, Settings as SettingsIcon, ArrowRight } from 'lucide-react'
-import { collection, query, where, onSnapshot, addDoc, deleteDoc, doc, serverTimestamp } from 'firebase/firestore'
+import { ArrowLeft, Plus, Users, Sparkles, BookOpen, Settings as SettingsIcon, ArrowRight, Link2, Copy, Check, X } from 'lucide-react'
+import { collection, query, where, onSnapshot, addDoc, deleteDoc, doc, setDoc, serverTimestamp } from 'firebase/firestore'
 import { db } from '../firebase'
 import { useAuth } from '../AuthContext'
 import { useToast } from '../components/Toast'
@@ -21,6 +21,7 @@ function Employees() {
   const [targetHours, setTargetHours] = useState(30)
   const [adding, setAdding] = useState(false)
   const [loading, setLoading] = useState(true)
+  const [inviteModal, setInviteModal] = useState(null) // { employeeId, employeeName, link, copied }
 
   useEffect(() => {
     if (!currentUser) navigate('/signin')
@@ -88,6 +89,25 @@ function Employees() {
     } finally {
       setAdding(false)
     }
+  }
+
+  async function generateInvite(emp) {
+    const token = crypto.randomUUID()
+    await setDoc(doc(db, 'invites', token), {
+      managerId: currentUser.uid,
+      employeeId: emp.id,
+      employeeName: emp.name,
+      createdAt: serverTimestamp(),
+      used: false,
+    })
+    const link = `${window.location.origin}/invite/${token}`
+    setInviteModal({ employeeId: emp.id, employeeName: emp.name, link, copied: false })
+  }
+
+  function copyInviteLink() {
+    navigator.clipboard.writeText(inviteModal.link)
+    setInviteModal(m => ({ ...m, copied: true }))
+    setTimeout(() => setInviteModal(m => m ? { ...m, copied: false } : m), 2000)
   }
 
   async function removeEmployee(id, empName) {
@@ -253,15 +273,53 @@ function Employees() {
                 </div>
                 <div className="team-card-bottom">
                   <span className="team-card-meta">Target: {emp.targetHours ?? 0}h/wk</span>
-                  <span className="team-card-arrow">
-                    Availability <ArrowRight size={12} />
-                  </span>
+                  <div className="team-card-bottom-right">
+                    <button
+                      className="employee-invite-btn"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        generateInvite(emp)
+                      }}
+                      title="Generate invite link"
+                    >
+                      <Link2 size={12} />
+                      <span>Invite</span>
+                    </button>
+                    <span className="team-card-arrow">
+                      Availability <ArrowRight size={12} />
+                    </span>
+                  </div>
                 </div>
               </motion.div>
             ))}
           </div>
         )}
       </Section>
+      {inviteModal && (
+        <div className="modal-backdrop" onClick={() => setInviteModal(null)}>
+          <div className="modal-card" onClick={e => e.stopPropagation()}>
+            <div className="shift-modal-header">
+              <h3 className="modal-title">Invite {inviteModal.employeeName}</h3>
+              <button className="modal-close-btn" onClick={() => setInviteModal(null)}>
+                <X size={18} />
+              </button>
+            </div>
+            <p className="shift-modal-day">
+              Share this link with {inviteModal.employeeName}. They'll create a free account and see only their own shifts.
+            </p>
+            <div className="invite-link-box">
+              <span className="invite-link-text">{inviteModal.link}</span>
+              <button className="invite-copy-btn" onClick={copyInviteLink}>
+                {inviteModal.copied ? <Check size={14} /> : <Copy size={14} />}
+                <span>{inviteModal.copied ? 'Copied!' : 'Copy'}</span>
+              </button>
+            </div>
+            <p className="invite-link-note">
+              This link can only be used once. Generate a new one if needed.
+            </p>
+          </div>
+        </div>
+      )}
     </main>
   )
 }

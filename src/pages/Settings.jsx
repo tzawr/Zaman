@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { Loader2, ArrowLeft, Check, X, ArrowRight, Pencil, Trash2, Plus, Clock, Shield, Target, Users } from 'lucide-react'
+import { Loader2, ArrowLeft, Check, X, ArrowRight, Pencil, Trash2, Plus, Clock, Shield, Target, Users, Eye } from 'lucide-react'
 import { doc, onSnapshot, setDoc, serverTimestamp } from 'firebase/firestore'
 import { db } from '../firebase'
 import { useAuth } from '../AuthContext'
@@ -38,6 +38,7 @@ function Settings() {
   const [coverage, setCoverage] = useState(DEFAULT_COVERAGE)
   const [preventClopening, setPreventClopening] = useState(true)
   const [minHoursBetweenShifts, setMinHoursBetweenShifts] = useState(10)
+  const [allowEmployeeFullView, setAllowEmployeeFullView] = useState(false)
   const [roles, setRoles] = useState([])
   const [userData, setUserData] = useState(null)
 
@@ -66,6 +67,7 @@ function Settings() {
         if (d.coverage) setCoverage(d.coverage)
         if (d.preventClopening !== undefined) setPreventClopening(d.preventClopening)
         if (d.minHoursBetweenShifts) setMinHoursBetweenShifts(d.minHoursBetweenShifts)
+        if (d.allowEmployeeFullView !== undefined) setAllowEmployeeFullView(d.allowEmployeeFullView)
         if (d.roles) setRoles(d.roles)
         setLoading(false)
       }
@@ -103,6 +105,9 @@ function Settings() {
   }
   function toggleClopeningPrevention() {
     const v = !preventClopening; setPreventClopening(v); saveToFirebase({ preventClopening: v })
+  }
+  function toggleAllowEmployeeFullView() {
+    const v = !allowEmployeeFullView; setAllowEmployeeFullView(v); saveToFirebase({ allowEmployeeFullView: v })
   }
   function updateMinHours(v) {
     const n = parseInt(v) || 8; setMinHoursBetweenShifts(n); saveToFirebase({ minHoursBetweenShifts: n })
@@ -346,6 +351,27 @@ function Settings() {
             </div>
           </div>
         )}
+      </Section>
+
+      <Section
+        title="Team access"
+        subtitle="Control what employees can see when they log in."
+        icon={Eye}
+      >
+        <div className="rule-card">
+          <div className="rule-info">
+            <p className="rule-title">Let employees see the full schedule</p>
+            <p className="rule-description">When on, employees can toggle between their own shifts and the full team schedule.</p>
+          </div>
+          <label className="switch">
+            <input
+              type="checkbox"
+              checked={allowEmployeeFullView}
+              onChange={toggleAllowEmployeeFullView}
+            />
+            <span className="slider"></span>
+          </label>
+        </div>
       </Section>
     </main>
   )

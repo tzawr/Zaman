@@ -17,6 +17,9 @@ import Privacy from './pages/Privacy'
 import Terms from './pages/Terms'
 import Security from './pages/Security'
 import About from './pages/About'
+import InviteAccept from './pages/InviteAccept'
+import MySchedule from './pages/MySchedule'
+import Invite from './pages/Invite'
 import './App.css'
 
 function App() {
@@ -60,6 +63,9 @@ function App() {
   <Route path="/terms" element={<Terms />} />
   <Route path="/security" element={<Security />} />
   <Route path="/about" element={<About />} />
+  <Route path="/invite/:token" element={<InviteAccept />} />
+  <Route path="/invite" element={<Invite />} />
+  <Route path="/my-schedule" element={<MySchedule />} />
 </Routes>
 
 <Footer />
