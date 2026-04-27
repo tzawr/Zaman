@@ -526,7 +526,7 @@ function getDateForDay(weekStart, dayIndex) {
 }
 
 function buildPrompt(employees, settings, customInstructions, weekStart) {
-  const { operatingHours, coverage, preventClopening, minHoursBetweenShifts, roles } = settings
+  const { operatingHours, coverage, preventClopening, minHoursBetweenShifts, roles, coverageRules } = settings
   
   const days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday']
   
@@ -548,13 +548,7 @@ ${days.map(d => {
   return `${capitalize(d)} (${date}): ${day.start} to ${day.end}`
 }).join('\n')}
 
-## COVERAGE REQUIREMENTS
-${days.map(d => {
-  const day = operatingHours[d]
-  if (!day || !day.open) return `${capitalize(d)}: N/A (closed)`
-  const min = coverage?.[d]?.minPeople || 1
-  return `${capitalize(d)}: minimum ${min} ${min === 1 ? 'person' : 'people'} at all times`
-}).join('\n')}
+${coverageRules?.trim() ? `## COVERAGE REQUIREMENTS\n${coverageRules.trim()}` : ''}
 
 ## ROLES
 ${roles?.map(r => `- ${r.name}`).join('\n') || 'No roles defined'}

@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { Loader2, ArrowLeft, Check, X, ArrowRight, Pencil, Trash2, Plus, Clock, Shield, Target, Users, Eye, KeyRound, Lock } from 'lucide-react'
+import { Loader2, ArrowLeft, Check, X, ArrowRight, Pencil, Trash2, Plus, Clock, Shield, Target, Users, Eye, KeyRound, Lock, AlignLeft } from 'lucide-react'
 import { doc, onSnapshot, setDoc, serverTimestamp } from 'firebase/firestore'
 import {
   updatePassword,
@@ -46,6 +46,7 @@ function Settings() {
   const [minHoursBetweenShifts, setMinHoursBetweenShifts] = useState(10)
   const [allowEmployeeFullView, setAllowEmployeeFullView] = useState(false)
   const [roles, setRoles] = useState([])
+  const [coverageRules, setCoverageRules] = useState('')
   const [userData, setUserData] = useState(null)
 
   const [loading, setLoading] = useState(true)
@@ -83,6 +84,7 @@ function Settings() {
         if (d.minHoursBetweenShifts) setMinHoursBetweenShifts(d.minHoursBetweenShifts)
         if (d.allowEmployeeFullView !== undefined) setAllowEmployeeFullView(d.allowEmployeeFullView)
         if (d.roles) setRoles(d.roles)
+        if (d.coverageRules !== undefined) setCoverageRules(d.coverageRules)
         setLoading(false)
       }
     })
@@ -361,6 +363,25 @@ function Settings() {
             )
           })}
         </div>
+      </Section>
+
+      <Section
+        title="Coverage rules"
+        subtitle="Describe your coverage needs in plain English. Zaman AI reads this every time it builds a schedule."
+        icon={AlignLeft}
+      >
+        <textarea
+          className="input ai-instr-textarea"
+          rows={5}
+          placeholder={`e.g. "Always have at least one senior barista on shift. Weekend mornings need 3 people minimum. Never leave the floor with only one person during lunch hours."`}
+          value={coverageRules}
+          onChange={(e) => setCoverageRules(e.target.value)}
+          onBlur={() => saveToFirebase({ coverageRules })}
+          style={{ resize: 'vertical', lineHeight: 1.6 }}
+        />
+        <p style={{ fontSize: 12, color: 'var(--text-tertiary)', margin: '6px 0 0' }}>
+          Changes save automatically when you click away.
+        </p>
       </Section>
 
       <Section
