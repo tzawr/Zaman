@@ -14,14 +14,15 @@ import {
   FileText,
   Image,
 } from 'lucide-react'
-import { 
-  collection, 
-  query, 
-  where, 
-  onSnapshot, 
+import {
+  collection,
+  query,
+  where,
+  onSnapshot,
   orderBy,
   deleteDoc,
-  doc
+  doc,
+  updateDoc
 } from 'firebase/firestore'
 import { db } from '../firebase'
 import { useAuth } from '../AuthContext'
@@ -41,6 +42,8 @@ function Schedules() {
   const [confirmDelete, setConfirmDelete] = useState(null)
   const [exporting, setExporting] = useState(null)
   const [exportMenuOpen, setExportMenuOpen] = useState(false)
+  const [employees, setEmployees] = useState([])
+  const [roles, setRoles] = useState([])
 
   useEffect(() => {
     if (!currentUser) navigate('/signin')
@@ -69,6 +72,30 @@ function Schedules() {
     
     return () => unsubscribe()
   }, [currentUser])
+
+  useEffect(() => {
+    if (!currentUser) return
+    const q = query(collection(db, 'employees'), where('userId', '==', currentUser.uid))
+    return onSnapshot(q, snap => setEmployees(snap.docs.map(d => ({ id: d.id, ...d.data() }))))
+  }, [currentUser])
+
+  useEffect(() => {
+    if (!currentUser) return
+    return onSnapshot(doc(db, 'users', currentUser.uid), snap => {
+      if (snap.exists()) setRoles(snap.data().roles || [])
+    })
+  }, [currentUser])
+
+  async function handleScheduleUpdate(updatedData) {
+    if (!selectedSchedule) return
+    setSelectedSchedule(prev => ({ ...prev, data: updatedData }))
+    try {
+      await updateDoc(doc(db, 'schedules', selectedSchedule.id), { data: updatedData })
+    } catch (err) {
+      console.error('Failed to save:', err)
+      toast.error('Failed to save changes')
+    }
+  }
 
   function formatWeekRange(mondayStr) {
     if (!mondayStr) return 'Unknown week'
@@ -299,7 +326,12 @@ function Schedules() {
                 )}
 
                 {selectedSchedule.data ? (
-                  <ScheduleTable data={selectedSchedule.data} />
+                  <ScheduleTable
+                    data={selectedSchedule.data}
+                    employees={employees}
+                    roles={roles}
+                    onUpdate={handleScheduleUpdate}
+                  />
                 ) : (
                   <div className="schedule-output">
                     <pre>{selectedSchedule.content}</pre>

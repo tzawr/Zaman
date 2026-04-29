@@ -129,15 +129,6 @@ function Dashboard() {
   title={<>Welcome to <span className="landing-gradient-text">Zaman</span></>}
   subtitle="Your scheduling command center."
 >
-  <div className="page-hero-actions">
-    <button 
-      className="landing-cta-primary"
-      onClick={() => navigate('/schedule')}
-    >
-      <Sparkles size={18} />
-      <span>Generate schedule</span>
-    </button>
-  </div>
 </PageHero>
 
       {/* Stats row */}
@@ -192,12 +183,35 @@ function Dashboard() {
         </div>
       </motion.div>
 
+      {/* Generate schedule — hero CTA */}
+      <motion.div
+        className="dashboard-generate-hero"
+        initial={{ opacity: 0, y: 24 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5, delay: 0.15 }}
+        onClick={() => navigate('/schedule')}
+      >
+        <div className="dashboard-generate-orb" aria-hidden />
+        <div className="dashboard-generate-orb dashboard-generate-orb-2" aria-hidden />
+        <div className="dashboard-generate-icon">
+          <Sparkles size={34} />
+        </div>
+        <div className="dashboard-generate-content">
+          <h2 className="dashboard-generate-title">Generate schedule</h2>
+          <p className="dashboard-generate-desc">Build this week's schedule with AI — in seconds</p>
+        </div>
+        <div className="dashboard-generate-cta">
+          <span>Get started</span>
+          <ArrowRight size={18} />
+        </div>
+      </motion.div>
+
       {/* Quick actions grid */}
       <motion.div
         className="dashboard-section"
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5, delay: 0.15 }}
+        transition={{ duration: 0.5, delay: 0.22 }}
       >
         <h2 className="dashboard-section-title">Quick actions</h2>
         <div className="dashboard-grid">
@@ -206,13 +220,6 @@ function Dashboard() {
             title="Your team"
             description={`${employees.length} ${employees.length === 1 ? 'person' : 'people'} on the team`}
             onClick={() => navigate('/employees')}
-          />
-          <DashCard
-            icon={Sparkles}
-            title="Generate schedule"
-            description="Build a new week with Zaman"
-            onClick={() => navigate('/schedule')}
-            highlighted
           />
           <DashCard
             icon={BookOpen}

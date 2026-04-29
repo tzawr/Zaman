@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { motion, useInView, useMotionValue, animate, useScroll, useTransform } from 'framer-motion'
+import { motion, useInView, animate, useScroll, useTransform } from 'framer-motion'
 import { 
   ArrowRight, 
   Sparkles, 
@@ -16,13 +16,16 @@ import {
   Star,
   Quote,
   ArrowUpRight,
-  Play
+  Play,
+  AlertTriangle,
+  Target
 } from 'lucide-react'
 import { useAuth } from '../AuthContext'
 
 function Landing() {
   const navigate = useNavigate()
   const { currentUser } = useAuth()
+  void motion
 
   function handleCTA() {
     if (currentUser) navigate('/dashboard')
@@ -35,6 +38,7 @@ function Landing() {
       <Hero onCTA={handleCTA} isSignedIn={!!currentUser} />
       <MarqueeStrip />
       <HowItWorks />
+      <TrustSection />
       <PlaygroundDemo />
       <Features />
       <StatsSection />
@@ -104,7 +108,6 @@ function Hero({ onCTA, isSignedIn }) {
       </div>
 
       <div className="landing-grid-overlay" />
-      <FloatingShapes />
 
       <motion.div 
         className="landing-hero-content"
@@ -118,7 +121,7 @@ function Hero({ onCTA, isSignedIn }) {
         >
           <span className="eyebrow-dot" />
           <Sparkles size={13} />
-          <span>Scheduling, reimagined</span>
+          <span>AI rule parsing. Deterministic scheduling.</span>
         </motion.div>
 
         <motion.h1 
@@ -127,10 +130,8 @@ function Hero({ onCTA, isSignedIn }) {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8, delay: 0.1, ease: [0.16, 1, 0.3, 1] }}
         >
-          <span className="hero-line">Stop wasting hours</span>
-          <span className="hero-line">
-            <TypingText text="building schedules." className="landing-gradient-text" delay={800} />
-          </span>
+          <span className="hero-line">Turn messy availability</span>
+          <span className="hero-line">into a weekly schedule.</span>
         </motion.h1>
 
         <motion.p 
@@ -139,9 +140,8 @@ function Hero({ onCTA, isSignedIn }) {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.7, delay: 0.3, ease: 'easeOut' }}
         >
-          Zaman is the scheduling assistant built for shift managers.
-          Add your team, set availability, and let Zaman build your week
-          in seconds — not hours.
+          Zaman reads your team, targets, availability, time off, and coverage rules,
+          then builds a schedule your manager can actually trust.
         </motion.p>
 
         <motion.div 
@@ -175,11 +175,11 @@ function Hero({ onCTA, isSignedIn }) {
           </div>
           <div className="landing-meta-item">
             <Check size={14} />
-            <span>Built for small teams</span>
+            <span>Explains impossible weeks</span>
           </div>
           <div className="landing-meta-item">
             <Check size={14} />
-            <span>Free forever tier</span>
+            <span>Exports CSV, PNG, PDF</span>
           </div>
         </motion.div>
       </motion.div>
@@ -256,8 +256,43 @@ function FloatingShapes() {
 }
 
 function MockupCard() {
+  const days = [
+    {
+      day: 'Mon',
+      shifts: [
+        { name: 'Adry', role: 'Shift Supervisor', time: '4a - 11a', color: 'pink' },
+        { name: 'Isabel', role: 'Barista', time: '4a - 12p', color: 'red' },
+        { name: 'Kota', role: 'Shift Supervisor', time: '12:30p - 8:30p', color: 'purple' },
+      ],
+    },
+    {
+      day: 'Tue',
+      shifts: [
+        { name: 'Adry', role: 'Shift Supervisor', time: '4a - 11a', color: 'pink' },
+        { name: 'Andrew', role: 'Barista', time: '5a - 11:30a', color: 'blue' },
+        { name: 'Nura', role: 'Barista', time: '12:30p - 8p', color: 'red' },
+      ],
+    },
+    {
+      day: 'Wed',
+      shifts: [
+        { name: 'Kota', role: 'Shift Supervisor', time: '4a - 12p', color: 'purple' },
+        { name: 'Valerie', role: 'Barista', time: '4a - 11a', color: 'pink' },
+        { name: 'Will', role: 'Shift Supervisor', time: '12p - 8p', color: 'pink' },
+      ],
+    },
+    {
+      day: 'Sun',
+      shifts: [
+        { name: 'Aubrey', role: 'Shift Supervisor', time: '4a - 12p', color: 'purple' },
+        { name: 'Nick', role: 'Manager', time: '10a - 4p', color: 'green' },
+        { name: 'Open shift', role: 'Barista', time: '12p - 3p', color: 'empty' },
+      ],
+    },
+  ]
+
   return (
-    <div className="mockup-window mockup-v2">
+    <div className="mockup-window mockup-v2 product-proof">
       <div className="mockup-header">
         <div className="mockup-dots">
           <span></span><span></span><span></span>
@@ -265,39 +300,76 @@ function MockupCard() {
         <div className="mockup-url">zaman.app/schedule</div>
       </div>
       <div className="mockup-body">
-        <div className="mockup-title-row">
-          <div className="mockup-title">Week of April 28</div>
-          <div className="mockup-badge">
-            <Sparkles size={12} />
-            <span>Zaman generated</span>
-          </div>
-        </div>
+        <div className="proof-layout">
+          <aside className="proof-rules">
+            <div className="proof-label">Manager rules</div>
+            <div className="proof-rule">
+              <Clock size={13} />
+              <span>Opening needs 1 supervisor and 1 barista by 4am.</span>
+            </div>
+            <div className="proof-rule">
+              <Users size={13} />
+              <span>Use everyone’s weekly target hours when possible.</span>
+            </div>
+            <div className="proof-rule">
+              <Shield size={13} />
+              <span>No clopening. Respect time off and availability.</span>
+            </div>
+            <div className="proof-rule proof-warning">
+              <AlertTriangle size={13} />
+              <span>Nick is off two days and only available 10am-4pm.</span>
+            </div>
+          </aside>
 
-        <div className="mockup-schedule">
-          {[
-            { day: 'Mon', shifts: [{name: 'Sam', time: '6a — 2p', color: 'purple'}, {name: 'Alex', time: '2p — 10p', color: 'blue'}] },
-            { day: 'Tue', shifts: [{name: 'Jamie', time: '5a — 1p', color: 'pink'}, {name: 'Sam', time: '1p — 9p', color: 'purple'}] },
-            { day: 'Wed', shifts: [{name: 'Alex', time: '6a — 2p', color: 'blue'}, {name: 'Jamie', time: '2p — 10p', color: 'pink'}] },
-          ].map((day, i) => (
-            <motion.div 
-              key={day.day} 
-              className="mockup-day"
-              initial={{ opacity: 0, y: 10 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ duration: 0.4, delay: 0.4 + i * 0.1 }}
-            >
-              <div className="mockup-day-label">{day.day}</div>
-              <div className="mockup-shifts">
-                {day.shifts.map((s, j) => (
-                  <div key={j} className={`mockup-shift mockup-shift-${s.color}`}>
-                    <span>{s.name}</span>
-                    <span className="mockup-time">{s.time}</span>
-                  </div>
-                ))}
+          <div className="proof-schedule-wrap">
+            <div className="mockup-title-row">
+              <div>
+                <div className="mockup-title">Week of May 4</div>
+                <div className="proof-subtitle">Generated from constraints, then checked.</div>
               </div>
-            </motion.div>
-          ))}
+              <div className="mockup-badge">
+                <Sparkles size={12} />
+                <span>Ready to review</span>
+              </div>
+            </div>
+
+            <div className="proof-week">
+              {days.map((day, i) => (
+                <motion.div
+                  key={day.day}
+                  className="proof-day"
+                  initial={{ opacity: 0, y: 12 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ duration: 0.4, delay: 0.25 + i * 0.08 }}
+                >
+                  <div className="mockup-day-label">{day.day}</div>
+                  <div className="mockup-shifts">
+                    {day.shifts.map((s, j) => (
+                      <div key={j} className={`mockup-shift proof-shift mockup-shift-${s.color}`}>
+                        <span>
+                          <strong>{s.name}</strong>
+                          <small>{s.role}</small>
+                        </span>
+                        <span className="mockup-time">{s.time}</span>
+                      </div>
+                    ))}
+                  </div>
+                </motion.div>
+              ))}
+            </div>
+
+            <div className="proof-bottom">
+              <div className="proof-hours">
+                <Target size={14} />
+                <span>Nick: 30 / 40h</span>
+              </div>
+              <div className="proof-issue">
+                <AlertTriangle size={14} />
+                <span>Only 30h possible with current availability.</span>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -354,8 +426,8 @@ function HowItWorks() {
     <section id="how-it-works" className="landing-section steps-section">
       <SectionHeader 
         eyebrow="How it works"
-        title="From chaos to schedule in minutes"
-        description="Three steps. Zero spreadsheets. Zaman respects every constraint."
+        title="From rules to a checked schedule"
+        description="Zaman turns plain English and employee availability into a schedule with clear tradeoffs."
       />
 
       <div className="landing-steps steps-v2">
@@ -384,6 +456,53 @@ function HowItWorks() {
   )
 }
 
+// ========== TRUST SECTION ==========
+function TrustSection() {
+  const checks = [
+    {
+      label: 'Hard rules',
+      items: ['Correct roles', 'Availability windows', 'Time off', 'One shift per day'],
+    },
+    {
+      label: 'Coverage',
+      items: ['Openers', 'Closers', 'Minimum staffing', 'Pre-closing shifts'],
+    },
+    {
+      label: 'Fairness',
+      items: ['Target hours', 'Fewer short shifts', 'Under/over warnings', 'Explainable gaps'],
+    },
+  ]
+
+  return (
+    <section className="landing-section trust-section">
+      <div className="trust-panel">
+        <div className="trust-copy">
+          <div className="landing-section-eyebrow">Why managers trust it</div>
+          <h2 className="landing-section-title">It does not pretend impossible weeks are solved.</h2>
+          <p className="landing-section-desc">
+            Zaman separates understanding from scheduling: AI reads the manager’s rules,
+            deterministic code builds the week, and the validator explains the remaining conflicts.
+          </p>
+        </div>
+
+        <div className="trust-checks">
+          {checks.map(group => (
+            <div className="trust-check-group" key={group.label}>
+              <div className="trust-check-label">{group.label}</div>
+              {group.items.map(item => (
+                <div className="trust-check-item" key={item}>
+                  <Check size={14} />
+                  <span>{item}</span>
+                </div>
+              ))}
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+  )
+}
+
 // ========== PLAYGROUND DEMO ==========
 function PlaygroundDemo() {
   const [activeTab, setActiveTab] = useState('generate')
@@ -398,8 +517,8 @@ function PlaygroundDemo() {
     <section className="landing-section playground-section">
       <SectionHeader 
         eyebrow="Live preview"
-        title="See it in action"
-        description="Switch between the three things that make Zaman feel magical."
+        title="Built for review, not blind trust"
+        description="Generate, adjust, and export the weekly schedule from one place."
       />
       
       <motion.div 
@@ -433,13 +552,13 @@ function PlaygroundDemo() {
             >
               <div className="playground-prompt">
                 <Sparkles size={14} />
-                <span>"Generate a balanced schedule for next week"</span>
+                <span>"Opening needs 2 people by 4am. Nick is off Sat/Sun."</span>
               </div>
               <div className="playground-result">
                 <div className="playground-loading">
                   <span className="dot" /><span className="dot" /><span className="dot" />
                 </div>
-                <p>Zaman analyzed 7 employees, 4 roles, 12 availability constraints, and built your week in 8 seconds.</p>
+                <p>Zaman parsed the rules, built a schedule, and flagged what could not be satisfied.</p>
               </div>
             </motion.div>
           )}
@@ -484,20 +603,20 @@ function PlaygroundDemo() {
 // ========== FEATURES ==========
 function Features() {
   const features = [
-    { icon: Brain, title: 'Smart scheduling', description: 'Zaman understands availability, time off, roles, and your custom rules.' },
-    { icon: Clock, title: 'Hours, not blocks', description: 'Set exact hours per person per day. Sam Mon 4am-9pm, Tue 10am-11pm.' },
-    { icon: Shield, title: 'Clopening prevention', description: 'No more closing at 10pm and opening at 6am. Min gaps enforced automatically.' },
-    { icon: MessageSquare, title: 'Prompt anything', description: '"Put Sam and Alex together Monday." "Jamie is training a new hire." Just type.' },
-    { icon: TrendingUp, title: 'Target hours', description: "Set each person's target. Zaman distributes fairly and flags over-scheduling." },
-    { icon: Zap, title: 'Seconds, not hours', description: 'Generate a full week in under 30 seconds. Regenerate with new rules instantly.' },
+    { icon: Brain, title: 'Plain-English rules', description: 'Type coverage needs, pairing rules, time-off notes, and manager preferences.' },
+    { icon: Clock, title: 'Real shift windows', description: 'Handle opens, closes, pre-closes, minimum staffing windows, and custom hours.' },
+    { icon: Shield, title: 'Hard checks', description: 'Availability, roles, target hours, time off, and clopening rules are checked before saving.' },
+    { icon: AlertTriangle, title: 'Impossible weeks explained', description: 'When the week cannot work, Zaman tells you exactly what blocked it.' },
+    { icon: TrendingUp, title: 'Target hours', description: "Set each person's weekly target and see who is under, over, or on track." },
+    { icon: Zap, title: 'Fast drafts', description: 'Generate multiple schedule variants locally after the rules are understood.' },
   ]
 
   return (
     <section className="landing-section">
       <SectionHeader 
         eyebrow="Features"
-        title="Everything a shift manager needs"
-        description="No fluff. No bloat. Just the features that actually save you hours every week."
+        title="The boring reliability managers need"
+        description="AI helps understand the request. The scheduler handles the math."
       />
       <div className="landing-features-grid features-v2">
         {features.map((feature, i) => (

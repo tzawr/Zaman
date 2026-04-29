@@ -141,7 +141,7 @@ function ScheduleTable({ data, employees = [], roles = [], onUpdate }) {
 
               <div className="schedule-day-shifts">
                 {hasShifts ? (
-                  dayData.shifts.map(shift => {
+                  [...dayData.shifts].sort((a, b) => a.start.localeCompare(b.start)).map(shift => {
                     const color = colorForEmployee(shift.employee)
                     return (
                       <div

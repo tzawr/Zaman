@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   Loader2,
@@ -32,6 +32,7 @@ import { db } from '../firebase'
 import { useAuth } from '../AuthContext'
 import ScheduleTable from '../components/ScheduleTable'
 import { exportToCSV, exportToPNG, exportToPDF } from '../utils/exportSchedule'
+import { runScheduler } from '../utils/scheduler'
 import PageHero from '../components/PageHero'
 import Section from '../components/Section'
 
@@ -56,13 +57,13 @@ const AI_UNDERSTANDS = [
 function Schedule() {
   const navigate = useNavigate()
   const { currentUser } = useAuth()
+  const generationSeedRef = useRef(0)
   
   const [employees, setEmployees] = useState([])
   const [userSettings, setUserSettings] = useState(null)
   const [prompt, setPrompt] = useState('')
   const [weekStart, setWeekStart] = useState(getNextMonday())
   const [generating, setGenerating] = useState(false)
-  const [schedule, setSchedule] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(true)
   const [saved, setSaved] = useState(false)
@@ -108,73 +109,58 @@ function Schedule() {
 
   async function generateSchedule() {
     setError('')
-    setSchedule('')
     setScheduleData(null)
     setSaved(false)
     setCopied(false)
-    
+
     if (employees.length === 0) {
       setError('Add at least one employee before generating a schedule.')
       return
     }
-    
+
     if (!userSettings?.operatingHours) {
       setError('Please set your operating hours in Settings first.')
       return
     }
-  
+
     try {
       setGenerating(true)
-      
-      const fullPrompt = buildPrompt(employees, userSettings, prompt, weekStart)
-      
-      const response = await fetch('/api/generate-schedule', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ prompt: fullPrompt })
-      })
-      
-      const data = await response.json()
-      
-      if (!response.ok || data.error) {
-        throw new Error(data.error || 'Failed to generate schedule')
-      }
-      
-      // Parse the JSON response from Claude
-      let parsed
-      try {
-        // Sometimes Claude wraps in markdown code blocks, strip them
-        let cleanedText = data.schedule.trim()
-        if (cleanedText.startsWith('```json')) {
-          cleanedText = cleanedText.replace(/^```json\n?/, '').replace(/\n?```$/, '')
-        } else if (cleanedText.startsWith('```')) {
-          cleanedText = cleanedText.replace(/^```\n?/, '').replace(/\n?```$/, '')
+
+      // Step 1: Parse both coverage rules and special instructions into structured constraints (AI, cached)
+      const parsedRules = await parseSchedulingInstructionsCached(userSettings.coverageRules, prompt)
+
+      // Step 2: Build deterministic constraints from structured rules
+      const constraints = buildConstraintsFromParsedRules(parsedRules, userSettings.operatingHours)
+
+      // Step 3: Try several deterministic variants and keep the cleanest one.
+      let best = null
+      generationSeedRef.current += 1
+      const baseSeed = hashScheduleSeed(weekStart, prompt, generationSeedRef.current)
+      for (let attempt = 0; attempt < 20; attempt++) {
+        const candidate = runScheduler(employees, userSettings, weekStart, {
+          ...constraints,
+          seed: baseSeed + attempt,
+        })
+        const violations = validateSchedule(candidate, employees, parsedRules?.coverage)
+        const score = scoreScheduleCandidate(candidate, violations, employees)
+        if (!best || score < best.score) {
+          best = { result: candidate, violations, score }
         }
-
-        console.log('AI response length:', cleanedText.length, '| ends with }:', cleanedText.endsWith('}'))
-
-        try {
-          parsed = JSON.parse(cleanedText)
-        } catch {
-          // Response was cut off — attempt repair by finding the last complete day
-          parsed = repairTruncatedSchedule(cleanedText)
-          if (!parsed) throw new Error('unrepairable')
-          console.log('Repaired truncated schedule, days present:', Object.keys(parsed.days || {}))
-        }
-
-        parsed = enforceTargetHours(parsed, employees)
-      } catch (parseErr) {
-        console.error('JSON parse error:', parseErr)
-        console.log('Raw response:', data.schedule)
-        throw new Error('AI returned malformed schedule. Try regenerating.')
+        if (score === 0) break
       }
-      
-      setScheduleData(parsed)
-      setSchedule(data.schedule) // keep raw for save
-      
-      // Auto-save
-      await saveSchedule(data.schedule, parsed)
-      
+
+      // Step 4: Validate and surface any unsatisfied constraints as issues
+      const result = best.result
+      if (best.violations.length > 0) {
+        console.warn('[scheduler] violations:', best.violations)
+        result.issues = best.violations
+      }
+
+      // Step 5: Save and display
+      const finalText = JSON.stringify(result, null, 2)
+      setScheduleData(result)
+      await saveSchedule(finalText, result)
+
     } catch (err) {
       console.error(err)
       setError(err.message || 'Failed to generate schedule. Try again.')
@@ -189,7 +175,6 @@ function Schedule() {
     // Save updated data back to Firestore (update most recent schedule)
     try {
       const updatedText = JSON.stringify(newData, null, 2)
-      setSchedule(updatedText)
       // We'll save a new version — simpler than tracking doc ID
       await saveSchedule(updatedText, newData)
     } catch (err) {
@@ -233,13 +218,6 @@ function Schedule() {
     } finally {
       setExporting(null)
     }
-  }
-
-  function copyToClipboard() {
-    if (!schedule) return
-    navigator.clipboard.writeText(schedule)
-    setCopied(true)
-    setTimeout(() => setCopied(false), 2000)
   }
 
   if (loading) {
@@ -404,100 +382,90 @@ function Schedule() {
       <a onClick={() => navigate('/employees')}>Add team members</a> first.
     </p>
   )}
+  {error && <p className="hint-text">{error}</p>}
 </div>
 
 {scheduleData && (
-  <div className="availability-section schedule-output-section">
-    <div className="schedule-header">
-      <h3 className="section-title">Your Schedule</h3>
-      <div className="schedule-actions">
-  {saved && (
-    <span className="saved-indicator">
-      <Check size={14} />
-      <span>Auto-saved</span>
-    </span>
-  )}
-  
-  {/* Export dropdown */}
-  <div className="export-dropdown-wrap">
-    <button 
-      className="settings-button"
-      onClick={() => setExportMenuOpen(!exportMenuOpen)}
-      disabled={exporting !== null}
-    >
-      {exporting ? <Loader2 size={16} className="spin" /> : <Download size={16} />}
-      <span>{exporting ? `Exporting ${exporting}...` : 'Export'}</span>
-    </button>
-    {exportMenuOpen && (
-      <>
-        <div 
-          className="export-dropdown-backdrop"
-          onClick={() => setExportMenuOpen(false)}
-        />
-        <div className="export-dropdown">
-          <button 
-            className="export-dropdown-item"
-            onClick={() => handleExport('csv')}
+  <div className="schedule-output-section">
+    <div className="schedule-result-bar">
+      <div className="schedule-result-bar-left">
+        <span className="schedule-result-ready">
+          <Check size={13} />
+          {saved ? 'Saved' : 'Ready'}
+        </span>
+        <span className="schedule-result-week">{formatWeekRange(weekStart)}</span>
+      </div>
+
+      <div className="schedule-result-actions">
+        <button
+          className="schedule-result-btn"
+          onClick={() => {
+            navigator.clipboard.writeText(JSON.stringify(scheduleData, null, 2))
+            setCopied(true)
+            setTimeout(() => setCopied(false), 2000)
+          }}
+        >
+          {copied ? <ClipboardCheck size={15} /> : <Clipboard size={15} />}
+          <span>{copied ? 'Copied!' : 'Copy'}</span>
+        </button>
+
+        <button
+          className="schedule-result-btn"
+          onClick={generateSchedule}
+          disabled={generating}
+        >
+          <RotateCw size={15} />
+          <span>Regenerate</span>
+        </button>
+
+        <div className="export-dropdown-wrap">
+          <button
+            className="schedule-result-btn schedule-result-btn-primary"
+            onClick={() => setExportMenuOpen(!exportMenuOpen)}
+            disabled={exporting !== null}
           >
-            <FileText size={15} />
-            <div>
-              <div className="export-item-title">CSV (Excel)</div>
-              <div className="export-item-desc">Open in spreadsheet apps</div>
-            </div>
+            {exporting ? <Loader2 size={15} className="spin" /> : <Download size={15} />}
+            <span>{exporting ? 'Exporting…' : 'Export'}</span>
           </button>
-          <button 
-            className="export-dropdown-item"
-            onClick={() => handleExport('png')}
-          >
-            <Image size={15} />
-            <div>
-              <div className="export-item-title">PNG Image</div>
-              <div className="export-item-desc">Share screenshot</div>
-            </div>
-          </button>
-          <button 
-            className="export-dropdown-item"
-            onClick={() => handleExport('pdf')}
-          >
-            <FileText size={15} />
-            <div>
-              <div className="export-item-title">PDF Document</div>
-              <div className="export-item-desc">Print-ready</div>
-            </div>
-          </button>
+          {exportMenuOpen && (
+            <>
+              <div className="export-dropdown-backdrop" onClick={() => setExportMenuOpen(false)} />
+              <div className="export-dropdown">
+                <button className="export-dropdown-item" onClick={() => handleExport('csv')}>
+                  <FileText size={15} />
+                  <div>
+                    <div className="export-item-title">CSV (Excel)</div>
+                    <div className="export-item-desc">Open in spreadsheet apps</div>
+                  </div>
+                </button>
+                <button className="export-dropdown-item" onClick={() => handleExport('png')}>
+                  <Image size={15} />
+                  <div>
+                    <div className="export-item-title">PNG Image</div>
+                    <div className="export-item-desc">Share as screenshot</div>
+                  </div>
+                </button>
+                <button className="export-dropdown-item" onClick={() => handleExport('pdf')}>
+                  <FileText size={15} />
+                  <div>
+                    <div className="export-item-title">PDF Document</div>
+                    <div className="export-item-desc">Print-ready</div>
+                  </div>
+                </button>
+              </div>
+            </>
+          )}
         </div>
-      </>
-    )}
-  </div>
-  
-  <button 
-    className="settings-button"
-    onClick={() => {
-      navigator.clipboard.writeText(JSON.stringify(scheduleData, null, 2))
-      setCopied(true)
-      setTimeout(() => setCopied(false), 2000)
-    }}
-  >
-    {copied ? <ClipboardCheck size={16} /> : <Clipboard size={16} />}
-    <span>{copied ? 'Copied' : 'Copy'}</span>
-  </button>
-  <button 
-    className="settings-button"
-    onClick={generateSchedule}
-    disabled={generating}
-  >
-    <RotateCw size={16} />
-    <span>Regenerate</span>
-  </button>
-</div>
+      </div>
     </div>
-    
-    <ScheduleTable 
-  data={scheduleData}
-  employees={employees}
-  roles={userSettings?.roles || []}
-  onUpdate={handleScheduleUpdate}
-/>  </div>
+
+    <ScheduleTable
+      data={scheduleData}
+      employees={employees}
+      roles={userSettings?.roles || []}
+      onUpdate={handleScheduleUpdate}
+    />
+  </div>
 )}
     </main>
   )
@@ -528,210 +496,387 @@ function formatWeekRange(mondayStr) {
   return `${format(monday)} — ${format(sunday)}, ${monday.getFullYear()}`
 }
 
-// Helper: compute date for a given day of week relative to weekStart
-function getDateForDay(weekStart, dayIndex) {
-  const monday = new Date(weekStart + 'T12:00:00')
-  const date = new Date(monday)
-  date.setDate(monday.getDate() + dayIndex)
-  return date.toISOString().split('T')[0]
+function hashScheduleSeed(weekStart, prompt, counter) {
+  const input = `${weekStart}|${prompt || ''}|${counter}`
+  let hash = 2166136261
+  for (let i = 0; i < input.length; i++) {
+    hash ^= input.charCodeAt(i)
+    hash = Math.imul(hash, 16777619)
+  }
+  return hash >>> 0
 }
 
-// Attempt to recover a truncated JSON schedule by finding the last complete
-// day block and closing all open objects. Returns a parsed object or null.
-function repairTruncatedSchedule(text) {
-  const DAY_ORDER = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday']
+function scoreScheduleCandidate(schedule, violations, employees) {
+  let score = violations.length * 1000
+  const shiftsByEmployee = {}
 
-  // Pull weekStart from the raw text if present
-  const weekStartMatch = text.match(/"weekStart"\s*:\s*"([^"]+)"/)
-  const weekStart = weekStartMatch ? weekStartMatch[1] : ''
+  Object.values(schedule.days || {}).forEach(day => {
+    ;(day.shifts || []).forEach(shift => {
+      if (!shiftsByEmployee[shift.employee]) shiftsByEmployee[shift.employee] = []
+      shiftsByEmployee[shift.employee].push(shift)
+    })
+  })
 
-  // Find which days appear to have a complete shifts array by looking for
-  // the closing pattern of a day block: ], "emptySlots": [...] }
-  const completedDays = {}
-  for (const day of DAY_ORDER) {
-    // Match the full day block: "monday": { ... }
-    const dayPattern = new RegExp(`"${day}"\\s*:\\s*\\{[^}]*"shifts"\\s*:\\s*\\[[^\\]]*\\][^}]*\\}`, 's')
-    const match = text.match(dayPattern)
-    if (match) {
-      try {
-        const dayJson = `{${match[0]}}`
-        const dayObj = JSON.parse(dayJson)
-        completedDays[day] = dayObj[day]
-      } catch {
-        // Day block is itself malformed — skip it
+  ;(schedule.summary || []).forEach(row => {
+    const target = Number(row.targetHours) || 0
+    const diff = Math.abs(Number(row.difference) || 0)
+    score += diff * 80
+
+    const shifts = shiftsByEmployee[row.employee] || []
+    const idealDays = target > 0 ? Math.ceil(target / 8) : shifts.length
+    const extraDays = Math.max(0, shifts.length - idealDays)
+    score += extraDays * 25
+
+    if (target >= 24) {
+      shifts.forEach(shift => {
+        const hours = Number(shift.hours) || 0
+        if (hours > 0 && hours < 7) score += (7 - hours) * 8
+      })
+    }
+
+    const employee = employees.find(emp => emp.name === row.employee)
+    if (employee && Number(row.difference) < -0.05) {
+      const workedDays = new Set(shifts.map(shift => findShiftDay(schedule, shift)))
+      const unusedAvailableDays = Object.entries(employee.availability || {}).filter(([dayKey, av]) =>
+        av &&
+        av.available !== false &&
+        schedule.days?.[dayKey]?.shifts &&
+        !workedDays.has(dayKey)
+      ).length
+      score += unusedAvailableDays * Math.abs(Number(row.difference) || 0) * 30
+    }
+  })
+
+  return score
+}
+
+function findShiftDay(schedule, targetShift) {
+  for (const [dayKey, day] of Object.entries(schedule.days || {})) {
+    if ((day.shifts || []).includes(targetShift)) return dayKey
+  }
+  return ''
+}
+
+async function callGenerateAPI(prompt) {
+  const resp = await fetch('/api/generate-schedule', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ prompt }),
+  })
+  if (!resp.ok) {
+    const err = await resp.json()
+    throw new Error(err.error || 'Schedule generation failed')
+  }
+  const data = await resp.json()
+  return data.scheduleText || ''
+}
+
+async function parseSchedulingInstructionsCached(coverageRulesText, specialInstructions) {
+  const combined = (coverageRulesText || '').trim() + '\n---\n' + (specialInstructions || '').trim()
+  if (!combined.replace(/---/g, '').trim()) return null
+  let hash = 0
+  for (let i = 0; i < combined.length; i++) hash = (Math.imul(31, hash) + combined.charCodeAt(i)) | 0
+  const key = 'zaman_rules_v2_' + Math.abs(hash)
+  try {
+    const cached = localStorage.getItem(key)
+    if (cached) return JSON.parse(cached)
+  } catch {
+    // Ignore cache read errors.
+  }
+  const result = await parseSchedulingInstructions(coverageRulesText, specialInstructions)
+  if (result) {
+    try { localStorage.setItem(key, JSON.stringify(result)) } catch {
+      // Ignore cache write errors.
+    }
+  }
+  return result
+}
+
+async function parseSchedulingInstructions(coverageRulesText, specialInstructions) {
+  const hasCoverage = coverageRulesText?.trim()
+  const hasInstructions = specialInstructions?.trim()
+  if (!hasCoverage && !hasInstructions) return null
+
+  const inputBlock = [
+    hasCoverage ? `COVERAGE RULES:\n${coverageRulesText.trim()}` : '',
+    hasInstructions ? `SPECIAL INSTRUCTIONS:\n${specialInstructions.trim()}` : '',
+  ].filter(Boolean).join('\n\n')
+
+  const aiPrompt = `Parse the following scheduling rules into structured JSON. Output ONLY valid JSON, no explanation.
+
+${inputBlock}
+
+Return a JSON object. Omit any fields not mentioned or implied:
+{
+  "coverage": {
+    "openers": {
+      "by": "04:30",
+      "composition": [{"role": "Shift Supervisor", "count": 1}, {"role": "Barista", "count": 1}]
+    },
+    "closers": {
+      "shiftEnd": "20:30",
+      "composition": [{"role": "Shift Supervisor", "count": 1}, {"role": "Barista", "count": 1}]
+    },
+    "preCloser": {"count": 1, "roles": ["Role"], "shiftEnd": "20:00"},
+    "alwaysPresent": ["Shift Supervisor"],
+    "minimumStaff": [{"from": "08:00", "to": "12:00", "count": 3}]
+  },
+  "employeeRules": {
+    "pairTogether": [["Alice", "Jordan"]],
+    "avoidTogether": [["Sam", "Rae"]],
+    "maxDays": {"Nura": 5},
+    "maxCloses": {"Nura": 2},
+    "preferShiftWindows": {"Isabel": {"start": "04:00", "end": "12:00"}},
+    "trainingPairs": [{"trainee": "New Hire", "mentorRole": "Shift Supervisor"}],
+    "preferredEmployeesByDay": {"friday": ["Sam", "Alex"]}
+  }
+}
+
+Field meanings:
+- Coverage counts are MINIMUMS unless the text explicitly says "exactly" or "only".
+- If the text says "we need 2 people at 4am" with no roles, use coverage.minimumStaff [{"from":"04:00","to":"08:00","count":2}], not role composition.
+- Do not infer roles. Only use coverage.openers.composition or coverage.closers.composition when roles are explicitly named.
+- coverage.openers.by: shifts that START at or before this time count toward opening coverage
+- coverage.openers.composition: minimum required role mix — each {role, count} means at least that many people of that role must open. Use composition only when the rule says "1 X AND 1 Y".
+- coverage.closers.shiftEnd: shifts that END at or after this time are "closers"
+- coverage.closers.composition: same as openers.composition but for closing shifts
+- coverage.preCloser: people whose shift ends near shiftEnd (before full close)
+- coverage.alwaysPresent: roles that must have at least one person on shift all day
+- coverage.minimumStaff: minimum staff count during a time window
+- employeeRules.pairTogether: pairs of employees who must work on the same days
+- employeeRules.avoidTogether: pairs who must never be on the same shift
+- employeeRules.maxDays: maximum days per week per employee {"Name": N}
+- employeeRules.maxCloses: maximum closing shifts per week per employee {"Name": N}
+- employeeRules.preferShiftWindows: preferred time window per employee {"Name": {"start": "HH:MM", "end": "HH:MM"}}
+- employeeRules.trainingPairs: if trainee is working, ensure a mentor with mentorRole is also scheduled
+- employeeRules.preferredEmployeesByDay: employees to prioritize on specific days {"dayname": ["Name"]}
+- All times in 24-hour HH:MM format`
+
+  try {
+    const text = await callGenerateAPI(aiPrompt)
+    let clean = text.trim()
+    if (clean.startsWith('```json')) clean = clean.replace(/^```json\n?/, '').replace(/\n?```$/, '')
+    else if (clean.startsWith('```')) clean = clean.replace(/^```\n?/, '').replace(/\n?```$/, '')
+    const first = clean.indexOf('{')
+    const last = clean.lastIndexOf('}')
+    if (first === -1 || last === -1) return null
+    return JSON.parse(clean.slice(first, last + 1))
+  } catch {
+    return null
+  }
+}
+
+// JS validator — checks hard rules and structured coverage rules.
+// Never makes scheduling decisions. Returns violation strings for the AI to fix.
+function validateSchedule(data, employees, coverageRules = null) {
+  const violations = []
+  const DAYS = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday']
+  const empMap = Object.fromEntries(employees.map(e => [e.name, e]))
+  const weekTotals = {}
+  const toM = t => { const [h, m] = (t || '0:0').split(':').map(Number); return h * 60 + (m || 0) }
+
+  DAYS.forEach(day => {
+    const dayData = data.days?.[day]
+    if (!dayData?.shifts?.length) return
+
+    const shifts = dayData.shifts
+    const seenToday = new Set()
+
+    // --- Per-shift hard rules ---
+    shifts.forEach(shift => {
+      const emp = empMap[shift.employee]
+
+      if (!emp) {
+        violations.push(`${capitalize(day)}: "${shift.employee}" is not a known employee`)
+        return
       }
+
+      if (seenToday.has(shift.employee)) {
+        violations.push(`${capitalize(day)}: ${shift.employee} is scheduled twice on the same day`)
+      }
+      seenToday.add(shift.employee)
+
+      if (emp.role && shift.role !== emp.role) {
+        violations.push(`${capitalize(day)}: ${shift.employee}'s role is "${emp.role}" — do not change it to "${shift.role}"`)
+      }
+
+      const av = emp.availability?.[day]
+      if (!av || av.available === false) {
+        violations.push(`${capitalize(day)}: ${shift.employee} is not available`)
+      } else if (av.start && av.end) {
+        const ss = toM(shift.start), se = toM(shift.end)
+        const as = toM(av.start), ae = toM(av.end) || 24 * 60
+        if (ss < as || se > ae) {
+          violations.push(`${capitalize(day)}: ${shift.employee} shift ${shift.start}–${shift.end} is outside availability ${av.start}–${av.end}`)
+        }
+      }
+
+      const hours = Number(shift.hours) || shiftHours(shift.start, shift.end)
+      if (hours < 4) violations.push(`${capitalize(day)}: ${shift.employee} shift is ${hours}h — minimum is 4h`)
+      if (hours > 8.5) violations.push(`${capitalize(day)}: ${shift.employee} shift is ${hours}h — maximum is 8.5h`)
+
+      weekTotals[shift.employee] = (weekTotals[shift.employee] || 0) + hours
+    })
+
+    // --- Coverage rules (structural, from AI-parsed workspace rules) ---
+    if (coverageRules) {
+      const { openers, closers, preCloser, alwaysPresent, minimumStaff } = coverageRules
+
+      if (openers) {
+        const byMins = toM(openers.by)
+        const openerShifts = shifts.filter(s => toM(s.start) <= byMins)
+        if (openers.composition?.length) {
+          openers.composition.forEach(({ role, count }) => {
+            const found = openerShifts.filter(s => s.role === role).length
+            if (found < count) {
+              violations.push(`${capitalize(day)}: opening (by ${openers.by}) needs at least ${count} ${role}(s) — only ${found} found`)
+            }
+          })
+        } else if (openers.count != null) {
+          const found = openerShifts.filter(s => !openers.roles?.length || openers.roles.includes(s.role)).length
+          if (found < openers.count) violations.push(`${capitalize(day)}: needs at least ${openers.count} opener(s) by ${openers.by} — only ${found} found`)
+        }
+      }
+
+      if (closers) {
+        const endMins = toM(closers.shiftEnd)
+        const closerShifts = shifts.filter(s => toM(s.end) >= endMins)
+        if (closers.composition?.length) {
+          closers.composition.forEach(({ role, count }) => {
+            const found = closerShifts.filter(s => s.role === role).length
+            if (found < count) {
+              violations.push(`${capitalize(day)}: closing (at ${closers.shiftEnd}) needs at least ${count} ${role}(s) — only ${found} found`)
+            }
+          })
+        } else if (closers.count != null) {
+          const found = closerShifts.filter(s => !closers.roles?.length || closers.roles.includes(s.role)).length
+          if (found < closers.count) violations.push(`${capitalize(day)}: needs ${closers.count} closer(s) ending at or after ${closers.shiftEnd} — only ${found} found`)
+        }
+      }
+
+      if (preCloser) {
+        const targetMins = toM(preCloser.shiftEnd)
+        const found = shifts.filter(s =>
+          Math.abs(toM(s.end) - targetMins) <= 30 &&
+          (!preCloser.roles?.length || preCloser.roles.includes(s.role))
+        ).length
+        if (found < preCloser.count) {
+          violations.push(`${capitalize(day)}: needs ${preCloser.count} pre-closer(s) ending around ${preCloser.shiftEnd}${preCloser.roles?.length ? ` (${preCloser.roles.join(' or ')})` : ''} — only ${found} found`)
+        }
+      }
+
+      if (alwaysPresent?.length) {
+        alwaysPresent.forEach(role => {
+          if (!shifts.some(s => s.role === role)) {
+            violations.push(`${capitalize(day)}: ${role} must always be present — none scheduled`)
+          }
+        })
+      }
+
+      if (minimumStaff?.length) {
+        minimumStaff.forEach(({ from, to, count }) => {
+          const fromMins = toM(from), toMins = toM(to)
+          const active = shifts.filter(s => toM(s.start) < toMins && toM(s.end) > fromMins).length
+          if (active < count) {
+            violations.push(`${capitalize(day)}: needs ${count} staff from ${from}–${to} — only ${active} on shift`)
+          }
+        })
+      }
+    }
+  })
+
+  // --- Weekly target check (over AND under) ---
+  employees.forEach(emp => {
+    if (emp.targetHours == null) return
+    const total = Math.round((weekTotals[emp.name] || 0) * 10) / 10
+    const diff = Math.round((total - emp.targetHours) * 10) / 10
+
+    if (diff > 0.05) {
+      violations.push(`${emp.name}: scheduled ${total}h but target is ${emp.targetHours}h — ${diff}h over`)
+    } else if (diff < -1) {
+      // Find days they're available but not yet scheduled
+      const openDays = DAYS.filter(d => {
+        const av = emp.availability?.[d]
+        if (!av || av.available === false) return false
+        return !(data.days?.[d]?.shifts || []).some(s => s.employee === emp.name)
+      })
+      if (openDays.length > 0) {
+        violations.push(`${emp.name}: only ${total}h scheduled but target is ${emp.targetHours}h — add shifts on: ${openDays.map(capitalize).join(', ')}`)
+      } else {
+        violations.push(`${emp.name}: only ${total}h scheduled but target is ${emp.targetHours}h — no unused available days remain`)
+      }
+    }
+  })
+
+  return violations
+}
+
+function buildConstraintsFromParsedRules(parsedRules, operatingHours) {
+  const slots = []
+  const pairs = []
+  const avoid = []
+  const maxDays = {}
+  const maxCloses = {}
+  const preferWindows = {}
+  const trainingPairs = []
+  const prioritize = {}
+  const minimumStaff = []
+
+  if (!parsedRules) return { slots, pairs, avoid, maxDays, maxCloses, preferWindows, trainingPairs, prioritize, minimumStaff }
+
+  const { coverage, employeeRules } = parsedRules
+
+  if (coverage) {
+    const DAYS = ['monday','tuesday','wednesday','thursday','friday','saturday','sunday']
+    const firstOpen = DAYS.find(d => operatingHours?.[d]?.open)
+    const opStart = firstOpen ? operatingHours[firstOpen].start : '05:00'
+    const opEnd   = firstOpen ? operatingHours[firstOpen].end   : '20:30'
+
+    const { openers, closers, preCloser } = coverage
+
+    if (openers?.composition) {
+      const latestStart = openers.by || opStart
+      openers.composition.forEach(({ role, count }) =>
+        slots.push({ start: opStart, end: '13:00', role, count, days: 'all', latestStart })
+      )
+    } else if (openers?.count) {
+      slots.push({ start: opStart, end: '13:00', count: openers.count, days: 'all', latestStart: openers.by || opStart })
+    }
+
+    if (closers?.composition) {
+      const minEnd = closers.shiftEnd || opEnd
+      closers.composition.forEach(({ role, count }) =>
+        slots.push({ start: '12:00', end: closers.shiftEnd || opEnd, role, count, days: 'all', anchor: 'end', minEnd })
+      )
+    } else if (closers?.count) {
+      slots.push({ start: '12:00', end: closers.shiftEnd || opEnd, count: closers.count, days: 'all', anchor: 'end', minEnd: closers.shiftEnd || opEnd })
+    }
+
+    if (preCloser?.count && preCloser?.shiftEnd) {
+      const roles = Array.isArray(preCloser.roles) && preCloser.roles.length ? preCloser.roles : [null]
+      roles.forEach(role => {
+        slots.push({ start: '12:00', end: preCloser.shiftEnd, role, count: preCloser.count, days: 'all', anchor: 'end', minEnd: preCloser.shiftEnd })
+      })
+    }
+
+    if (Array.isArray(coverage.minimumStaff)) {
+      minimumStaff.push(...coverage.minimumStaff)
     }
   }
 
-  if (Object.keys(completedDays).length === 0) return null
-
-  // Pull summary if it made it into the text
-  let summary = []
-  const summaryMatch = text.match(/"summary"\s*:\s*(\[[^\]]*\])/)
-  if (summaryMatch) {
-    try { summary = JSON.parse(summaryMatch[1]) } catch {}
+  if (employeeRules) {
+    if (Array.isArray(employeeRules.pairTogether)) pairs.push(...employeeRules.pairTogether)
+    if (Array.isArray(employeeRules.avoidTogether)) avoid.push(...employeeRules.avoidTogether)
+    if (employeeRules.maxDays) Object.assign(maxDays, employeeRules.maxDays)
+    if (employeeRules.maxCloses) Object.assign(maxCloses, employeeRules.maxCloses)
+    if (employeeRules.preferShiftWindows) Object.assign(preferWindows, employeeRules.preferShiftWindows)
+    if (Array.isArray(employeeRules.trainingPairs)) trainingPairs.push(...employeeRules.trainingPairs)
+    if (employeeRules.preferredEmployeesByDay) Object.assign(prioritize, employeeRules.preferredEmployeesByDay)
   }
 
-  return {
-    weekStart,
-    days: completedDays,
-    summary,
-    issues: ['Schedule was partially generated — some days may be missing.'],
-    recommendations: [],
-  }
+  return { slots, pairs, avoid, maxDays, maxCloses, preferWindows, trainingPairs, prioritize, minimumStaff }
 }
 
-function buildPrompt(employees, settings, customInstructions, weekStart) {
-  const { operatingHours, coverage, preventClopening, minHoursBetweenShifts, roles, coverageRules } = settings
-  
-  const days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday']
-  
-  const dayDates = {}
-  days.forEach((d, i) => {
-    dayDates[d] = getDateForDay(weekStart, i)
-  })
-  
-  let prompt = `You are a professional scheduling assistant. Generate a weekly schedule for a small business team.
-
-## THIS SCHEDULE IS FOR
-Week of ${weekStart} (Monday) through ${getDateForDay(weekStart, 6)} (Sunday).
-
-## OPERATING HOURS
-${days.map(d => {
-  const day = operatingHours[d]
-  const date = dayDates[d]
-  if (!day || !day.open) return `${capitalize(d)} (${date}): CLOSED`
-  return `${capitalize(d)} (${date}): ${day.start} to ${day.end}`
-}).join('\n')}
-
-${coverageRules?.trim() ? `## COVERAGE REQUIREMENTS\n${coverageRules.trim()}` : ''}
-
-## ROLES
-${roles?.map(r => `- ${r.name}`).join('\n') || 'No roles defined'}
-
-## EMPLOYEES
-${employees.map(emp => {
-  const targetHrs = emp.targetHours !== undefined ? emp.targetHours : null
-
-  // Count days this employee is actually available this week
-  const availableDays = days.filter(d => {
-    const av = emp.availability?.[d]
-    return av && av.available !== false
-  })
-  const numAvailable = availableDays.length
-
-  // Managers are scheduled to their full target. Non-managers get an 80%
-  // daily cap so there is headroom for coverage without burning their budget.
-  const isManager = emp.role?.toLowerCase() === 'manager'
-  const effectiveWeekly = (targetHrs != null && !isManager) ? targetHrs * 0.8 : targetHrs
-  const maxPerDay = (effectiveWeekly != null && numAvailable > 0)
-    ? Math.round((effectiveWeekly / numAvailable) * 10) / 10
-    : null
-
-  let header = `\n### ${emp.name} (${emp.role}`
-  if (targetHrs != null) {
-    header += `, Weekly budget: ${effectiveWeekly}h — distribute across ${numAvailable} available days`
-  } else {
-    header += ', target: not specified'
-  }
-  header += ')\n'
-
-  let empInfo = header
-
-  if (emp.availability) {
-    empInfo += 'Availability:\n'
-    days.forEach(d => {
-      const day = emp.availability[d]
-      if (!day) {
-        empInfo += `  ${capitalize(d)}: not set\n`
-      } else if (!day.available) {
-        empInfo += `  ${capitalize(d)}: NOT AVAILABLE\n`
-      } else {
-        empInfo += `  ${capitalize(d)}: ${day.start} to ${day.end}\n`
-      }
-    })
-  } else {
-    empInfo += 'Availability: not set\n'
-  }
-
-  if (emp.timeOff && emp.timeOff.length > 0) {
-    empInfo += 'Time off requests:\n'
-    emp.timeOff.forEach(t => {
-      empInfo += `  - ${t.start} to ${t.end} (${t.reason || 'time off'})\n`
-    })
-  }
-
-  return empInfo
-}).join('\n')}
-
-## SCHEDULING RULES (STRICT — NEVER VIOLATE)
-- NEVER schedule someone outside their stated availability hours. If availability says NOT AVAILABLE or the shift falls outside their hours, do NOT schedule them.
-- NEVER schedule someone during time-off dates that overlap with this week.
-- **ONE SHIFT PER PERSON PER DAY:** Each employee gets AT MOST ONE shift per day. No split shifts unless manager instructions explicitly request it.
-- **TARGET HOURS:** Never schedule an employee for more total hours than their target for the week. Track their running total as you assign shifts. If adding a shift would push them over their target, do not assign them — treat them as ineligible for that slot.
-- **MAXIMUM SHIFT LENGTH:** No single shift longer than 8 hours.
-${preventClopening ? `- **CLOPENING:** Never schedule someone with less than ${minHoursBetweenShifts || 10} hours between a closing shift and the next day's opening.` : ''}
-- Match employees to roles that fit the shift.
-- If a coverage window has no eligible employee (unavailable, on time off, already at target hours, or already scheduled that day), leave it as an empty slot in "emptySlots" — do NOT assign an ineligible person.
-- If the team is too small for coverage needs, say so in recommendations.
-
-${customInstructions ? `\n## SPECIAL INSTRUCTIONS FROM MANAGER\n${customInstructions}\n` : ''}
-
-## OUTPUT FORMAT — CRITICAL
-You MUST respond with ONLY valid JSON, no markdown, no explanations before or after. Your entire response must be parseable as JSON.
-
-Use this EXACT structure:
-
-{
-  "weekStart": "${weekStart}",
-  "days": {
-    "monday": {
-      "date": "${dayDates.monday}",
-      "shifts": [
-        { "id": "m1", "employee": "Sam", "role": "Barista", "start": "07:00", "end": "15:00", "hours": 8 }
-      ],
-      "emptySlots": []
-    },
-    "tuesday": { "date": "${dayDates.tuesday}", "shifts": [], "emptySlots": [] },
-    "wednesday": { "date": "${dayDates.wednesday}", "shifts": [], "emptySlots": [] },
-    "thursday": { "date": "${dayDates.thursday}", "shifts": [], "emptySlots": [] },
-    "friday": {
-      "date": "${dayDates.friday}",
-      "shifts": [
-        { "id": "f1", "employee": "Sam", "role": "Barista", "start": "07:00", "end": "15:00", "hours": 8 }
-      ],
-      "emptySlots": [
-        { "start": "15:00", "end": "22:00", "role": "Cashier" }
-      ]
-    },
-    "saturday": { "date": "${dayDates.saturday}", "shifts": [], "emptySlots": [] },
-    "sunday": { "date": "${dayDates.sunday}", "shifts": [], "emptySlots": [] }
-  },
-  "summary": [
-    { "employee": "Sam", "role": "Barista", "scheduledHours": 16, "targetHours": 20, "difference": -4 }
-  ],
-  "issues": [
-    "Friday 15:00-22:00: no eligible staff"
-  ],
-  "recommendations": [
-    "Consider hiring a part-time Cashier available Friday evenings"
-  ]
-}
-
-RULES for the JSON:
-- Times in 24-hour format "HH:MM". All times MUST be on the hour or half hour (e.g. 06:00, 08:30, 14:00). NEVER generate times like 09:42 or 14:18.
-- Each shift has a unique "id" (e.g. "m1", "t2")
-- "hours" = decimal hours (e.g. 8, 8.5)
-- "difference" = scheduledHours - targetHours (negative = under-scheduled)
-- "emptySlots" = every coverage window you could not fill with an eligible employee. Each entry: { "start": "HH:MM", "end": "HH:MM", "role": "role name or empty string" }. A day can have both shifts AND emptySlots. Use [] when all coverage is met.
-- "issues" is an array of short strings
-- "recommendations" is an array of short strings
-- NO markdown. NO explanations. ONLY the JSON object.
-
-Generate the JSON schedule now.`
-  
-  return prompt
-}
 function shiftHours(start, end) {
   if (!start || !end) return 0
   const [sh, sm] = start.split(':').map(Number)
@@ -739,88 +884,6 @@ function shiftHours(start, end) {
   let h = (eh + em / 60) - (sh + sm / 60)
   if (h < 0) h += 24
   return Math.round(h * 10) / 10
-}
-
-// After the AI responds, enforce target-hour caps in JS.
-// Any shift that would push an employee over their weekly target is removed
-// and moved into emptySlots on that day so the gap is visible in the grid.
-function enforceTargetHours(data, employees) {
-  console.log('enforceTargetHours running', data)
-
-  const targets = {}
-  employees.forEach(emp => {
-    if (emp.targetHours != null) targets[emp.name] = Number(emp.targetHours)
-  })
-  console.log('enforceTargetHours targets map', targets)
-
-  const totals = {}
-  const DAYS = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday']
-
-  DAYS.forEach(dayKey => {
-    const day = data.days?.[dayKey]
-    if (!day) return
-    if (!Array.isArray(day.emptySlots)) day.emptySlots = []
-    if (!Array.isArray(day.shifts)) day.shifts = []
-
-    const kept = []
-    day.shifts.forEach(shift => {
-      const target = targets[shift.employee]
-      if (target == null) { kept.push(shift); return }
-
-      const soFar = totals[shift.employee] || 0
-      const hrs = Number(shift.hours) || shiftHours(shift.start, shift.end)
-      const newTotal = soFar + hrs
-
-      if (newTotal <= target + 0.05) {
-        kept.push(shift)
-        totals[shift.employee] = newTotal
-      } else {
-        console.log('stripping shift for', shift.employee, 'hours would be', newTotal, 'target is', target)
-        day.emptySlots.push({ start: shift.start, end: shift.end, role: shift.role || '' })
-      }
-    })
-    day.shifts = kept
-  })
-
-  console.log('enforceTargetHours final totals', totals)
-
-  // Rebuild summary from enforced totals — the AI's summary has the raw
-  // unenforced numbers and is what the UI renders directly, so it must
-  // be replaced here or the display will show the pre-strip values.
-  data.summary = employees.map(emp => {
-    const scheduled = Math.round((totals[emp.name] || 0) * 10) / 10
-    const target = emp.targetHours || 0
-    return {
-      employee: emp.name,
-      role: emp.role || '',
-      scheduledHours: scheduled,
-      targetHours: target,
-      difference: Math.round((scheduled - target) * 10) / 10,
-    }
-  })
-
-  // Rebuild issues — remove AI-generated over-target claims (enforcement
-  // already fixed those) and replace with accurate post-enforcement issues.
-  const enforcedIssues = []
-
-  // Flag anyone still over target after enforcement (shouldn't happen, but catch it)
-  data.summary.forEach(s => {
-    if (s.targetHours > 0 && s.difference > 0.05) {
-      enforcedIssues.push(`${s.employee} is ${s.difference}h over their ${s.targetHours}h target`)
-    }
-  })
-
-  // Keep coverage-gap issues from the AI (empty slot warnings), drop hour complaints
-  const hourPattern = /[+-]\d+(\.\d+)?\s*h/i
-  const overTargetPattern = /over\s*(target|hours?)|exceed|too many hours/i
-  ;(data.issues || []).forEach(issue => {
-    const isOverTargetClaim = hourPattern.test(issue) || overTargetPattern.test(issue)
-    if (!isOverTargetClaim) enforcedIssues.push(issue)
-  })
-
-  data.issues = enforcedIssues
-
-  return data
 }
 
 function capitalize(s) {
