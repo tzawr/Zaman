@@ -2461,6 +2461,12 @@ input:checked + .slider:before {
   opacity: 0.65;
   pointer-events: none;
   z-index: 1;
+  animation: gridDrift 22s linear infinite;
+}
+
+@keyframes gridDrift {
+  from { background-position: 0 0; }
+  to { background-position: 28px 28px; }
 }
 
 .landing-hero-content {
@@ -6828,6 +6834,7 @@ input[type="time"]::-webkit-calendar-picker-indicator:hover {
 .landing-v2 {
   position: relative;
   z-index: 2;
+  overflow-x: hidden;
 }
 
 /* Hero v2 */
@@ -6843,6 +6850,37 @@ input[type="time"]::-webkit-calendar-picker-indicator:hover {
 
 .hero-line {
   display: block;
+}
+
+@keyframes heroAmbientFlow {
+  0% { background-position: 0 0, 0% 50%; }
+  100% { background-position: 0 0, 100% 50%; }
+}
+
+@keyframes heroLineGlow {
+  0%, 100% { opacity: 0.28; transform: translateX(-50%) scaleX(0.72); }
+  50% { opacity: 0.78; transform: translateX(-50%) scaleX(1); }
+}
+
+@keyframes productPreviewBreathe {
+  0%, 100% { filter: saturate(1); }
+  50% { filter: saturate(1.08); }
+}
+
+@keyframes previewSheen {
+  0%, 58% { transform: translateX(-115%); opacity: 0; }
+  68% { opacity: 1; }
+  84%, 100% { transform: translateX(115%); opacity: 0; }
+}
+
+@keyframes scheduleCardSettle {
+  from { opacity: 0; transform: translateY(8px) scale(0.985); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes statusSoftPulse {
+  0%, 100% { filter: brightness(1); }
+  50% { filter: brightness(1.12); }
 }
 
 .typing-cursor {
@@ -6923,9 +6961,26 @@ input[type="time"]::-webkit-calendar-picker-indicator:hover {
   pointer-events: none;
   background:
     linear-gradient(180deg, rgba(99, 102, 241, 0.08), transparent 34%),
-    linear-gradient(90deg, rgba(99, 102, 241, 0.1), transparent 28%, transparent 72%, rgba(139, 92, 246, 0.08));
-  opacity: 0.45;
+    linear-gradient(115deg, rgba(45, 212, 191, 0.08), transparent 25%, transparent 63%, rgba(139, 92, 246, 0.1));
+  background-size: 100% 100%, 180% 180%;
+  opacity: 0.52;
   z-index: 0;
+  animation: heroAmbientFlow 16s ease-in-out infinite alternate;
+}
+
+.hero-v2.landing-hero::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  bottom: 18px;
+  width: min(760px, 72vw);
+  height: 1px;
+  transform: translateX(-50%);
+  pointer-events: none;
+  background: linear-gradient(90deg, transparent, rgba(45, 212, 191, 0.45), rgba(129, 140, 248, 0.55), transparent);
+  opacity: 0.5;
+  z-index: 1;
+  animation: heroLineGlow 4.8s ease-in-out infinite;
 }
 
 .hero-v2 .landing-hero-content {
@@ -6973,8 +7028,21 @@ input[type="time"]::-webkit-calendar-picker-indicator:hover {
 }
 
 .hero-v2 .product-proof {
+  position: relative;
   transform: none;
   border-radius: 22px;
+  animation: productPreviewBreathe 7s ease-in-out infinite;
+}
+
+.hero-v2 .product-proof::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(115deg, transparent 18%, rgba(255, 255, 255, 0.07) 42%, transparent 64%);
+  transform: translateX(-115%);
+  z-index: 2;
+  animation: previewSheen 7.5s ease-in-out infinite;
 }
 
 .hero-v2 .mockup-window {
@@ -6986,7 +7054,11 @@ input[type="time"]::-webkit-calendar-picker-indicator:hover {
 }
 
 .hero-v2 .mockup-window:hover {
-  transform: none;
+  border-color: rgba(129, 140, 248, 0.34);
+  box-shadow:
+    0 34px 82px rgba(0, 0, 0, 0.48),
+    0 0 90px rgba(45, 212, 191, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06);
 }
 
 .hero-v2 .mockup-body {
@@ -7014,6 +7086,24 @@ input[type="time"]::-webkit-calendar-picker-indicator:hover {
 .hero-v2 .proof-shift {
   min-height: 62px;
   padding: 9px;
+  transition: transform 0.18s ease, border-color 0.18s ease, filter 0.18s ease;
+  animation: scheduleCardSettle 0.7s ease both;
+}
+
+.hero-v2 .proof-shift:hover {
+  transform: translateY(-2px);
+  filter: brightness(1.08);
+}
+
+.hero-v2 .proof-day:nth-child(1) .proof-shift { animation-delay: 0.1s; }
+.hero-v2 .proof-day:nth-child(2) .proof-shift { animation-delay: 0.18s; }
+.hero-v2 .proof-day:nth-child(3) .proof-shift { animation-delay: 0.26s; }
+.hero-v2 .proof-day:nth-child(4) .proof-shift { animation-delay: 0.34s; }
+
+.hero-v2 .proof-hours,
+.hero-v2 .proof-issue,
+.hero-v2 .mockup-badge {
+  animation: statusSoftPulse 5.5s ease-in-out infinite;
 }
 
 .hero-v2 .proof-bottom {
@@ -7038,6 +7128,10 @@ input[type="time"]::-webkit-calendar-picker-indicator:hover {
   box-shadow:
     0 24px 70px rgba(17, 24, 39, 0.14),
     0 0 0 1px rgba(99, 102, 241, 0.04);
+}
+
+.app.light .hero-v2 .product-proof::before {
+  background: linear-gradient(115deg, transparent 18%, rgba(99, 102, 241, 0.12) 42%, transparent 64%);
 }
 
 .app.light .proof-rules,
@@ -7116,6 +7210,16 @@ input[type="time"]::-webkit-calendar-picker-indicator:hover {
   border-color: rgba(245, 158, 11, 0.3);
 }
 
+.app.light .marquee-item {
+  background: #ffffff;
+  border-color: rgba(17, 24, 39, 0.08);
+}
+
+.app.light .marquee-item:hover {
+  background: rgba(99, 102, 241, 0.08);
+  border-color: rgba(99, 102, 241, 0.28);
+}
+
 @media (max-width: 1180px) {
   .hero-v2.landing-hero {
     grid-template-columns: 1fr;
@@ -7187,6 +7291,25 @@ input[type="time"]::-webkit-calendar-picker-indicator:hover {
 
   .voice-button-premium {
     width: 100%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .landing-grid-overlay,
+  .hero-v2.landing-hero::before,
+  .hero-v2.landing-hero::after,
+  .hero-v2 .product-proof,
+  .hero-v2 .product-proof::before,
+  .hero-v2 .proof-shift,
+  .hero-v2 .proof-hours,
+  .hero-v2 .proof-issue,
+  .hero-v2 .mockup-badge {
+    animation: none;
+  }
+
+  .hero-v2 .proof-shift,
+  .marquee-item {
+    transition: none;
   }
 }
 
@@ -7278,6 +7401,14 @@ input[type="time"]::-webkit-calendar-picker-indicator:hover {
   font-weight: 600;
   letter-spacing: -0.02em;
   white-space: nowrap;
+  transition: transform 0.18s ease, border-color 0.18s ease, color 0.18s ease, background 0.18s ease;
+}
+
+.marquee-item:hover {
+  transform: translateY(-2px);
+  border-color: rgba(129, 140, 248, 0.35);
+  color: var(--text-primary);
+  background: rgba(129, 140, 248, 0.08);
 }
 
 .marquee-dot {
