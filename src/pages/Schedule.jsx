@@ -316,37 +316,48 @@ function Schedule() {
   <div className="ai-instr-glow" aria-hidden />
 
   <div className="ai-instr-header">
-    <div className="ai-instr-badge">
-      <Sparkles size={11} />
-      <span>Zaman AI</span>
-    </div>
-    <div>
+    <div className="ai-instr-heading">
+      <div className="ai-instr-badge">
+        <Sparkles size={11} />
+        <span>Zaman AI</span>
+      </div>
       <h2 className="ai-instr-title">Special instructions</h2>
       <p className="ai-instr-subtitle">
         Describe anything in plain English — names, exceptions, relationships, preferences.
         Zaman reads it all and builds around it. No other scheduler can do this.
       </p>
     </div>
-    {specialSpeech.supported && (
-      <button
-        type="button"
-        className={`voice-button ${specialSpeech.listening ? 'listening' : ''}`}
-        onClick={specialSpeech.toggleListening}
-        title={specialSpeech.listening ? 'Stop dictation' : 'Dictate instructions'}
-      >
-        {specialSpeech.listening ? <MicOff size={16} /> : <Mic size={16} />}
-        <span>{specialSpeech.listening ? 'Listening' : 'Talk'}</span>
-      </button>
-    )}
   </div>
 
-  <textarea
-    className="ai-instr-textarea"
-    placeholder={`Try: "Alice is training a new hire this week — keep them together on every shift"\n\nOr: "Sam and Jordan can't work together. Give extra hours to full-time staff Friday."`}
-    value={prompt}
-    onChange={(e) => setPrompt(e.target.value)}
-    rows={4}
-  />
+  <div className="instruction-editor">
+    <div className="instruction-toolbar">
+      <div className="instruction-toolbar-copy">
+        <Mic size={15} />
+        <span>Speak or type manager notes</span>
+      </div>
+      {specialSpeech.supported ? (
+        <button
+          type="button"
+          className={`voice-button voice-button-premium ${specialSpeech.listening ? 'listening' : ''}`}
+          onClick={specialSpeech.toggleListening}
+          title={specialSpeech.listening ? 'Stop dictation' : 'Dictate instructions'}
+        >
+          <span className="voice-dot" aria-hidden />
+          {specialSpeech.listening ? <MicOff size={16} /> : <Mic size={16} />}
+          <span>{specialSpeech.listening ? 'Listening...' : 'Start dictation'}</span>
+        </button>
+      ) : (
+        <span className="voice-unavailable">Voice unavailable in this browser</span>
+      )}
+    </div>
+    <textarea
+      className="ai-instr-textarea"
+      placeholder={`Try: "Alex is training a new hire this week — keep them together on every shift"\n\nOr: "Sam and Jordan can't work together. Give extra hours to full-time staff Friday."`}
+      value={prompt}
+      onChange={(e) => setPrompt(e.target.value)}
+      rows={4}
+    />
+  </div>
 
   <div className="ai-chip-row">
     <span className="ai-chip-label">Try an example:</span>

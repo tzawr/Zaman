@@ -371,7 +371,27 @@ function Settings() {
         subtitle="Describe your coverage needs in plain English. Zaman AI reads this every time it builds a schedule."
         icon={AlignLeft}
       >
-        <div className="voice-field">
+        <div className="instruction-editor coverage-rule-editor">
+          <div className="instruction-toolbar">
+            <div className="instruction-toolbar-copy">
+              <Mic size={15} />
+              <span>Speak or type coverage rules</span>
+            </div>
+            {coverageSpeech.supported ? (
+              <button
+                type="button"
+                className={`voice-button voice-button-premium ${coverageSpeech.listening ? 'listening' : ''}`}
+                onClick={coverageSpeech.toggleListening}
+                title={coverageSpeech.listening ? 'Stop dictation' : 'Dictate coverage rules'}
+              >
+                <span className="voice-dot" aria-hidden />
+                {coverageSpeech.listening ? <MicOff size={16} /> : <Mic size={16} />}
+                <span>{coverageSpeech.listening ? 'Listening...' : 'Start dictation'}</span>
+              </button>
+            ) : (
+              <span className="voice-unavailable">Voice unavailable in this browser</span>
+            )}
+          </div>
           <textarea
             className="input ai-instr-textarea"
             rows={5}
@@ -381,17 +401,6 @@ function Settings() {
             onBlur={() => saveToFirebase({ coverageRules })}
             style={{ resize: 'vertical', lineHeight: 1.6 }}
           />
-          {coverageSpeech.supported && (
-            <button
-              type="button"
-              className={`voice-button voice-button-floating ${coverageSpeech.listening ? 'listening' : ''}`}
-              onClick={coverageSpeech.toggleListening}
-              title={coverageSpeech.listening ? 'Stop dictation' : 'Dictate coverage rules'}
-            >
-              {coverageSpeech.listening ? <MicOff size={16} /> : <Mic size={16} />}
-              <span>{coverageSpeech.listening ? 'Listening' : 'Talk'}</span>
-            </button>
-          )}
         </div>
         <p style={{ fontSize: 12, color: 'var(--text-tertiary)', margin: '6px 0 0' }}>
           Changes save automatically when you click away.
