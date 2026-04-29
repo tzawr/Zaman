@@ -6913,55 +6913,104 @@ input[type="time"]::-webkit-calendar-picker-indicator:hover {
 
 .hero-v2.landing-hero {
   display: grid;
-  grid-template-columns: minmax(360px, 0.85fr) minmax(540px, 1.15fr);
-  align-items: center;
-  gap: clamp(36px, 5vw, 82px);
-  width: min(100%, 1540px);
-  min-height: calc(100vh - 72px);
+  grid-template-columns: 1fr;
+  align-items: start;
+  gap: 38px;
+  width: min(100%, 1380px);
+  min-height: auto;
   margin: 0 auto;
-  padding: 84px clamp(28px, 4vw, 72px) 108px;
+  padding: 74px clamp(24px, 4vw, 72px) 88px;
   justify-content: center;
 }
 
 .hero-v2 .landing-hero-content {
-  max-width: 610px;
-  align-items: flex-start;
-  text-align: left;
+  justify-self: center;
+  max-width: 940px;
+  align-items: center;
+  text-align: center;
 }
 
 .hero-v2 .landing-hero-title {
-  max-width: 620px;
-  font-size: clamp(54px, 5.4vw, 86px);
+  max-width: 980px;
+  font-size: clamp(50px, 6.2vw, 88px);
+  line-height: 0.98;
+  margin-bottom: 22px;
 }
 
 .hero-v2 .landing-hero-subtitle {
-  max-width: 580px;
-  margin-left: 0;
-  margin-right: 0;
+  max-width: 680px;
+  margin-left: auto;
+  margin-right: auto;
+  margin-bottom: 30px;
+  font-size: 18px;
 }
 
 .hero-v2 .landing-hero-actions,
 .hero-v2 .landing-hero-meta {
-  justify-content: flex-start;
+  justify-content: center;
+}
+
+.hero-v2 .landing-hero-actions {
+  margin-bottom: 22px;
+}
+
+.hero-v2 .landing-hero-meta {
+  margin-bottom: 0;
 }
 
 .hero-v2 .landing-hero-mockup {
   justify-self: center;
   width: 100%;
-  max-width: 790px;
+  max-width: 1160px;
   margin-top: 0;
 }
 
 .hero-v2 .product-proof {
   transform: none;
+  border-radius: 22px;
 }
 
 .hero-v2 .mockup-window {
   transform: none;
+  box-shadow:
+    0 34px 90px rgba(0, 0, 0, 0.48),
+    0 0 120px rgba(99, 102, 241, 0.12),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05);
 }
 
 .hero-v2 .mockup-window:hover {
   transform: translateY(-3px);
+}
+
+.hero-v2 .mockup-body {
+  padding: 28px;
+}
+
+.hero-v2 .proof-layout {
+  gap: 20px;
+}
+
+.hero-v2 .proof-rules {
+  padding: 16px;
+  gap: 12px;
+}
+
+.hero-v2 .proof-week {
+  gap: 14px;
+}
+
+.hero-v2 .proof-day {
+  padding: 14px;
+}
+
+.hero-v2 .proof-shift {
+  min-height: 74px;
+  padding: 12px;
+}
+
+.hero-v2 .proof-bottom {
+  grid-template-columns: 230px minmax(0, 1fr);
+  margin-top: 14px;
 }
 
 .app.light .hero-v2 .landing-eyebrow {
@@ -7061,37 +7110,51 @@ input[type="time"]::-webkit-calendar-picker-indicator:hover {
 
 @media (max-width: 1180px) {
   .hero-v2.landing-hero {
-    grid-template-columns: 1fr;
-    padding-top: 72px;
-  }
-
-  .hero-v2 .landing-hero-content {
-    justify-self: center;
-    align-items: center;
-    text-align: center;
-  }
-
-  .hero-v2 .landing-hero-actions,
-  .hero-v2 .landing-hero-meta {
-    justify-content: center;
+    padding-top: 64px;
   }
 
   .hero-v2 .landing-hero-mockup {
-    max-width: 860px;
+    max-width: 960px;
+  }
+
+  .hero-v2 .proof-rules {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .hero-v2 .proof-week {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 
 @media (max-width: 720px) {
   .hero-v2.landing-hero {
-    padding: 54px 16px 82px;
+    padding: 48px 16px 72px;
+    gap: 28px;
   }
 
   .hero-v2 .landing-hero-title {
-    font-size: clamp(42px, 13vw, 58px);
+    font-size: clamp(38px, 12vw, 56px);
+  }
+
+  .hero-v2 .landing-hero-subtitle {
+    font-size: 16px;
   }
 
   .hero-v2 .landing-hero-mockup {
     width: 100%;
+  }
+
+  .hero-v2 .mockup-body {
+    padding: 16px;
+  }
+
+  .hero-v2 .proof-rules {
+    display: none;
+  }
+
+  .hero-v2 .proof-week,
+  .hero-v2 .proof-bottom {
+    grid-template-columns: 1fr;
   }
 
   .instruction-toolbar {

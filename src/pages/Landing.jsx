@@ -130,8 +130,8 @@ function Hero({ onCTA, isSignedIn }) {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8, delay: 0.1, ease: [0.16, 1, 0.3, 1] }}
         >
-          <span className="hero-line">Turn messy availability</span>
-          <span className="hero-line">into a weekly schedule.</span>
+          <span className="hero-line">AI shift scheduling</span>
+          <span className="hero-line">managers can trust.</span>
         </motion.h1>
 
         <motion.p 
@@ -141,7 +141,7 @@ function Hero({ onCTA, isSignedIn }) {
           transition={{ duration: 0.7, delay: 0.3, ease: 'easeOut' }}
         >
           Zaman reads your team, targets, availability, time off, and coverage rules,
-          then builds a schedule your manager can actually trust.
+          then builds a weekly schedule that is checked before anyone sees it.
         </motion.p>
 
         <motion.div 
