@@ -18,6 +18,8 @@ import {
   MessageSquare,
   Zap,
   GraduationCap,
+  Mic,
+  MicOff,
 } from 'lucide-react'
 import { 
   collection, 
@@ -33,6 +35,7 @@ import { useAuth } from '../AuthContext'
 import ScheduleTable from '../components/ScheduleTable'
 import { exportToCSV, exportToPNG, exportToPDF } from '../utils/exportSchedule'
 import { runScheduler } from '../utils/scheduler'
+import { useSpeechInput } from '../utils/useSpeechInput'
 import PageHero from '../components/PageHero'
 import Section from '../components/Section'
 
@@ -71,6 +74,9 @@ function Schedule() {
   const [scheduleData, setScheduleData] = useState(null)
   const [exporting, setExporting] = useState(null) // null | 'csv' | 'png' | 'pdf'
   const [exportMenuOpen, setExportMenuOpen] = useState(false)
+  const specialSpeech = useSpeechInput((text) => {
+    setPrompt(prev => prev ? `${prev.trim()}\n${text}` : text)
+  })
 
   useEffect(() => {
     if (!currentUser) navigate('/signin')
@@ -321,6 +327,17 @@ function Schedule() {
         Zaman reads it all and builds around it. No other scheduler can do this.
       </p>
     </div>
+    {specialSpeech.supported && (
+      <button
+        type="button"
+        className={`voice-button ${specialSpeech.listening ? 'listening' : ''}`}
+        onClick={specialSpeech.toggleListening}
+        title={specialSpeech.listening ? 'Stop dictation' : 'Dictate instructions'}
+      >
+        {specialSpeech.listening ? <MicOff size={16} /> : <Mic size={16} />}
+        <span>{specialSpeech.listening ? 'Listening' : 'Talk'}</span>
+      </button>
+    )}
   </div>
 
   <textarea

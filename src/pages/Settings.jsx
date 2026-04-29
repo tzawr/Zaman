@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
-import { motion } from 'framer-motion'
-import { Loader2, ArrowLeft, Check, X, ArrowRight, Pencil, Trash2, Plus, Clock, Shield, Target, Users, Eye, KeyRound, Lock, AlignLeft } from 'lucide-react'
+import { Loader2, ArrowLeft, Check, X, ArrowRight, Pencil, Trash2, Plus, Clock, Shield, Target, Users, Eye, KeyRound, Lock, AlignLeft, Mic, MicOff } from 'lucide-react'
 import { doc, onSnapshot, setDoc, serverTimestamp } from 'firebase/firestore'
 import {
   updatePassword,
@@ -14,6 +13,7 @@ import { useAuth } from '../AuthContext'
 import { useToast } from '../components/Toast'
 import PageHero from '../components/PageHero'
 import Section from '../components/Section'
+import { useSpeechInput } from '../utils/useSpeechInput'
 
 const DAYS = [
   { key: 'monday', label: 'Monday' },
@@ -47,7 +47,6 @@ function Settings() {
   const [allowEmployeeFullView, setAllowEmployeeFullView] = useState(false)
   const [roles, setRoles] = useState([])
   const [coverageRules, setCoverageRules] = useState('')
-  const [userData, setUserData] = useState(null)
 
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -63,6 +62,9 @@ function Settings() {
   const [passwordChangeMsg, setPasswordChangeMsg] = useState('')
   const [passwordChangeLoading, setPasswordChangeLoading] = useState(false)
   const [passwordResetSent, setPasswordResetSent] = useState(false)
+  const coverageSpeech = useSpeechInput((text) => {
+    setCoverageRules(prev => prev ? `${prev.trim()}\n${text}` : text)
+  })
 
   useEffect(() => {
     if (!currentUser) navigate('/signin')
@@ -77,7 +79,6 @@ function Settings() {
           navigate('/onboarding')
           return
         }
-        setUserData(d)
         if (d.operatingHours) setOperatingHours(d.operatingHours)
         if (d.coverage) setCoverage(d.coverage)
         if (d.preventClopening !== undefined) setPreventClopening(d.preventClopening)
@@ -99,7 +100,7 @@ function Settings() {
         { ...updates, settingsUpdatedAt: serverTimestamp() },
         { merge: true }
       )
-    } catch (err) {
+    } catch {
       toast.error('Failed to save.')
     } finally {
       setSaving(false)
@@ -370,15 +371,28 @@ function Settings() {
         subtitle="Describe your coverage needs in plain English. Zaman AI reads this every time it builds a schedule."
         icon={AlignLeft}
       >
-        <textarea
-          className="input ai-instr-textarea"
-          rows={5}
-          placeholder={`e.g. "Always have at least one senior barista on shift. Weekend mornings need 3 people minimum. Never leave the floor with only one person during lunch hours."`}
-          value={coverageRules}
-          onChange={(e) => setCoverageRules(e.target.value)}
-          onBlur={() => saveToFirebase({ coverageRules })}
-          style={{ resize: 'vertical', lineHeight: 1.6 }}
-        />
+        <div className="voice-field">
+          <textarea
+            className="input ai-instr-textarea"
+            rows={5}
+            placeholder={`e.g. "Always have at least one senior barista on shift. Weekend mornings need 3 people minimum. Never leave the floor with only one person during lunch hours."`}
+            value={coverageRules}
+            onChange={(e) => setCoverageRules(e.target.value)}
+            onBlur={() => saveToFirebase({ coverageRules })}
+            style={{ resize: 'vertical', lineHeight: 1.6 }}
+          />
+          {coverageSpeech.supported && (
+            <button
+              type="button"
+              className={`voice-button voice-button-floating ${coverageSpeech.listening ? 'listening' : ''}`}
+              onClick={coverageSpeech.toggleListening}
+              title={coverageSpeech.listening ? 'Stop dictation' : 'Dictate coverage rules'}
+            >
+              {coverageSpeech.listening ? <MicOff size={16} /> : <Mic size={16} />}
+              <span>{coverageSpeech.listening ? 'Listening' : 'Talk'}</span>
+            </button>
+          )}
+        </div>
         <p style={{ fontSize: 12, color: 'var(--text-tertiary)', margin: '6px 0 0' }}>
           Changes save automatically when you click away.
         </p>

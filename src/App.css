@@ -4932,6 +4932,49 @@ input:checked + .slider:before {
   border-left: 3px solid var(--accent-1);
 }
 
+.voice-field {
+  position: relative;
+}
+
+.voice-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-height: 38px;
+  padding: 9px 13px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-subtle);
+  background: var(--bg-elevated);
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  font-family: var(--font-sans);
+  white-space: nowrap;
+}
+
+.voice-button:hover {
+  border-color: var(--border-accent);
+  color: var(--text-primary);
+  transform: translateY(-1px);
+}
+
+.voice-button.listening {
+  color: #fff;
+  background: linear-gradient(135deg, #EF4444, #EC4899);
+  border-color: rgba(239, 68, 68, 0.45);
+  box-shadow: 0 0 24px rgba(239, 68, 68, 0.28);
+}
+
+.voice-button-floating {
+  position: absolute;
+  right: 12px;
+  top: 12px;
+  z-index: 1;
+}
+
 /* Responsive */
 @media (max-width: 1200px) {
   .schedule-table {
@@ -6480,6 +6523,19 @@ input[type="time"]::-webkit-calendar-picker-indicator:hover {
   color: #0A0A0B;
 }
 
+.app.light textarea,
+.app.light select,
+.app.light input {
+  color: #111827;
+}
+
+.app.light .input::placeholder,
+.app.light .ai-instr-textarea::placeholder,
+.app.light .prompt-textarea::placeholder {
+  color: #6B7280;
+  opacity: 1;
+}
+
 .app.light .input:focus,
 .app.light .time-input:focus,
 .app.light .prompt-textarea:focus {
@@ -6514,6 +6570,76 @@ input[type="time"]::-webkit-calendar-picker-indicator:hover {
   background: #F5F5F7;
   border-color: rgba(0, 0, 0, 0.2);
   color: #0A0A0B;
+}
+
+.app.light .voice-button {
+  background: white;
+  border-color: rgba(0, 0, 0, 0.12);
+  color: #374151;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.06);
+}
+
+.app.light .voice-button:hover {
+  color: #111827;
+  border-color: rgba(99, 102, 241, 0.45);
+}
+
+.app.light .voice-button.listening {
+  color: white;
+  border-color: rgba(239, 68, 68, 0.55);
+}
+
+.app.light .footer-list a,
+.app.light .footer-tagline,
+.app.light .footer-made,
+.app.light .footer-copyright,
+.app.light .schedule-meta,
+.app.light .landing-hero-subtitle,
+.app.light .landing-section-desc,
+.app.light .landing-feature-desc,
+.app.light .landing-step-desc,
+.app.light .testimonial-role,
+.app.light .pricing-page-desc,
+.app.light .pricing-includes p {
+  color: #4B5563;
+}
+
+.app.light .footer-col-title,
+.app.light .schedule-day-name,
+.app.light .schedule-summary-role,
+.app.light .export-item-desc,
+.app.light .page-hero-subtitle,
+.app.light .gen-stat-label,
+.app.light .dashboard-card-description,
+.app.light .team-card-meta,
+.app.light .role-empty,
+.app.light .rule-description,
+.app.light .ai-instr-subtitle,
+.app.light .hint-text {
+  color: #6B7280;
+}
+
+.app.light .schedule-week,
+.app.light .schedule-day-date,
+.app.light .schedule-summary-name,
+.app.light .schedule-summary-value,
+.app.light .schedule-issue-heading,
+.app.light .schedule-issues-title,
+.app.light .schedule-recommendations-title,
+.app.light .rule-title,
+.app.light .role-name,
+.app.light .dashboard-section-title,
+.app.light .pricing-includes h3 {
+  color: #111827;
+}
+
+.app.light .schedule-issue-card,
+.app.light .schedule-recommendation-card {
+  color: #374151;
+}
+
+.app.light .schedule-issue-card span {
+  color: #6B7280;
 }
 
 /* Ghost CTA */
@@ -7518,8 +7644,10 @@ input[type="time"]::-webkit-calendar-picker-indicator:hover {
   position: relative;
   z-index: 1;
   display: flex;
-  flex-direction: column;
-  gap: 10px;
+  align-items: flex-start;
+  justify-content: space-between;
+  flex-direction: row;
+  gap: 16px;
   margin-bottom: 18px;
 }
 
@@ -7678,14 +7806,29 @@ input[type="time"]::-webkit-calendar-picker-indicator:hover {
 
 .app.light .ai-instr-textarea {
   background: #f8f8fb;
-  color: var(--text-primary);
+  color: #111827;
+  border-color: rgba(99, 102, 241, 0.22);
 }
 
 .app.light .ai-understands-item {
   background: #f8f8fb;
+  color: #374151;
+}
+
+.app.light .ai-chip {
+  color: #4B5563;
+  background: rgba(99, 102, 241, 0.08);
+}
+
+.app.light .ai-chip:hover {
+  color: #111827;
 }
 
 @media (max-width: 700px) {
+  .ai-instr-header {
+    flex-direction: column;
+  }
+
   .ai-understands-grid {
     grid-template-columns: repeat(2, 1fr);
   }
