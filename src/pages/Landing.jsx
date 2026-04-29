@@ -36,6 +36,7 @@ function Landing() {
     <div className="landing landing-v2">
       <Hero onCTA={handleCTA} isSignedIn={!!currentUser} />
       <MarqueeStrip />
+      <ProductStory />
       <HowItWorks />
       <TrustSection />
       <PlaygroundDemo />
@@ -55,6 +56,7 @@ function Hero({ onCTA, isSignedIn }) {
   return (
     <section ref={containerRef} className="landing-hero hero-v2">
       <div className="landing-grid-overlay" />
+      <ConstraintEngineScene />
 
       <motion.div 
         className="landing-hero-content"
@@ -179,6 +181,39 @@ function Hero({ onCTA, isSignedIn }) {
         </div>
       </motion.div>
     </section>
+  )
+}
+
+function ConstraintEngineScene() {
+  const nodes = [
+    { label: 'Rules', className: 'rules' },
+    { label: 'Coverage', className: 'coverage' },
+    { label: 'Availability', className: 'availability' },
+    { label: 'Targets', className: 'targets' },
+    { label: 'Validator', className: 'validator' },
+    { label: 'Schedule', className: 'schedule' },
+  ]
+
+  return (
+    <div className="constraint-scene-3d" aria-hidden="true">
+      <div className="constraint-stage">
+        <div className="constraint-ring constraint-ring-outer" />
+        <div className="constraint-ring constraint-ring-inner" />
+        <div className="constraint-line line-a" />
+        <div className="constraint-line line-b" />
+        <div className="constraint-line line-c" />
+        <div className="constraint-line line-d" />
+        {nodes.map(node => (
+          <div key={node.label} className={`constraint-node node-${node.className}`}>
+            <span />
+            <em>{node.label}</em>
+          </div>
+        ))}
+        <div className="constraint-core">
+          <Sparkles size={18} />
+        </div>
+      </div>
+    </div>
   )
 }
 
@@ -376,6 +411,91 @@ function MarqueeStrip() {
             </span>
           ))}
         </div>
+      </div>
+    </section>
+  )
+}
+
+function ProductStory() {
+  const steps = [
+    {
+      icon: MessageSquare,
+      label: 'Manager input',
+      title: 'Say the rules naturally',
+      text: 'Opening needs two people by 4am. No clopening. Keep trainees with mentors.',
+    },
+    {
+      icon: Brain,
+      label: 'AI parsing',
+      title: 'Turn words into constraints',
+      text: 'Roles, coverage windows, avoid-pairs, max days, and preferences become structured rules.',
+    },
+    {
+      icon: Zap,
+      label: 'Scheduler',
+      title: 'Build the week deterministically',
+      text: 'The engine fills shifts, balances target hours, and checks each assignment against availability.',
+    },
+    {
+      icon: AlertTriangle,
+      label: 'Business review',
+      title: 'Explain the real tradeoffs',
+      text: 'If a week is impossible, Zaman says why and gives the manager the cleanest next move.',
+    },
+  ]
+
+  return (
+    <section className="landing-section product-story-section">
+      <SectionHeader
+        eyebrow="Product system"
+        title="From messy notes to a checked schedule"
+        description="A scheduling workflow that feels smart because every step is visible."
+      />
+
+      <div className="product-story-grid">
+        <div className="story-rail">
+          {steps.map((step, index) => (
+            <motion.div
+              key={step.label}
+              className="story-step-card"
+              initial={{ opacity: 0, x: -24 }}
+              whileInView={{ opacity: 1, x: 0 }}
+              viewport={{ once: true, margin: '-80px' }}
+              transition={{ duration: 0.55, delay: index * 0.08, ease: 'easeOut' }}
+            >
+              <div className="story-step-icon">
+                <step.icon size={18} />
+              </div>
+              <div>
+                <span>{step.label}</span>
+                <strong>{step.title}</strong>
+                <p>{step.text}</p>
+              </div>
+            </motion.div>
+          ))}
+        </div>
+
+        <motion.div
+          className="story-engine-card"
+          initial={{ opacity: 0, y: 28 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, margin: '-80px' }}
+          transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
+        >
+          <div className="story-engine-3d" aria-hidden="true">
+            <div className="story-plane plane-back" />
+            <div className="story-plane plane-mid" />
+            <div className="story-plane plane-front" />
+            <div className="story-flow-card story-flow-rules">Rules parsed</div>
+            <div className="story-flow-card story-flow-hours">Hours balanced</div>
+            <div className="story-flow-card story-flow-review">Ready to review</div>
+          </div>
+          <div className="story-engine-copy">
+            <span>Constraint engine</span>
+            <strong>Every schedule is generated, scored, and explained.</strong>
+            <p>Managers get a schedule they can use, plus a clear reason when reality blocks a perfect week.</p>
+          </div>
+        </motion.div>
       </div>
     </section>
   )
