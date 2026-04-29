@@ -67,7 +67,7 @@ function Hero({ onCTA, isSignedIn }) {
         >
           <span className="eyebrow-dot" />
           <Sparkles size={13} />
-          <span>AI rule parsing. Deterministic scheduling.</span>
+          <span>AI rule parsing. Constraint-based scheduling.</span>
         </motion.div>
 
         <motion.h1 
@@ -76,8 +76,8 @@ function Hero({ onCTA, isSignedIn }) {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8, delay: 0.1, ease: [0.16, 1, 0.3, 1] }}
         >
-          <span className="hero-line">AI shift scheduling</span>
-          <span className="hero-line">managers can trust.</span>
+          <span className="hero-line">Build the week your</span>
+          <span className="hero-line">team can actually work.</span>
         </motion.h1>
 
         <motion.p 
@@ -86,8 +86,8 @@ function Hero({ onCTA, isSignedIn }) {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.7, delay: 0.3, ease: 'easeOut' }}
         >
-          Zaman reads your team, targets, availability, time off, and coverage rules,
-          then builds a weekly schedule that is checked before anyone sees it.
+          Zaman turns plain-English coverage rules, availability, time off,
+          and target hours into a checked schedule with clear business tradeoffs.
         </motion.p>
 
         <motion.div 
@@ -128,6 +128,26 @@ function Hero({ onCTA, isSignedIn }) {
             <span>Exports CSV, PNG, PDF</span>
           </div>
         </motion.div>
+
+        <motion.div
+          className="hero-proof-row"
+          initial={{ opacity: 0, y: 18 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.7, delay: 0.8, ease: 'easeOut' }}
+        >
+          <div>
+            <strong>Rules</strong>
+            <span>Plain English</span>
+          </div>
+          <div>
+            <strong>Engine</strong>
+            <span>Deterministic</span>
+          </div>
+          <div>
+            <strong>Review</strong>
+            <span>Explained gaps</span>
+          </div>
+        </motion.div>
       </motion.div>
 
       <motion.div 
@@ -136,7 +156,27 @@ function Hero({ onCTA, isSignedIn }) {
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.7, delay: 0.25, ease: [0.16, 1, 0.3, 1] }}
       >
-        <MockupCard />
+        <div className="hero-preview-frame">
+          <div className="hero-preview-topline">
+            <span className="hero-preview-status" />
+            <span>Schedule graph ready</span>
+          </div>
+          <MockupCard />
+          <div className="hero-floating-card hero-floating-card-left">
+            <Target size={15} />
+            <div>
+              <strong>13 targets checked</strong>
+              <span>Hours balanced before review</span>
+            </div>
+          </div>
+          <div className="hero-floating-card hero-floating-card-right">
+            <AlertTriangle size={15} />
+            <div>
+              <strong>1 tradeoff explained</strong>
+              <span>Availability blocks 40h goal</span>
+            </div>
+          </div>
+        </div>
       </motion.div>
     </section>
   )
@@ -326,7 +366,7 @@ function MarqueeStrip() {
   ]
   return (
     <section className="marquee-section">
-      <p className="marquee-label">Built for teams in</p>
+      <p className="marquee-label">Built for shift teams in</p>
       <div className="marquee">
         <div className="marquee-track">
           {items.map((item) => (
