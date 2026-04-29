@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { motion, useInView, animate, useScroll, useTransform } from 'framer-motion'
+import { motion, useInView, animate } from 'framer-motion'
 import { 
   ArrowRight, 
   Sparkles, 
@@ -34,7 +34,6 @@ function Landing() {
 
   return (
     <div className="landing landing-v2">
-      <CursorSpotlight />
       <Hero onCTA={handleCTA} isSignedIn={!!currentUser} />
       <MarqueeStrip />
       <HowItWorks />
@@ -49,69 +48,16 @@ function Landing() {
   )
 }
 
-// ========== CURSOR SPOTLIGHT (follows mouse globally) ==========
-function CursorSpotlight() {
-  const [pos, setPos] = useState({ x: 50, y: 50 })
-
-  useEffect(() => {
-    function handleMove(e) {
-      setPos({ 
-        x: (e.clientX / window.innerWidth) * 100, 
-        y: (e.clientY / window.innerHeight) * 100 
-      })
-    }
-    window.addEventListener('mousemove', handleMove)
-    return () => window.removeEventListener('mousemove', handleMove)
-  }, [])
-
-  return (
-    <div 
-      className="cursor-spotlight"
-      style={{ 
-        background: `radial-gradient(600px at ${pos.x}% ${pos.y}%, rgba(99, 102, 241, 0.08), transparent 60%)` 
-      }}
-    />
-  )
-}
-
 // ========== HERO ==========
 function Hero({ onCTA, isSignedIn }) {
   const containerRef = useRef(null)
-  const { scrollYProgress } = useScroll({ 
-    target: containerRef,
-    offset: ['start start', 'end start']
-  })
-  
-  const titleY = useTransform(scrollYProgress, [0, 1], [0, 100])
-  const titleOpacity = useTransform(scrollYProgress, [0, 0.7], [1, 0])
-  const mockupY = useTransform(scrollYProgress, [0, 1], [0, 200])
-  const mockupRotate = useTransform(scrollYProgress, [0, 1], [6, 0])
 
   return (
     <section ref={containerRef} className="landing-hero hero-v2">
-      <div className="landing-mesh">
-        <motion.div 
-          className="landing-blob landing-blob-1"
-          animate={{ x: [0, 60, -30, 0], y: [0, -40, 30, 0], scale: [1, 1.15, 0.9, 1] }}
-          transition={{ duration: 22, repeat: Infinity, ease: 'easeInOut' }}
-        />
-        <motion.div 
-          className="landing-blob landing-blob-2"
-          animate={{ x: [0, -70, 40, 0], y: [0, 30, -40, 0], scale: [1, 0.85, 1.2, 1] }}
-          transition={{ duration: 28, repeat: Infinity, ease: 'easeInOut' }}
-        />
-        <motion.div 
-          className="landing-blob landing-blob-3"
-          animate={{ x: [0, 50, -60, 0], y: [0, -30, 40, 0] }}
-          transition={{ duration: 20, repeat: Infinity, ease: 'easeInOut' }}
-        />
-      </div>
-
       <div className="landing-grid-overlay" />
 
       <motion.div 
         className="landing-hero-content"
-        style={{ y: titleY, opacity: titleOpacity }}
       >
         <motion.div
           initial={{ opacity: 0, y: 20, scale: 0.95 }}
@@ -186,13 +132,9 @@ function Hero({ onCTA, isSignedIn }) {
 
       <motion.div 
         className="landing-hero-mockup"
-        style={{ 
-          y: mockupY,
-          rotateX: mockupRotate
-        }}
-        initial={{ opacity: 0, y: 100 }}
+        initial={{ opacity: 0, y: 24 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 1.2, delay: 0.5, ease: [0.16, 1, 0.3, 1] }}
+        transition={{ duration: 0.7, delay: 0.25, ease: [0.16, 1, 0.3, 1] }}
       >
         <MockupCard />
       </motion.div>
@@ -387,8 +329,8 @@ function MarqueeStrip() {
       <p className="marquee-label">Built for teams in</p>
       <div className="marquee">
         <div className="marquee-track">
-          {[...items, ...items].map((item, i) => (
-            <span key={i} className="marquee-item">
+          {items.map((item) => (
+            <span key={item} className="marquee-item">
               <span className="marquee-dot" />
               {item}
             </span>
