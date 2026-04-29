@@ -1,7 +1,11 @@
 import { Link } from 'react-router-dom'
+import { CheckCircle2 } from 'lucide-react'
+import { useAuth } from '../AuthContext'
 
 function Footer() {
   const year = new Date().getFullYear()
+  const { currentUser } = useAuth()
+  const startPath = currentUser ? '/dashboard' : '/signin'
 
   return (
     <footer className="site-footer">
@@ -10,17 +14,22 @@ function Footer() {
           <div className="footer-brand">
             <h3 className="footer-logo">Zaman</h3>
             <p className="footer-tagline">
-              Smarter scheduling for teams that have better things to do.
+              Shift scheduling that understands your rules, checks your constraints,
+              and tells you when a week cannot work.
             </p>
+            <div className="footer-trust">
+              <CheckCircle2 size={14} />
+              <span>AI rule parsing. Deterministic schedules.</span>
+            </div>
           </div>
 
           <div className="footer-cols">
             <div className="footer-col">
               <h4 className="footer-col-title">Product</h4>
               <ul className="footer-list">
-                <li><Link to="/">Features</Link></li>
-                <li><Link to="/">Pricing</Link></li>
-                <li><Link to="/signup">Get started</Link></li>
+                <li><Link to="/#how-it-works">How it works</Link></li>
+                <li><Link to="/pricing">Pricing</Link></li>
+                <li><Link to={startPath}>Get started</Link></li>
               </ul>
             </div>
 
@@ -29,6 +38,7 @@ function Footer() {
               <ul className="footer-list">
                 <li><a href="mailto:aliseyfiazadsa6@gmail.com">Contact</a></li>
                 <li><Link to="/about">About</Link></li>
+                <li><Link to="/security">Security</Link></li>
               </ul>
             </div>
 
@@ -37,7 +47,6 @@ function Footer() {
               <ul className="footer-list">
                 <li><Link to="/privacy">Privacy</Link></li>
                 <li><Link to="/terms">Terms</Link></li>
-                <li><Link to="/security">Security</Link></li>
               </ul>
             </div>
           </div>
@@ -48,7 +57,7 @@ function Footer() {
             © {year} Zaman. All rights reserved.
           </p>
           <p className="footer-made">
-            Made with intent in Irvine, CA.
+            Built for cafes, restaurants, retail teams, and shift managers.
           </p>
         </div>
       </div>

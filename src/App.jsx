@@ -18,6 +18,7 @@ import Privacy from './pages/Privacy'
 import Terms from './pages/Terms'
 import Security from './pages/Security'
 import About from './pages/About'
+import PricingPage from './pages/Pricing'
 import InviteAccept from './pages/InviteAccept'
 import MySchedule from './pages/MySchedule'
 import Invite from './pages/Invite'
@@ -40,12 +41,6 @@ function App() {
     if (saved === 'light') return false
     return true
   })
-
-  function toggleTheme() {
-    const next = !darkMode
-    setDarkMode(next)
-    localStorage.setItem('zaman-theme', next ? 'dark' : 'light')
-  }
 
   return (
     <BrowserRouter>
@@ -71,6 +66,7 @@ function App() {
   <Route path="/terms" element={<Terms />} />
   <Route path="/security" element={<Security />} />
   <Route path="/about" element={<About />} />
+  <Route path="/pricing" element={<PricingPage />} />
 
   <Route path="/onboarding" element={<ProtectedRoute><Onboarding /></ProtectedRoute>} />
   <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
