@@ -163,6 +163,7 @@ function Hero({ onCTA, isSignedIn }) {
             <span className="hero-preview-status" />
             <span>Schedule graph ready</span>
           </div>
+          <HeroOrbit3D />
           <MockupCard />
           <div className="hero-floating-card hero-floating-card-left">
             <Target size={15} />
@@ -213,6 +214,59 @@ function ConstraintEngineScene() {
           <Sparkles size={18} />
         </div>
       </div>
+    </div>
+  )
+}
+
+function HeroOrbit3D() {
+  const cards = [
+    { label: 'Rules', value: '12 parsed', className: 'rules' },
+    { label: 'Coverage', value: '7 windows', className: 'coverage' },
+    { label: 'Hours', value: '13 targets', className: 'hours' },
+    { label: 'Review', value: '1 tradeoff', className: 'review' },
+  ]
+
+  return (
+    <div className="hero-orbit-3d" aria-hidden="true">
+      <div className="orbit-rings">
+        <span className="orbit-ring ring-one" />
+        <span className="orbit-ring ring-two" />
+        <span className="orbit-ring ring-three" />
+      </div>
+      <div className="schedule-cube">
+        <div className="cube-face cube-front">
+          <span>Mon</span>
+          <i />
+          <i />
+          <i />
+        </div>
+        <div className="cube-face cube-back">
+          <span>Tue</span>
+          <i />
+          <i />
+        </div>
+        <div className="cube-face cube-right">
+          <span>Wed</span>
+          <i />
+          <i />
+          <i />
+        </div>
+        <div className="cube-face cube-left">
+          <span>Rules</span>
+          <i />
+          <i />
+        </div>
+        <div className="cube-face cube-top">
+          <span>AI</span>
+        </div>
+        <div className="cube-face cube-bottom" />
+      </div>
+      {cards.map(card => (
+        <div key={card.label} className={`orbit-card orbit-${card.className}`}>
+          <strong>{card.label}</strong>
+          <span>{card.value}</span>
+        </div>
+      ))}
     </div>
   )
 }

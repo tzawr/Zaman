@@ -6930,6 +6930,26 @@ input[type="time"]::-webkit-calendar-picker-indicator:hover {
   50% { transform: translate3d(10px, -10px, calc(var(--z) + 20px)); }
 }
 
+@keyframes orbitSceneFloat {
+  0%, 100% { transform: translateY(0) rotateX(0deg); }
+  50% { transform: translateY(-8px) rotateX(2deg); }
+}
+
+@keyframes cubeSpin {
+  from { transform: rotateX(-18deg) rotateY(0deg) rotateZ(2deg); }
+  to { transform: rotateX(-18deg) rotateY(360deg) rotateZ(2deg); }
+}
+
+@keyframes orbitRingSpin {
+  from { transform: translate(-50%, -50%) rotateX(66deg) rotateZ(0deg); }
+  to { transform: translate(-50%, -50%) rotateX(66deg) rotateZ(360deg); }
+}
+
+@keyframes orbitCardFloat {
+  0%, 100% { transform: translate3d(var(--x), var(--y), var(--z)) rotateY(-12deg); }
+  50% { transform: translate3d(calc(var(--x) + 8px), calc(var(--y) - 10px), calc(var(--z) + 22px)) rotateY(8deg); }
+}
+
 .typing-cursor {
   display: inline-block;
   font-weight: 300;
@@ -7261,6 +7281,174 @@ input[type="time"]::-webkit-calendar-picker-indicator:hover {
   text-transform: uppercase;
 }
 
+.hero-orbit-3d {
+  position: relative;
+  height: 250px;
+  margin: 0 0 18px;
+  border-radius: 24px;
+  border: 1px solid rgba(166, 173, 189, 0.14);
+  background:
+    radial-gradient(circle at 50% 46%, rgba(45, 212, 191, 0.18), transparent 42%),
+    radial-gradient(circle at 64% 28%, rgba(118, 103, 255, 0.22), transparent 36%),
+    rgba(255, 255, 255, 0.035);
+  overflow: hidden;
+  perspective: 1100px;
+  transform-style: preserve-3d;
+  animation: orbitSceneFloat 6s ease-in-out infinite;
+}
+
+.hero-orbit-3d::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(255,255,255,0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,0.05) 1px, transparent 1px);
+  background-size: 34px 34px;
+  mask-image: radial-gradient(circle at center, black, transparent 74%);
+  -webkit-mask-image: radial-gradient(circle at center, black, transparent 74%);
+  opacity: 0.48;
+}
+
+.orbit-rings,
+.schedule-cube,
+.orbit-card {
+  position: absolute;
+  transform-style: preserve-3d;
+}
+
+.orbit-rings {
+  inset: 0;
+}
+
+.orbit-ring {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  border-radius: 50%;
+  border: 1px solid rgba(45, 212, 191, 0.24);
+  box-shadow: 0 0 34px rgba(45, 212, 191, 0.08);
+  animation: orbitRingSpin 9s linear infinite;
+}
+
+.ring-one {
+  width: 68%;
+  height: 68%;
+}
+
+.ring-two {
+  width: 50%;
+  height: 50%;
+  border-color: rgba(118, 103, 255, 0.3);
+  animation-duration: 7s;
+  animation-direction: reverse;
+}
+
+.ring-three {
+  width: 86%;
+  height: 86%;
+  border-style: dashed;
+  opacity: 0.55;
+  animation-duration: 14s;
+}
+
+.schedule-cube {
+  left: 50%;
+  top: 50%;
+  width: 128px;
+  height: 128px;
+  margin-left: -64px;
+  margin-top: -64px;
+  animation: cubeSpin 12s linear infinite;
+}
+
+.cube-face {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  align-content: start;
+  gap: 8px;
+  padding: 14px;
+  border-radius: 18px;
+  border: 1px solid rgba(166, 173, 189, 0.22);
+  background: rgba(8, 12, 21, 0.74);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.08);
+  backface-visibility: hidden;
+}
+
+.cube-face span {
+  color: #f8fbff;
+  font-size: 13px;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.cube-face i {
+  display: block;
+  height: 16px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, rgba(45, 212, 191, 0.78), rgba(118, 103, 255, 0.68));
+}
+
+.cube-face i:nth-child(3) {
+  width: 78%;
+  background: linear-gradient(90deg, rgba(247, 184, 75, 0.72), rgba(118, 103, 255, 0.55));
+}
+
+.cube-face i:nth-child(4) {
+  width: 58%;
+}
+
+.cube-front { transform: translateZ(64px); }
+.cube-back { transform: rotateY(180deg) translateZ(64px); }
+.cube-right { transform: rotateY(90deg) translateZ(64px); }
+.cube-left { transform: rotateY(-90deg) translateZ(64px); }
+.cube-top {
+  place-items: center;
+  align-content: center;
+  background: linear-gradient(135deg, rgba(118, 103, 255, 0.86), rgba(45, 212, 191, 0.72));
+  transform: rotateX(90deg) translateZ(64px);
+}
+.cube-bottom { transform: rotateX(-90deg) translateZ(64px); }
+
+.orbit-card {
+  --x: 0px;
+  --y: 0px;
+  --z: 120px;
+  left: 50%;
+  top: 50%;
+  width: 132px;
+  padding: 12px 13px;
+  border-radius: 16px;
+  border: 1px solid rgba(166, 173, 189, 0.2);
+  background: rgba(8, 12, 21, 0.82);
+  box-shadow: 0 18px 42px rgba(0, 0, 0, 0.28);
+  backdrop-filter: blur(12px);
+  animation: orbitCardFloat 5.6s ease-in-out infinite;
+}
+
+.orbit-card strong,
+.orbit-card span {
+  display: block;
+}
+
+.orbit-card strong {
+  color: #ffffff;
+  font-size: 13px;
+}
+
+.orbit-card span {
+  color: var(--z-teal);
+  font-size: 12px;
+  margin-top: 3px;
+}
+
+.orbit-rules { --x: -292px; --y: -82px; --z: 150px; animation-delay: 0s; }
+.orbit-coverage { --x: 150px; --y: -92px; --z: 130px; animation-delay: -1.2s; }
+.orbit-hours { --x: -250px; --y: 62px; --z: 180px; animation-delay: -2.4s; }
+.orbit-review { --x: 116px; --y: 72px; --z: 160px; animation-delay: -3.4s; }
+
 .hero-preview-status {
   width: 8px;
   height: 8px;
@@ -7461,6 +7649,24 @@ input[type="time"]::-webkit-calendar-picker-indicator:hover {
   background: rgba(255, 255, 255, 0.88);
   border-color: rgba(17, 24, 39, 0.1);
   box-shadow: 0 18px 42px rgba(17, 24, 39, 0.13);
+}
+
+.app.light .hero-orbit-3d {
+  background:
+    radial-gradient(circle at 50% 46%, rgba(45, 212, 191, 0.24), transparent 42%),
+    radial-gradient(circle at 64% 28%, rgba(118, 103, 255, 0.18), transparent 36%),
+    rgba(255, 255, 255, 0.7);
+}
+
+.app.light .cube-face,
+.app.light .orbit-card {
+  background: rgba(255, 255, 255, 0.84);
+  border-color: rgba(17, 24, 39, 0.1);
+}
+
+.app.light .cube-face span,
+.app.light .orbit-card strong {
+  color: #111827;
 }
 
 .app.light .constraint-node em {
@@ -7674,6 +7880,34 @@ input[type="time"]::-webkit-calendar-picker-indicator:hover {
     border-radius: 22px;
   }
 
+  .hero-orbit-3d {
+    height: 190px;
+  }
+
+  .schedule-cube {
+    width: 92px;
+    height: 92px;
+    margin-left: -46px;
+    margin-top: -46px;
+  }
+
+  .cube-front { transform: translateZ(46px); }
+  .cube-back { transform: rotateY(180deg) translateZ(46px); }
+  .cube-right { transform: rotateY(90deg) translateZ(46px); }
+  .cube-left { transform: rotateY(-90deg) translateZ(46px); }
+  .cube-top { transform: rotateX(90deg) translateZ(46px); }
+  .cube-bottom { transform: rotateX(-90deg) translateZ(46px); }
+
+  .orbit-card {
+    width: 106px;
+    padding: 10px;
+  }
+
+  .orbit-rules { --x: -164px; --y: -66px; --z: 120px; }
+  .orbit-coverage { --x: 58px; --y: -74px; --z: 110px; }
+  .orbit-hours { --x: -148px; --y: 50px; --z: 130px; }
+  .orbit-review { --x: 54px; --y: 56px; --z: 120px; }
+
   .hero-floating-card {
     display: none;
   }
@@ -7743,6 +7977,10 @@ input[type="time"]::-webkit-calendar-picker-indicator:hover {
   .hero-v2 .proof-issue,
   .hero-v2 .mockup-badge,
   .hero-floating-card,
+  .hero-orbit-3d,
+  .orbit-ring,
+  .schedule-cube,
+  .orbit-card,
   .constraint-stage,
   .constraint-ring,
   .constraint-node,
