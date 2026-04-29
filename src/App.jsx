@@ -23,6 +23,7 @@ import InviteAccept from './pages/InviteAccept'
 import MySchedule from './pages/MySchedule'
 import Invite from './pages/Invite'
 import VerifyEmail from './pages/VerifyEmail'
+import VerifyEmailToken from './pages/VerifyEmailToken'
 import ForgotPassword from './pages/ForgotPassword'
 import Profile from './pages/Profile'
 import './App.css'
@@ -60,6 +61,7 @@ function App() {
   <Route path="/signup" element={<SignUp />} />
   <Route path="/signin" element={<SignIn />} />
   <Route path="/verify-email" element={<VerifyEmail />} />
+  <Route path="/verify-email/:token" element={<VerifyEmailToken />} />
   <Route path="/forgot-password" element={<ForgotPassword />} />
   <Route path="/invite/:token" element={<InviteAccept />} />
   <Route path="/privacy" element={<Privacy />} />

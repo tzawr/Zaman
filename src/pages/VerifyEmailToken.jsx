@@ -1,8 +1,7 @@
-import { useState, useEffect } from 'react'
+import { useCallback, useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { motion } from 'framer-motion'
 import { CheckCircle, XCircle, Loader2 } from 'lucide-react'
-import { doc, getDoc, updateDoc, setDoc, serverTimestamp } from 'firebase/firestore'
+import { doc, getDoc, updateDoc, setDoc } from 'firebase/firestore'
 import { db } from '../firebase'
 import { useAuth } from '../AuthContext'
 
@@ -11,23 +10,10 @@ function VerifyEmailToken() {
   const navigate = useNavigate()
   const { currentUser } = useAuth()
 
-  const [status, setStatus] = useState('checking') // 'checking' | 'success' | 'error'
-  const [error, setError] = useState('')
+  const [status, setStatus] = useState(token ? 'checking' : 'error') // 'checking' | 'success' | 'error'
+  const [error, setError] = useState(token ? '' : 'Invalid link.')
 
-  useEffect(() => {
-    if (!token) { setStatus('error'); setError('Invalid link.'); return }
-    if (!currentUser) {
-      // Not signed in — wait a moment in case auth is still loading
-      const t = setTimeout(() => {
-        setStatus('error')
-        setError('Please sign in to verify your email.')
-      }, 3000)
-      return () => clearTimeout(t)
-    }
-    verify()
-  }, [token, currentUser])
-
-  async function verify() {
+  const verify = useCallback(async () => {
     try {
       const snap = await getDoc(doc(db, 'emailVerifications', token))
       if (!snap.exists()) { setStatus('error'); setError('This link is invalid or has already been used.'); return }
@@ -58,7 +44,21 @@ function VerifyEmailToken() {
       setStatus('error')
       setError('Something went wrong. Try again.')
     }
-  }
+  }, [currentUser, navigate, token])
+
+  useEffect(() => {
+    if (!token) return
+    if (!currentUser) {
+      // Not signed in — wait a moment in case auth is still loading
+      const t = setTimeout(() => {
+        setStatus('error')
+        setError('Please sign in to verify your email.')
+      }, 3000)
+      return () => clearTimeout(t)
+    }
+    const t = setTimeout(() => { verify() }, 0)
+    return () => clearTimeout(t)
+  }, [token, currentUser, verify])
 
   return (
     <main className="auth-page">
@@ -71,11 +71,7 @@ function VerifyEmailToken() {
           transition={{ duration: 22, repeat: Infinity, ease: 'easeInOut' }} />
       </div>
 
-      <motion.div className="auth-card"
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5, ease: 'easeOut' }}
-      >
+      <div className="auth-card">
         {status === 'checking' && (
           <>
             <div className="auth-eyebrow"><Loader2 size={14} className="spin" /><span>Verifying</span></div>
@@ -110,7 +106,7 @@ function VerifyEmailToken() {
             </div>
           </>
         )}
-      </motion.div>
+      </div>
     </main>
   )
 }
