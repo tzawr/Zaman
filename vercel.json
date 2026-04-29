@@ -4,7 +4,7 @@
       "handle": "filesystem"
     },
     {
-      "src": "/.*",
+      "src": "/(?!api(?:/|$)|assets/|src/|node_modules/|@vite/|@react-refresh|@id/|@fs/|favicon\\.svg$|icons\\.svg$).*",
       "dest": "/index.html"
     }
   ]
