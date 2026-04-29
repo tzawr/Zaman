@@ -260,32 +260,32 @@ function MockupCard() {
     {
       day: 'Mon',
       shifts: [
-        { name: 'Adry', role: 'Shift Supervisor', time: '4a - 11a', color: 'pink' },
-        { name: 'Isabel', role: 'Barista', time: '4a - 12p', color: 'red' },
-        { name: 'Kota', role: 'Shift Supervisor', time: '12:30p - 8:30p', color: 'purple' },
+        { name: 'Maya', role: 'Shift Supervisor', time: '4a - 11a', color: 'pink' },
+        { name: 'Eli', role: 'Barista', time: '4a - 12p', color: 'red' },
+        { name: 'Owen', role: 'Shift Supervisor', time: '12:30p - 8:30p', color: 'purple' },
       ],
     },
     {
       day: 'Tue',
       shifts: [
-        { name: 'Adry', role: 'Shift Supervisor', time: '4a - 11a', color: 'pink' },
-        { name: 'Andrew', role: 'Barista', time: '5a - 11:30a', color: 'blue' },
-        { name: 'Nura', role: 'Barista', time: '12:30p - 8p', color: 'red' },
+        { name: 'Maya', role: 'Shift Supervisor', time: '4a - 11a', color: 'pink' },
+        { name: 'Noah', role: 'Barista', time: '5a - 11:30a', color: 'blue' },
+        { name: 'Riley', role: 'Barista', time: '12:30p - 8p', color: 'red' },
       ],
     },
     {
       day: 'Wed',
       shifts: [
-        { name: 'Kota', role: 'Shift Supervisor', time: '4a - 12p', color: 'purple' },
-        { name: 'Valerie', role: 'Barista', time: '4a - 11a', color: 'pink' },
-        { name: 'Will', role: 'Shift Supervisor', time: '12p - 8p', color: 'pink' },
+        { name: 'Owen', role: 'Shift Supervisor', time: '4a - 12p', color: 'purple' },
+        { name: 'Sofia', role: 'Barista', time: '4a - 11a', color: 'pink' },
+        { name: 'Theo', role: 'Shift Supervisor', time: '12p - 8p', color: 'pink' },
       ],
     },
     {
       day: 'Sun',
       shifts: [
-        { name: 'Aubrey', role: 'Shift Supervisor', time: '4a - 12p', color: 'purple' },
-        { name: 'Nick', role: 'Manager', time: '10a - 4p', color: 'green' },
+        { name: 'Lena', role: 'Shift Supervisor', time: '4a - 12p', color: 'purple' },
+        { name: 'Leo', role: 'Manager', time: '10a - 4p', color: 'green' },
         { name: 'Open shift', role: 'Barista', time: '12p - 3p', color: 'empty' },
       ],
     },
@@ -305,19 +305,19 @@ function MockupCard() {
             <div className="proof-label">Manager rules</div>
             <div className="proof-rule">
               <Clock size={13} />
-              <span>Opening needs 1 supervisor and 1 barista by 4am.</span>
+              <span>1 supervisor + 1 barista by 4am</span>
             </div>
             <div className="proof-rule">
               <Users size={13} />
-              <span>Use everyone’s weekly target hours when possible.</span>
+              <span>Hit weekly target hours when possible</span>
             </div>
             <div className="proof-rule">
               <Shield size={13} />
-              <span>No clopening. Respect time off and availability.</span>
+              <span>No clopening or availability breaks</span>
             </div>
             <div className="proof-rule proof-warning">
               <AlertTriangle size={13} />
-              <span>Nick is off two days and only available 10am-4pm.</span>
+              <span>Leo is off two days, 10am-4pm only</span>
             </div>
           </aside>
 
@@ -362,7 +362,7 @@ function MockupCard() {
             <div className="proof-bottom">
               <div className="proof-hours">
                 <Target size={14} />
-                <span>Nick: 30 / 40h</span>
+                <span>Leo: 30 / 40h</span>
               </div>
               <div className="proof-issue">
                 <AlertTriangle size={14} />
@@ -552,7 +552,7 @@ function PlaygroundDemo() {
             >
               <div className="playground-prompt">
                 <Sparkles size={14} />
-                <span>"Opening needs 2 people by 4am. Nick is off Sat/Sun."</span>
+                <span>"Opening needs 2 people by 4am. Leo is off Sat/Sun."</span>
               </div>
               <div className="playground-result">
                 <div className="playground-loading">

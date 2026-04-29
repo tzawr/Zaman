@@ -2786,17 +2786,17 @@ input:checked + .slider:before {
 
 .proof-layout {
   display: grid;
-  grid-template-columns: 280px minmax(0, 1fr);
-  gap: 18px;
+  grid-template-columns: 1fr;
+  gap: 16px;
 }
 
 .proof-rules {
   background: var(--bg-surface);
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-md);
-  padding: 16px;
-  display: flex;
-  flex-direction: column;
+  padding: 14px;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 10px;
 }
 
@@ -2808,6 +2808,7 @@ input:checked + .slider:before {
 }
 
 .proof-label {
+  grid-column: 1 / -1;
   text-transform: uppercase;
   letter-spacing: 0.12em;
   font-weight: 700;
@@ -2818,13 +2819,13 @@ input:checked + .slider:before {
   display: flex;
   gap: 9px;
   align-items: flex-start;
-  padding: 10px;
+  padding: 10px 11px;
   background: var(--bg-elevated);
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-sm);
   color: var(--text-secondary);
-  font-size: 12px;
-  line-height: 1.45;
+  font-size: 11px;
+  line-height: 1.35;
 }
 
 .proof-rule svg {
@@ -2849,21 +2850,21 @@ input:checked + .slider:before {
 .proof-week {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 10px;
+  gap: 12px;
 }
 
 .proof-day {
   background: var(--bg-surface);
   border-radius: var(--radius-md);
-  padding: 10px;
+  padding: 12px;
   border: 1px solid var(--border-subtle);
   min-width: 0;
 }
 
 .proof-shift {
-  min-height: 50px;
-  align-items: flex-start;
-  gap: 8px;
+  min-height: 64px;
+  display: block;
+  padding: 10px;
 }
 
 .proof-shift > span:first-child {
@@ -2874,9 +2875,9 @@ input:checked + .slider:before {
 }
 
 .proof-shift strong {
-  font-size: 12px;
+  font-size: 13px;
   color: currentColor;
-  line-height: 1.1;
+  line-height: 1.15;
 }
 
 .proof-shift small {
@@ -2886,6 +2887,13 @@ input:checked + .slider:before {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.proof-shift .mockup-time {
+  display: block;
+  margin-top: 7px;
+  font-size: 11px;
+  opacity: 0.88;
 }
 
 .proof-bottom {
