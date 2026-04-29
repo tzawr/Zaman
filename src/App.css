@@ -4521,13 +4521,16 @@ input:checked + .slider:before {
   width: 100%;
   max-width: 1400px;
   margin: 0 auto;
+  overflow-x: auto;
+  padding-bottom: 6px;
 }
 
 .schedule-table {
   display: grid;
-  grid-template-columns: repeat(7, minmax(0, 1fr));
+  grid-template-columns: repeat(7, minmax(158px, 1fr));
   gap: 12px;
   margin-bottom: 32px;
+  min-width: 1180px;
 }
 
 .schedule-day-column {
@@ -4587,8 +4590,10 @@ input:checked + .slider:before {
 }
 
 .schedule-shift {
+  background: var(--shift-bg);
+  color: var(--shift-text);
   padding: 12px 14px;
-  border: 1px solid;
+  border: 1px solid var(--shift-border);
   border-radius: var(--radius-md);
   cursor: default;
   transition: all var(--transition-fast);
@@ -4642,6 +4647,13 @@ input:checked + .slider:before {
   margin-bottom: 4px;
   font-weight: 500;
   white-space: nowrap;
+  min-width: 0;
+}
+
+.schedule-shift-time span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .schedule-shift-hours {
@@ -4762,6 +4774,9 @@ input:checked + .slider:before {
 }
 
 .schedule-summary-avatar {
+  background: var(--shift-bg);
+  border-color: var(--shift-border);
+  color: var(--shift-text);
   width: 44px;
   height: 44px;
   border-radius: var(--radius-md);
@@ -4878,26 +4893,43 @@ input:checked + .slider:before {
 .schedule-issues-list,
 .schedule-recommendations-list {
   margin: 0;
-  padding-left: 22px;
+  padding: 0;
   list-style: none;
+  display: grid;
+  gap: 10px;
 }
 
-.schedule-issues-list li,
-.schedule-recommendations-list li {
-  position: relative;
+.schedule-issue-card,
+.schedule-recommendation-card {
   font-size: 14px;
   color: var(--text-secondary);
-  line-height: 1.7;
-  padding: 5px 0;
+  line-height: 1.55;
+  padding: 14px 16px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
   letter-spacing: -0.01em;
 }
 
-.schedule-issues-list li::before,
-.schedule-recommendations-list li::before {
-  content: '•';
-  position: absolute;
-  left: -18px;
+.schedule-issue-heading {
+  color: var(--text-primary);
+  font-weight: 700;
+  margin-bottom: 4px;
+  letter-spacing: -0.02em;
+}
+
+.schedule-issue-card p {
+  margin: 0 0 8px;
+}
+
+.schedule-issue-card span {
+  display: block;
   color: var(--text-tertiary);
+  font-size: 13px;
+}
+
+.schedule-recommendation-card {
+  border-left: 3px solid var(--accent-1);
 }
 
 /* Responsive */
@@ -5137,14 +5169,82 @@ select.input {
   color: var(--text-tertiary);
   text-transform: uppercase;
   letter-spacing: 0.12em;
-  margin-bottom: 12px;
+  margin: 0;
   padding: 0 4px;
+}
+
+.schedules-sidebar-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.schedules-sidebar-head span {
+  font-size: 12px;
+  color: var(--text-tertiary);
+  padding: 4px 8px;
+  border-radius: var(--radius-full);
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
 }
 
 .schedule-list {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 10px;
+}
+
+.schedules-sidebar .schedule-card {
+  padding: 16px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+}
+
+.schedules-sidebar .schedule-card:hover {
+  border-color: var(--border-default);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+}
+
+.schedules-sidebar .schedule-card.selected {
+  border-color: var(--border-accent);
+  background: linear-gradient(180deg, var(--bg-surface), rgba(99, 102, 241, 0.06));
+  box-shadow: 0 0 0 1px rgba(99, 102, 241, 0.08), var(--shadow-md);
+}
+
+.schedule-card-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 10px;
+}
+
+.schedule-card-tags span {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+  padding: 4px 8px;
+  border-radius: var(--radius-full);
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-tertiary);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.schedule-card-tags .ready {
+  color: var(--success);
+  background: rgba(16, 185, 129, 0.1);
+  border-color: rgba(16, 185, 129, 0.22);
+}
+
+.schedule-card-tags .needs-review {
+  color: var(--warning);
+  background: rgba(245, 158, 11, 0.1);
+  border-color: rgba(245, 158, 11, 0.24);
 }
 
 /* Main content */
@@ -6343,6 +6443,32 @@ input[type="time"]::-webkit-calendar-picker-indicator:hover {
 .app.light .dashboard-team-member {
   background: #FAFAFA;
   border-color: rgba(0, 0, 0, 0.06);
+}
+
+.app.light .schedule-shift {
+  background: var(--shift-light-bg);
+  color: var(--shift-light-text);
+  border-color: color-mix(in srgb, var(--shift-light-text) 32%, transparent);
+}
+
+.app.light .schedule-shift-role,
+.app.light .schedule-shift-time,
+.app.light .schedule-shift-hours {
+  opacity: 0.82;
+}
+
+.app.light .schedule-summary-avatar {
+  background: var(--shift-light-bg);
+  color: var(--shift-light-text);
+  border-color: color-mix(in srgb, var(--shift-light-text) 32%, transparent);
+}
+
+.app.light .schedule-issue-card,
+.app.light .schedule-recommendation-card,
+.app.light .schedule-card-tags span,
+.app.light .schedules-sidebar-head span {
+  background: #FAFAFA;
+  border-color: rgba(0, 0, 0, 0.07);
 }
 
 /* Inputs in light mode */

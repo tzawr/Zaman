@@ -154,6 +154,7 @@ function Schedule() {
       if (best.violations.length > 0) {
         console.warn('[scheduler] violations:', best.violations)
         result.issues = best.violations
+        result.recommendations = await generateScheduleRecommendations(result, best.violations, employees)
       }
 
       // Step 5: Save and display
@@ -569,6 +570,65 @@ async function callGenerateAPI(prompt) {
   }
   const data = await resp.json()
   return data.scheduleText || ''
+}
+
+async function generateScheduleRecommendations(schedule, violations, employees) {
+  if (!violations?.length) return []
+
+  const summary = (schedule.summary || [])
+    .filter(row => Math.abs(Number(row.difference) || 0) > 0.05)
+    .map(row => `${row.employee}: ${row.scheduledHours}/${row.targetHours}h (${row.difference}h)`)
+    .join('\n')
+
+  const prompt = `You are advising a small-business shift manager after an automated schedule draft.
+Write 3-5 short, professional recommendations based on these schedule issues.
+Do not blame the manager. Be specific and business-oriented.
+Mention practical actions like adjusting availability, changing target hours, adding coverage, or hiring/training for a role.
+Output ONLY a JSON array of strings.
+
+SCHEDULE ISSUES:
+${violations.slice(0, 12).map((v, i) => `${i + 1}. ${v}`).join('\n')}
+
+HOUR SUMMARY GAPS:
+${summary || 'No hour gaps.'}
+
+TEAM:
+${employees.map(emp => `${emp.name} | ${emp.role || 'No role'} | target ${emp.targetHours ?? 0}h`).join('\n')}`
+
+  try {
+    const text = await callGenerateAPI(prompt)
+    let clean = text.trim()
+    if (clean.startsWith('```json')) clean = clean.replace(/^```json\n?/, '').replace(/\n?```$/, '')
+    else if (clean.startsWith('```')) clean = clean.replace(/^```\n?/, '').replace(/\n?```$/, '')
+    const first = clean.indexOf('[')
+    const last = clean.lastIndexOf(']')
+    if (first === -1 || last === -1) return fallbackRecommendations(violations)
+    const parsed = JSON.parse(clean.slice(first, last + 1))
+    return Array.isArray(parsed) ? parsed.slice(0, 5).map(String) : fallbackRecommendations(violations)
+  } catch {
+    return fallbackRecommendations(violations)
+  }
+}
+
+function fallbackRecommendations(violations) {
+  const text = violations.join(' ').toLowerCase()
+  const recommendations = []
+  if (text.includes('opening')) {
+    recommendations.push('Review early-morning availability for employees who can legally and practically open the business.')
+  }
+  if (text.includes('closing') || text.includes('pre-closer')) {
+    recommendations.push('Check whether enough trained employees are available through closing and consider training one additional closer.')
+  }
+  if (text.includes('target')) {
+    recommendations.push('Compare each target-hour goal against the employee’s actual availability before publishing the schedule.')
+  }
+  if (text.includes('staff from')) {
+    recommendations.push('For understaffed windows, either add one eligible employee or lower the minimum coverage requirement for that period.')
+  }
+  if (recommendations.length === 0) {
+    recommendations.push('Review the highlighted items before publishing and adjust coverage rules or employee availability as needed.')
+  }
+  return recommendations.slice(0, 5)
 }
 
 async function parseSchedulingInstructionsCached(coverageRulesText, specialInstructions) {

@@ -123,6 +123,12 @@ function Schedules() {
     })
   }
 
+  function scheduleHealth(sched) {
+    const issueCount = sched.data?.issues?.length || 0
+    if (issueCount > 0) return `${issueCount} review ${issueCount === 1 ? 'item' : 'items'}`
+    return 'Ready'
+  }
+
   async function handleExport(type) {
     if (!selectedSchedule?.data) return
     setExporting(type)
@@ -216,7 +222,10 @@ function Schedules() {
       ) : (
         <div className="schedules-split">
           <aside className="schedules-sidebar">
-            <h3 className="schedules-sidebar-title">All schedules</h3>
+            <div className="schedules-sidebar-head">
+              <h3 className="schedules-sidebar-title">All schedules</h3>
+              <span>{schedules.length}</span>
+            </div>
             <div className="schedule-list">
               {schedules.map(sched => (
                 <div 
@@ -243,10 +252,11 @@ function Schedules() {
                   <p className="schedule-meta">
                     Generated {formatCreatedAt(sched.createdAt)}
                   </p>
-                  <p className="schedule-meta">
-                    {sched.employeeCount || '?'} {sched.employeeCount === 1 ? 'person' : 'people'}
-                    {sched.instructions && ' • With notes'}
-                  </p>
+                  <div className="schedule-card-tags">
+                    <span>{sched.employeeCount || '?'} {sched.employeeCount === 1 ? 'person' : 'people'}</span>
+                    {sched.instructions && <span>Notes</span>}
+                    <span className={sched.data?.issues?.length ? 'needs-review' : 'ready'}>{scheduleHealth(sched)}</span>
+                  </div>
                 </div>
               ))}
             </div>

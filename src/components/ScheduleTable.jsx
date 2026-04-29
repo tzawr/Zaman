@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { Clock, AlertTriangle, TrendingUp, TrendingDown, Minus, Sparkles, X, Plus, Trash2 } from 'lucide-react'
 
 const DAYS = [
@@ -13,20 +13,88 @@ const DAYS = [
 
 function colorForEmployee(name) {
   const colors = [
-    { bg: 'rgba(99, 102, 241, 0.12)', border: 'rgba(99, 102, 241, 0.3)', text: '#A5B4FC' },
-    { bg: 'rgba(139, 92, 246, 0.12)', border: 'rgba(139, 92, 246, 0.3)', text: '#C4B5FD' },
-    { bg: 'rgba(236, 72, 153, 0.12)', border: 'rgba(236, 72, 153, 0.3)', text: '#F9A8D4' },
-    { bg: 'rgba(16, 185, 129, 0.12)', border: 'rgba(16, 185, 129, 0.3)', text: '#6EE7B7' },
-    { bg: 'rgba(245, 158, 11, 0.12)', border: 'rgba(245, 158, 11, 0.3)', text: '#FCD34D' },
-    { bg: 'rgba(14, 165, 233, 0.12)', border: 'rgba(14, 165, 233, 0.3)', text: '#7DD3FC' },
-    { bg: 'rgba(239, 68, 68, 0.12)', border: 'rgba(239, 68, 68, 0.3)', text: '#FCA5A5' },
-    { bg: 'rgba(168, 85, 247, 0.12)', border: 'rgba(168, 85, 247, 0.3)', text: '#D8B4FE' },
+    { bg: 'rgba(99, 102, 241, 0.12)', border: 'rgba(99, 102, 241, 0.3)', text: '#A5B4FC', lightText: '#4F46E5', lightBg: 'rgba(99, 102, 241, 0.12)' },
+    { bg: 'rgba(139, 92, 246, 0.12)', border: 'rgba(139, 92, 246, 0.3)', text: '#C4B5FD', lightText: '#7C3AED', lightBg: 'rgba(139, 92, 246, 0.12)' },
+    { bg: 'rgba(236, 72, 153, 0.12)', border: 'rgba(236, 72, 153, 0.3)', text: '#F9A8D4', lightText: '#DB2777', lightBg: 'rgba(236, 72, 153, 0.11)' },
+    { bg: 'rgba(16, 185, 129, 0.12)', border: 'rgba(16, 185, 129, 0.3)', text: '#6EE7B7', lightText: '#059669', lightBg: 'rgba(16, 185, 129, 0.12)' },
+    { bg: 'rgba(245, 158, 11, 0.12)', border: 'rgba(245, 158, 11, 0.3)', text: '#FCD34D', lightText: '#B45309', lightBg: 'rgba(245, 158, 11, 0.13)' },
+    { bg: 'rgba(14, 165, 233, 0.12)', border: 'rgba(14, 165, 233, 0.3)', text: '#7DD3FC', lightText: '#0284C7', lightBg: 'rgba(14, 165, 233, 0.12)' },
+    { bg: 'rgba(239, 68, 68, 0.12)', border: 'rgba(239, 68, 68, 0.3)', text: '#FCA5A5', lightText: '#DC2626', lightBg: 'rgba(239, 68, 68, 0.11)' },
+    { bg: 'rgba(168, 85, 247, 0.12)', border: 'rgba(168, 85, 247, 0.3)', text: '#D8B4FE', lightText: '#9333EA', lightBg: 'rgba(168, 85, 247, 0.12)' },
   ]
   let hash = 0
   for (let i = 0; i < name.length; i++) {
     hash = name.charCodeAt(i) + ((hash << 5) - hash)
   }
   return colors[Math.abs(hash) % colors.length]
+}
+
+function formatIssue(issue) {
+  const text = String(issue || '')
+  const dayMatch = text.match(/^(Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday):\s*(.*)$/i)
+  const scope = dayMatch ? dayMatch[1] : null
+  const detail = dayMatch ? dayMatch[2] : text
+
+  if (/opening/i.test(detail)) {
+    return {
+      title: scope ? `${scope} opening coverage` : 'Opening coverage',
+      body: detail
+        .replace(/needs at least/i, 'requires at least')
+        .replace(/only (\d+) found/i, 'only $1 eligible shift is currently scheduled'),
+      action: 'Review early-morning availability for shift supervisors and baristas.',
+    }
+  }
+
+  if (/closing/i.test(detail)) {
+    return {
+      title: scope ? `${scope} closing coverage` : 'Closing coverage',
+      body: detail
+        .replace(/needs at least/i, 'requires at least')
+        .replace(/only (\d+) found/i, 'only $1 eligible shift is currently scheduled'),
+      action: 'Check who can work through close or adjust closing coverage requirements.',
+    }
+  }
+
+  if (/staff from/i.test(detail)) {
+    return {
+      title: scope ? `${scope} staffing level` : 'Staffing level',
+      body: detail
+        .replace(/^needs/i, 'Requires')
+        .replace(/only (\d+) on shift/i, 'only $1 people are currently on shift'),
+      action: 'Add one more eligible employee or lower the staffing requirement for that window.',
+    }
+  }
+
+  if (/scheduled twice/i.test(detail)) {
+    return {
+      title: scope ? `${scope} duplicate shift` : 'Duplicate shift',
+      body: detail.replace(/is scheduled twice on the same day/i, 'has more than one shift on the same day'),
+      action: 'Keep one shift for this employee or move the second shift to another person.',
+    }
+  }
+
+  if (/outside availability/i.test(detail)) {
+    return {
+      title: scope ? `${scope} availability conflict` : 'Availability conflict',
+      body: detail,
+      action: 'Adjust the shift time or update the employee availability if it is outdated.',
+    }
+  }
+
+  if (/only .* scheduled but target/i.test(text) || /no unused available days remain/i.test(text)) {
+    const person = text.split(':')[0]
+    return {
+      title: `${person} target hours`,
+      body: text.replace(/add shifts on:/i, 'available unused days:'),
+      action: 'Increase this employee’s availability, lower their weekly target, or assign shorter open shifts manually.',
+    }
+  }
+
+  return {
+    title: scope ? `${scope} schedule review` : 'Schedule review',
+    body: detail,
+    action: 'Review this item before publishing the schedule.',
+  }
 }
 
 function formatTime(time24) {
@@ -54,6 +122,7 @@ function calcHours(start, end) {
 
 function ScheduleTable({ data, employees = [], roles = [], onUpdate }) {
   const [editing, setEditing] = useState(null) // { dayKey, shift } or { dayKey, shift: null } for new
+  const newShiftCounter = useRef(0)
   
   if (!data || !data.days) return null
 
@@ -62,10 +131,11 @@ function ScheduleTable({ data, employees = [], roles = [], onUpdate }) {
   }
 
   function handleAddShift(dayKey) {
+    newShiftCounter.current += 1
     setEditing({
       dayKey,
       shift: {
-        id: `new-${Date.now()}`,
+        id: `new-${newShiftCounter.current}`,
         employee: '',
         role: '',
         start: '09:00',
@@ -148,9 +218,11 @@ function ScheduleTable({ data, employees = [], roles = [], onUpdate }) {
                         key={shift.id}
                         className="schedule-shift"
                         style={{
-                          background: color.bg,
-                          borderColor: color.border,
-                          color: color.text,
+                          '--shift-bg': color.bg,
+                          '--shift-border': color.border,
+                          '--shift-text': color.text,
+                          '--shift-light-bg': color.lightBg,
+                          '--shift-light-text': color.lightText,
                         }}
                         onClick={() => onUpdate && handleShiftClick(day.key, shift)}
                       >
@@ -222,9 +294,11 @@ function ScheduleTable({ data, employees = [], roles = [], onUpdate }) {
               return (
                 <div key={s.employee} className="schedule-summary-card">
                   <div className="schedule-summary-avatar" style={{
-                    background: color.bg,
-                    borderColor: color.border,
-                    color: color.text,
+                    '--shift-bg': color.bg,
+                    '--shift-border': color.border,
+                    '--shift-text': color.text,
+                    '--shift-light-bg': color.lightBg,
+                    '--shift-light-text': color.lightText,
                   }}>
                     {s.employee[0]?.toUpperCase()}
                   </div>
@@ -256,13 +330,20 @@ function ScheduleTable({ data, employees = [], roles = [], onUpdate }) {
         <div className="schedule-issues">
           <h4 className="schedule-issues-title">
             <AlertTriangle size={16} />
-            <span>Schedule Issues</span>
+            <span>Schedule Review</span>
           </h4>
-          <ul className="schedule-issues-list">
-            {data.issues.map((issue, i) => (
-              <li key={i}>{issue}</li>
-            ))}
-          </ul>
+          <div className="schedule-issues-list">
+            {data.issues.map((issue, i) => {
+              const formatted = formatIssue(issue)
+              return (
+                <div className="schedule-issue-card" key={i}>
+                  <div className="schedule-issue-heading">{formatted.title}</div>
+                  <p>{formatted.body}</p>
+                  <span>{formatted.action}</span>
+                </div>
+              )
+            })}
+          </div>
         </div>
       )}
 
@@ -273,11 +354,11 @@ function ScheduleTable({ data, employees = [], roles = [], onUpdate }) {
             <Sparkles size={16} />
             <span>Zaman Recommendations</span>
           </h4>
-          <ul className="schedule-recommendations-list">
+          <div className="schedule-recommendations-list">
             {data.recommendations.map((rec, i) => (
-              <li key={i}>{rec}</li>
+              <div className="schedule-recommendation-card" key={i}>{rec}</div>
             ))}
-          </ul>
+          </div>
         </div>
       )}
 
