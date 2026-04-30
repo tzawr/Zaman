@@ -102,6 +102,7 @@ function Profile() {
   const [phoneCode, setPhoneCode] = useState('')
   const [phoneLoading, setPhoneLoading] = useState(false)
   const [phoneError, setPhoneError] = useState('')
+  const [phoneInfo, setPhoneInfo] = useState('')
   const [verificationId, setVerificationId] = useState('')
   const [recaptchaReady, setRecaptchaReady] = useState(false)
   const recaptchaRef = useRef(null)
@@ -232,11 +233,13 @@ function Profile() {
     const fullPhone = countryCode + localNumber
     setPhoneLoading(true)
     setPhoneError('')
+    setPhoneInfo('')
     try {
       const provider = new PhoneAuthProvider(auth)
       const vid = await provider.verifyPhoneNumber(fullPhone, recaptchaRef.current)
       setVerificationId(vid)
       setPhoneStep('enter-code')
+      setPhoneInfo('SMS request sent. It can take a minute. If nothing arrives, use Resend code.')
     } catch (err) {
       // Tear down and rebuild the verifier so the next attempt starts clean
       if (recaptchaRef.current) { recaptchaRef.current.clear(); recaptchaRef.current = null }
@@ -253,10 +256,18 @@ function Profile() {
       } catch {
         setPhoneError('Could not reload reCAPTCHA. Refresh the page and try again.')
       }
-      setPhoneError(err.message || 'Failed to send code. Make sure the number is correct.')
+      setPhoneError(formatPhoneAuthError(err))
     } finally {
       setPhoneLoading(false)
     }
+  }
+
+  function handleResendPhoneCode() {
+    setPhoneStep('enter-phone')
+    setPhoneCode('')
+    setVerificationId('')
+    setPhoneError('')
+    setPhoneInfo('Complete reCAPTCHA again, then send a new code.')
   }
 
   async function handleVerifyPhoneCode() {
@@ -278,7 +289,7 @@ function Profile() {
       } else if (err.code === 'auth/credential-already-in-use') {
         setPhoneError('That phone number is linked to another account.')
       } else {
-        setPhoneError(err.message || 'Verification failed.')
+        setPhoneError(formatPhoneAuthError(err))
       }
     } finally {
       setPhoneLoading(false)
@@ -509,6 +520,7 @@ function Profile() {
             <p style={{ fontSize: 12, color: 'var(--text-tertiary)', margin: 0 }}>
               Full number: {countryCode}{phoneNumber.trim().replace(/[\s\-()]/g, '') || '…'}
             </p>
+            {phoneInfo && <div className="auth-success">{phoneInfo}</div>}
             <div className="recaptcha-wrapper">
               <div id="recaptcha-container" />
             </div>
@@ -534,6 +546,7 @@ function Profile() {
             <p style={{ fontSize: 13, opacity: 0.65, margin: 0 }}>
               Enter the 6-digit code sent to {countryCode}{phoneNumber.trim().replace(/[\s\-()]/g, '')}
             </p>
+            {phoneInfo && <div className="auth-success">{phoneInfo}</div>}
             <input
               type="text"
               className="input"
@@ -545,8 +558,11 @@ function Profile() {
             />
             {phoneError && <div className="auth-error">{phoneError}</div>}
             <div style={{ display: 'flex', gap: 8 }}>
-              <button className="settings-button" onClick={() => { setPhoneStep('idle'); setPhoneError(''); setPhoneCode('') }}>
+              <button className="settings-button" onClick={() => { setPhoneStep('idle'); setPhoneError(''); setPhoneInfo(''); setPhoneCode('') }}>
                 Cancel
+              </button>
+              <button className="settings-button" onClick={handleResendPhoneCode} disabled={phoneLoading}>
+                Resend code
               </button>
               <button
                 className="landing-cta-primary auth-submit"
@@ -627,6 +643,22 @@ function Profile() {
       </Section>
     </main>
   )
+}
+
+function formatPhoneAuthError(err) {
+  const code = err?.code
+  const map = {
+    'auth/invalid-phone-number': 'That phone number does not look valid. Check the country code and number.',
+    'auth/missing-phone-number': 'Enter your phone number first.',
+    'auth/captcha-check-failed': 'reCAPTCHA failed. Refresh the page, complete it again, and retry.',
+    'auth/missing-app-credential': 'reCAPTCHA did not finish correctly. Refresh the page and try again.',
+    'auth/too-many-requests': 'Too many SMS attempts. Wait a few minutes before trying again.',
+    'auth/quota-exceeded': 'Firebase SMS quota was exceeded. Check Firebase billing or SMS quota for this project.',
+    'auth/operation-not-allowed': 'Phone sign-in is not enabled in Firebase Authentication.',
+    'auth/unauthorized-domain': 'This domain is not authorized in Firebase Authentication settings.',
+    'auth/internal-error': 'Firebase could not send the SMS. Check Firebase Phone Auth SMS region, billing, and quota settings.',
+  }
+  return map[code] || err?.message || 'Failed to send or verify the SMS code.'
 }
 
 export default Profile
