@@ -30,6 +30,8 @@ function Dashboard() {
   const navigate = useNavigate()
   const location = useLocation()
   const { currentUser } = useAuth()
+  const managerMode = !!location.state?.managerMode
+  void motion
   
   const [userData, setUserData] = useState(null)
   const [employees, setEmployees] = useState([])
@@ -52,7 +54,7 @@ function Dashboard() {
           return
         }
         // Only redirect employees if they didn't intentionally open manager mode
-        if (data.accountType === 'employee' && !location.state?.managerMode) {
+        if (data.accountType === 'employee' && !managerMode) {
           navigate('/my-schedule')
           return
         }
@@ -63,7 +65,7 @@ function Dashboard() {
       }
     })
     return () => unsubscribe()
-  }, [currentUser, navigate])
+  }, [currentUser, managerMode, navigate])
 
   useEffect(() => {
     if (!currentUser) return
@@ -123,7 +125,7 @@ function Dashboard() {
   }
 
   return (
-<main className="app-page">
+<main className="app-page dashboard-layout">
   <PageHero
   eyebrow={`${getGreeting()}, ${userData?.displayName || 'Manager'}`}
   title={<>Welcome to <span className="landing-gradient-text">Hengam</span></>}
@@ -360,6 +362,7 @@ function Dashboard() {
 }
 
 function DashCard({ icon: Icon, title, description, onClick, highlighted }) {
+  void Icon
   return (
     <div 
       className={`dashboard-card ${highlighted ? 'dashboard-card-highlighted' : ''}`}

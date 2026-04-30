@@ -3400,7 +3400,7 @@ input:checked + .slider:before {
 
 /* Final CTA */
 .landing-final {
-  padding: 120px 24px;
+  padding: 110px 24px 72px;
   text-align: center;
   position: relative;
   overflow: hidden;
@@ -3536,9 +3536,9 @@ input:checked + .slider:before {
   position: relative;
   z-index: 2;
   border-top: 1px solid var(--border-subtle);
-  background: var(--bg-base);
-  padding: 64px 24px 32px;
-  margin-top: 80px;
+  background: linear-gradient(180deg, rgba(3, 8, 22, 0.72) 0%, var(--bg-base) 100%);
+  padding: 52px 24px 32px;
+  margin-top: 0;
 }
 
 .footer-inner {
@@ -4341,6 +4341,198 @@ input:checked + .slider:before {
     grid-template-columns: 1fr;
   }
   .dashboard-header {
+    flex-direction: column;
+  }
+}
+
+/* Dashboard layout polish: consistent grid rhythm and non-overlapping nested cards */
+.dashboard-layout {
+  max-width: 1120px;
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+}
+
+.dashboard-layout .page-hero {
+  margin: 0;
+  padding-bottom: 10px;
+}
+
+.dashboard-layout .dashboard-stats,
+.dashboard-layout .dashboard-generate-hero,
+.dashboard-layout .dashboard-section,
+.dashboard-layout .dashboard-empty {
+  margin: 0;
+}
+
+.dashboard-stats {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 18px;
+  align-items: stretch;
+}
+
+.dashboard-stat {
+  min-width: 0;
+  min-height: 104px;
+  padding: 18px;
+  gap: 14px;
+  overflow: hidden;
+}
+
+.dashboard-stat > div:last-child,
+.dashboard-card-content,
+.dashboard-schedule-info,
+.dashboard-team-info,
+.dashboard-generate-content {
+  min-width: 0;
+}
+
+.dashboard-stat-value,
+.dashboard-stat-label,
+.dashboard-card-title,
+.dashboard-card-desc,
+.dashboard-generate-title,
+.dashboard-generate-desc,
+.dashboard-schedule-week,
+.dashboard-schedule-meta {
+  overflow-wrap: anywhere;
+}
+
+.dashboard-generate-hero {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 24px;
+  min-height: 168px;
+  padding: 30px;
+}
+
+.dashboard-generate-icon {
+  width: 72px;
+  height: 72px;
+}
+
+.dashboard-generate-cta {
+  max-width: 100%;
+  justify-content: center;
+}
+
+.dashboard-section {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.dashboard-section-header {
+  margin: 0;
+  gap: 16px;
+  min-width: 0;
+}
+
+.dashboard-section-title {
+  margin: 0;
+}
+
+.dashboard-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
+  align-items: stretch;
+}
+
+.dashboard-card {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  min-height: 118px;
+  padding: 20px;
+  gap: 16px;
+}
+
+.dashboard-card-content {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.dashboard-card-title,
+.dashboard-card-desc {
+  margin: 0;
+}
+
+.dashboard-schedules {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 12px;
+}
+
+.dashboard-schedule-item {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 14px;
+  min-height: 72px;
+  padding: 16px;
+  overflow: hidden;
+}
+
+.dashboard-team-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+  align-items: stretch;
+}
+
+.dashboard-team-member {
+  min-width: 0;
+  min-height: 72px;
+  padding: 14px;
+  gap: 12px;
+  overflow: hidden;
+}
+
+.dashboard-team-member .employee-avatar {
+  flex: 0 0 auto;
+}
+
+@media (max-width: 900px) {
+  .dashboard-layout {
+    gap: 18px;
+  }
+
+  .dashboard-stats,
+  .dashboard-grid,
+  .dashboard-team-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .dashboard-generate-hero {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .dashboard-generate-cta {
+    grid-column: 1 / -1;
+    width: 100%;
+  }
+}
+
+@media (max-width: 620px) {
+  .dashboard-stats,
+  .dashboard-grid,
+  .dashboard-team-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .dashboard-generate-hero,
+  .dashboard-card,
+  .dashboard-schedule-item {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .dashboard-card-arrow,
+  .dashboard-schedule-arrow {
+    display: none;
+  }
+
+  .dashboard-section-header {
+    align-items: flex-start;
     flex-direction: column;
   }
 }
@@ -11643,4 +11835,157 @@ input[type="time"]::-webkit-calendar-picker-indicator:hover {
     margin: 20px 24px 28px;
     grid-template-columns: 1fr;
   }
+}
+
+/* Final premium panel balance + light mode */
+.premium-panel > .premium-demo-group {
+  position: relative;
+  z-index: 3;
+  display: flex;
+  flex-direction: column;
+  margin-top: auto;
+}
+
+.premium-demo-group .premium-note-card {
+  margin: 0 32px 0;
+}
+
+.premium-demo-group .premium-typing {
+  margin: 0 32px 18px;
+  align-self: flex-start;
+}
+
+.premium-demo-group .premium-advice-list {
+  margin: 0 32px 28px;
+}
+
+.premium-demo-group .premium-document-stack {
+  height: 160px;
+  margin: 0 32px 34px;
+}
+
+.premium-demo-group .premium-export-row {
+  margin: 0 32px 30px;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.app.light .premium-panel {
+  border-color: rgba(37, 99, 235, 0.14);
+  background:
+    radial-gradient(circle at 76% 18%, rgba(96, 165, 250, 0.16), transparent 34%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.94), rgba(242, 247, 255, 0.98));
+  box-shadow:
+    0 28px 80px rgba(37, 99, 235, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.9);
+}
+
+.app.light .premium-panel::before {
+  background-image:
+    linear-gradient(rgba(37, 99, 235, 0.045) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(37, 99, 235, 0.045) 1px, transparent 1px);
+}
+
+.app.light .premium-panel::after {
+  background: radial-gradient(circle, rgba(96, 165, 250, 0.2), rgba(99, 102, 241, 0.06) 44%, transparent 70%);
+}
+
+.app.light .premium-panel-copy h3,
+.app.light .premium-coverage-stats strong,
+.app.light .premium-event-chip strong,
+.app.light .premium-rule-input-box p,
+.app.light .premium-parsed-pills strong,
+.app.light .premium-ready-status {
+  color: #0f172a;
+}
+
+.app.light .premium-panel-copy p,
+.app.light .premium-coverage-stats small,
+.app.light .premium-coverage-health span,
+.app.light .premium-event-time,
+.app.light .premium-event-chip small,
+.app.light .premium-parsed-pills small,
+.app.light .premium-advice-list span {
+  color: #526073;
+}
+
+.app.light .premium-coverage-stats span,
+.app.light .premium-coverage-health span,
+.app.light .premium-calendar-card,
+.app.light .premium-event-chip,
+.app.light .premium-rule-input-demo,
+.app.light .premium-rule-input-box,
+.app.light .premium-parsed-pills span,
+.app.light .premium-note-card,
+.app.light .premium-typing,
+.app.light .premium-advice-list span,
+.app.light .premium-doc,
+.app.light .premium-export-row button {
+  border-color: rgba(37, 99, 235, 0.14);
+  background:
+    linear-gradient(135deg, rgba(96, 165, 250, 0.08), transparent 58%),
+    rgba(255, 255, 255, 0.76);
+  box-shadow:
+    0 14px 34px rgba(37, 99, 235, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.8);
+}
+
+.app.light .premium-note-card,
+.app.light .premium-typing,
+.app.light .premium-ready-status {
+  background: rgba(37, 99, 235, 0.08);
+  color: #1d4ed8;
+}
+
+.app.light .premium-doc.doc-front span {
+  background: linear-gradient(90deg, rgba(37, 99, 235, 0.72), rgba(96, 165, 250, 0.32));
+}
+
+.app.light .premium-calendar-grid span {
+  color: #334155;
+  background: rgba(37, 99, 235, 0.06);
+}
+
+.app.light .premium-calendar-grid span.muted {
+  color: #94a3b8;
+}
+
+.app.light .premium-avatars b {
+  border-color: #ffffff;
+}
+
+.app.light .premium-export-row button {
+  color: #1e3a8a;
+}
+
+.premium-panel-grid {
+  align-items: stretch;
+  gap: 28px;
+}
+
+.premium-panel {
+  overflow: hidden;
+}
+
+.premium-parsed-pills,
+.premium-issue-actions,
+.premium-export-actions {
+  gap: 10px;
+}
+
+.premium-parsed-pills span,
+.premium-issue-actions span {
+  min-width: 0;
+  overflow: hidden;
+}
+
+
+/* Force the note card upward inside the premium demo card */
+.premium-demo-group .premium-note-card,
+.premium-panel:has(.premium-typing) .premium-note-card {
+  position: relative !important;
+  top: -22px !important;
+  transform: translateY(-34px) !important;
+  margin-bottom: -34px !important;
 }
