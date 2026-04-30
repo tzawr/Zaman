@@ -55,6 +55,12 @@ function InviteAccept() {
       createdAt: serverTimestamp(),
     }, { merge: true })
 
+    await updateDoc(doc(db, 'employees', invite.employeeId), {
+      accountUserId: uid,
+      accountEmail: userEmail,
+      portalJoinedAt: serverTimestamp()
+    })
+
     await updateDoc(inviteRef, { used: true })
     navigate('/my-schedule')
   }
@@ -130,7 +136,7 @@ function InviteAccept() {
         </h1>
         <p className="auth-subtitle">
           {mode === 'signup'
-            ? 'Create a free account to see your shifts.'
+            ? 'Create a free account to see your shifts and manage availability when your manager enables it.'
             : 'Sign in to your existing account to accept this invite.'}
         </p>
 

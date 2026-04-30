@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { ChevronLeft, ChevronRight, Clock, Calendar, Users, LayoutDashboard } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Clock, Calendar, Users, LayoutDashboard, Palmtree } from 'lucide-react'
 import { doc, getDoc, collection, query, where, orderBy, onSnapshot } from 'firebase/firestore'
 import { db } from '../firebase'
 import { useAuth } from '../AuthContext'
@@ -160,6 +160,13 @@ function MySchedule() {
         subtitle="Your shifts, updated in real time by your manager."
       >
         <div className="page-hero-actions">
+          <button
+            className="settings-button"
+            onClick={() => navigate('/my-availability')}
+          >
+            <Palmtree size={15} />
+            <span>My availability</span>
+          </button>
           <button
             className="settings-button"
             onClick={() => navigate('/dashboard', { state: { managerMode: true } })}

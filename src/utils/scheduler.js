@@ -43,11 +43,12 @@ function isTimeOffDate(emp, date) {
 //   maxDays: { "Nura": 5 },
 //   maxCloses: { "Nura": 2 },
 //   preferWindows: { "Isabel": { start: "04:00", end: "12:00" } },
+//   shiftHoursByEmployee: { "Amir": 4 },
 //   trainingPairs: [{ trainee: "New Hire", mentorRole: "Shift Supervisor" }],
 //   minimumStaff: [{from, to, count}],
 // }
 
-function computeShift(emp, dayKey, slotStartMins, slotEndMins, opStartMins, opEndMins, totals, dayIdx, idx, dailyBudget, preferWindows, anchor = 'start') {
+function computeShift(emp, dayKey, slotStartMins, slotEndMins, opStartMins, opEndMins, totals, dayIdx, idx, dailyBudget, preferWindows, anchor = 'start', options = {}) {
   const av = emp.availability[dayKey]
   const avStart = timeToMins(av.start || minsToTime(opStartMins))
   const avEnd = timeToMins(av.end || minsToTime(opEndMins), true)
@@ -65,11 +66,18 @@ function computeShift(emp, dayKey, slotStartMins, slotEndMins, opStartMins, opEn
     if (ne - ns >= 4 * 60) { effStart = ns; effEnd = ne }
   }
 
-  const remaining = emp.targetHours != null
-    ? emp.targetHours - (totals[emp.name] || 0)
-    : 8.5
-  const budget = emp.targetHours != null ? (dailyBudget?.[emp.name] ?? remaining) : 8.5
-  const todayMaxHours = Math.min(8.5, remaining, budget)
+  const remaining = options.allowOverTarget
+    ? 8.5
+    : emp.targetHours != null
+      ? emp.targetHours - (totals[emp.name] || 0)
+      : 8.5
+  const budget = options.allowOverTarget
+    ? 8.5
+    : emp.targetHours != null
+      ? (dailyBudget?.[emp.name] ?? remaining)
+      : 8.5
+  const fixedHours = Number(options.fixedHours) || null
+  const todayMaxHours = fixedHours || Math.min(8.5, remaining, budget)
   if (todayMaxHours < 4) return null
 
   let start
@@ -98,7 +106,7 @@ function computeShift(emp, dayKey, slotStartMins, slotEndMins, opStartMins, opEn
   }
 }
 
-function chooseFlexWindow(emp, dayKey, opStartMins, opEndMins, totals, dailyBudget) {
+function chooseFlexWindow(emp, dayKey, opStartMins, opEndMins, totals, dailyBudget, fixedHours = null) {
   const av = emp.availability?.[dayKey]
   if (!av) return null
 
@@ -108,7 +116,7 @@ function chooseFlexWindow(emp, dayKey, opStartMins, opEndMins, totals, dailyBudg
     ? emp.targetHours - (totals[emp.name] || 0)
     : 8.5
   const budget = emp.targetHours != null ? (dailyBudget?.[emp.name] ?? remaining) : 8.5
-  const hours = Math.min(8.5, remaining, budget)
+  const hours = fixedHours || Math.min(8.5, remaining, budget)
   if (hours < 4) return null
 
   const duration = hours * 60
@@ -201,7 +209,7 @@ function isEligible(
     if (gap < minGapMins) return false
   }
 
-  if (emp.targetHours != null) {
+  if (!slotRequirements.ignoreTarget && emp.targetHours != null) {
     const soFar = totals[emp.name] || 0
     if (soFar >= emp.targetHours - 0.05) return false
   }
@@ -245,6 +253,7 @@ export function runScheduler(employees, settings, weekStart, constraints = {}) {
     maxDays = {},
     maxCloses = {},
     preferWindows = {},
+    shiftHoursByEmployee = {},
     trainingPairs = [],
     minimumStaff = [],
     seed = 1,
@@ -264,16 +273,17 @@ export function runScheduler(employees, settings, weekStart, constraints = {}) {
   const dailyBudget = {}
   employees.forEach(emp => {
     if (emp.targetHours == null) return
+    const fixedShiftHours = Number(shiftHoursByEmployee?.[emp.name]) || null
     const openAvailDays = DAYS.filter(d => {
       const av = emp.availability?.[d]
       return av && av.available !== false && operatingHours?.[d]?.open
     }).length
     const target = Number(emp.targetHours) || 0
-    const idealWorkDays = Math.max(1, Math.ceil(target / 8))
+    const idealWorkDays = Math.max(1, Math.ceil(target / (fixedShiftHours || 8)))
     const plannedWorkDays = Math.min(openAvailDays || idealWorkDays, idealWorkDays)
     dailyBudget[emp.name] = plannedWorkDays > 0
-      ? Math.min(8.5, Math.ceil((target / plannedWorkDays) * 10) / 10)
-      : Math.min(8.5, target)
+      ? (fixedShiftHours || Math.min(8.5, Math.ceil((target / plannedWorkDays) * 10) / 10))
+      : (fixedShiftHours || Math.min(8.5, target))
   })
 
   const result = { weekStart, days: {}, summary: [], issues: [], recommendations: [] }
@@ -332,7 +342,9 @@ export function runScheduler(employees, settings, weekStart, constraints = {}) {
         }
 
         const emp = eligible[0]
-        const shift = computeShift(emp, dayKey, slotStart, slotEnd, opStartMins, opEndMins, totals, dayIdx, shiftIdx, dailyBudget, preferWindows, slot.anchor)
+        const shift = computeShift(emp, dayKey, slotStart, slotEnd, opStartMins, opEndMins, totals, dayIdx, shiftIdx, dailyBudget, preferWindows, slot.anchor, {
+          fixedHours: shiftHoursByEmployee?.[emp.name],
+        })
         if (!shift) {
           emptySlots.push({ start: slot.start, end: slot.end, role: slot.role || '' })
           continue
@@ -381,7 +393,9 @@ export function runScheduler(employees, settings, weekStart, constraints = {}) {
         }
 
         const emp = eligible[0]
-        const shift = computeShift(emp, dayKey, fromMins, opEndMins, opStartMins, opEndMins, totals, dayIdx, shiftIdx, dailyBudget, preferWindows)
+        const shift = computeShift(emp, dayKey, fromMins, opEndMins, opStartMins, opEndMins, totals, dayIdx, shiftIdx, dailyBudget, preferWindows, 'start', {
+          fixedHours: shiftHoursByEmployee?.[emp.name],
+        })
         if (!shift) {
           emptySlots.push({ start: from, end: to, role: '' })
           break
@@ -419,32 +433,69 @@ export function runScheduler(employees, settings, weekStart, constraints = {}) {
       })
 
     remaining.forEach(emp => {
-      const flex = chooseFlexWindow(emp, dayKey, opStartMins, opEndMins, totals, dailyBudget)
+      const flex = chooseFlexWindow(emp, dayKey, opStartMins, opEndMins, totals, dailyBudget, shiftHoursByEmployee?.[emp.name])
       if (!flex) return
-      const shift = computeShift(emp, dayKey, flex.start, flex.end, opStartMins, opEndMins, totals, dayIdx, shiftIdx, dailyBudget, preferWindows)
+      const shift = computeShift(emp, dayKey, flex.start, flex.end, opStartMins, opEndMins, totals, dayIdx, shiftIdx, dailyBudget, preferWindows, 'start', {
+        fixedHours: shiftHoursByEmployee?.[emp.name],
+      })
       if (!shift) return
       shifts.push(shift)
       recordShift(emp, shift, totals, assignedToday, daysWorked, closes, lastClose, dayIdx, opEndMins, preventClopening)
       shiftIdx++
     })
 
-    // Phase 4a: pairTogether — if one is scheduled but not the other, add the missing person
+    // Phase 4a: pairTogether — add missing partners and align existing non-overlapping pairs.
     pairs.forEach(([a, b]) => {
       const scheduledA = assignedToday.has(a)
       const scheduledB = assignedToday.has(b)
+
+      if (scheduledA && scheduledB) {
+        const shiftA = shifts.find(s => s.employee === a)
+        const shiftB = shifts.find(s => s.employee === b)
+        if (!shiftA || !shiftB || activeInWindow(shiftA, timeToMins(shiftB.start), timeToMins(shiftB.end, true))) return
+
+        const empB = employees.find(e => e.name === b)
+        if (!empB) return
+        const replacement = computeShift(
+          empB, dayKey, timeToMins(shiftA.start), timeToMins(shiftA.end, true),
+          opStartMins, opEndMins, totals, dayIdx, shiftIdx, dailyBudget, preferWindows, 'start',
+          { allowOverTarget: true, fixedHours: shiftHoursByEmployee?.[b] }
+        )
+        if (!replacement) return
+        const oldEndedNearClose = timeToMins(shiftB.end) >= opEndMins - 30
+        const newEndsNearClose = timeToMins(replacement.end) >= opEndMins - 30
+        totals[b] = Math.max(0, (totals[b] || 0) - (Number(shiftB.hours) || 0) + replacement.hours)
+        if (oldEndedNearClose && !newEndsNearClose) closes[b] = Math.max(0, (closes[b] || 0) - 1)
+        if (!oldEndedNearClose && newEndsNearClose) closes[b] = (closes[b] || 0) + 1
+        if (preventClopening) {
+          if (newEndsNearClose) lastClose[b] = { dayIdx, mins: timeToMins(replacement.end) }
+          else if (lastClose[b]?.dayIdx === dayIdx) delete lastClose[b]
+        }
+        Object.assign(shiftB, { ...replacement, id: shiftB.id })
+        return
+      }
+
       if (scheduledA === scheduledB) return
 
-      const missing = employees.find(e => e.name === (scheduledA ? b : a))
+      const missingName = scheduledA ? b : a
+      const presentName = scheduledA ? a : b
+      const missing = employees.find(e => e.name === missingName)
+      const presentShift = shifts.find(s => s.employee === presentName)
       if (!missing) return
       if (!isEligible(
         missing, dayKey, dayIdx, opStartMins, opEndMins, opDayWithDate, totals, assignedToday, lastClose,
         preventClopening, minHoursBetweenShifts, null,
-        avoid, maxDays, daysWorked, maxCloses, closes, opEndMins
+        avoid, maxDays, daysWorked, maxCloses, closes, opEndMins,
+        { ignoreTarget: true }
       )) return
 
-      const flex = chooseFlexWindow(missing, dayKey, opStartMins, opEndMins, totals, dailyBudget)
-      if (!flex) return
-      const shift = computeShift(missing, dayKey, flex.start, flex.end, opStartMins, opEndMins, totals, dayIdx, shiftIdx, dailyBudget, preferWindows)
+      const pairStart = presentShift ? timeToMins(presentShift.start) : opStartMins
+      const pairEnd = presentShift ? timeToMins(presentShift.end, true) : opEndMins
+      const shift = computeShift(
+        missing, dayKey, pairStart, pairEnd, opStartMins, opEndMins,
+        totals, dayIdx, shiftIdx, dailyBudget, preferWindows, 'start',
+        { allowOverTarget: true, fixedHours: shiftHoursByEmployee?.[missing.name] }
+      )
       if (!shift) return
       shifts.push(shift)
       recordShift(missing, shift, totals, assignedToday, daysWorked, closes, lastClose, dayIdx, opEndMins, preventClopening)
@@ -470,9 +521,11 @@ export function runScheduler(employees, settings, weekStart, constraints = {}) {
       )
       if (!mentor) return
 
-      const flex = chooseFlexWindow(mentor, dayKey, opStartMins, opEndMins, totals, dailyBudget)
+      const flex = chooseFlexWindow(mentor, dayKey, opStartMins, opEndMins, totals, dailyBudget, shiftHoursByEmployee?.[mentor.name])
       if (!flex) return
-      const shift = computeShift(mentor, dayKey, flex.start, flex.end, opStartMins, opEndMins, totals, dayIdx, shiftIdx, dailyBudget, preferWindows)
+      const shift = computeShift(mentor, dayKey, flex.start, flex.end, opStartMins, opEndMins, totals, dayIdx, shiftIdx, dailyBudget, preferWindows, 'start', {
+        fixedHours: shiftHoursByEmployee?.[mentor.name],
+      })
       if (!shift) return
       shifts.push(shift)
       recordShift(mentor, shift, totals, assignedToday, daysWorked, closes, lastClose, dayIdx, opEndMins, preventClopening)

@@ -13,6 +13,7 @@ import {
   Download,
   FileText,
   Image,
+  Filter,
 } from 'lucide-react'
 import {
   collection,
@@ -44,6 +45,8 @@ function Schedules() {
   const [exportMenuOpen, setExportMenuOpen] = useState(false)
   const [employees, setEmployees] = useState([])
   const [roles, setRoles] = useState([])
+  const [filterType, setFilterType] = useState('role')
+  const [filterValue, setFilterValue] = useState('')
 
   useEffect(() => {
     if (!currentUser) navigate('/signin')
@@ -148,6 +151,20 @@ function Schedules() {
       setExporting(null)
     }
   }
+
+  const roleOptions = roles
+    .map(role => typeof role === 'string' ? role : role.name)
+    .concat(getScheduleRoles(selectedSchedule?.data))
+    .filter(Boolean)
+    .filter((role, index, list) => list.indexOf(role) === index)
+    .sort((a, b) => a.localeCompare(b))
+  const employeeOptions = employees
+    .map(emp => emp.name)
+    .concat(getScheduleEmployees(selectedSchedule?.data))
+    .filter(Boolean)
+    .filter((name, index, list) => list.indexOf(name) === index)
+    .sort((a, b) => a.localeCompare(b))
+  const activeHighlightFilter = filterValue ? { type: filterType, value: filterValue } : null
 
   function copyToClipboard(text) {
     if (!text) return
@@ -336,12 +353,66 @@ function Schedules() {
                 )}
 
                 {selectedSchedule.data ? (
-                  <ScheduleTable
-                    data={selectedSchedule.data}
-                    employees={employees}
-                    roles={roles}
-                    onUpdate={handleScheduleUpdate}
-                  />
+                  <>
+                    <div className="schedule-filter-bar">
+                      <div className="schedule-filter-label">
+                        <Filter size={15} />
+                        <span>Highlight</span>
+                      </div>
+                      <div className="schedule-filter-controls">
+                        <div className="schedule-filter-segment">
+                          <button
+                            type="button"
+                            className={filterType === 'role' ? 'active' : ''}
+                            onClick={() => {
+                              setFilterType('role')
+                              setFilterValue('')
+                            }}
+                          >
+                            Role
+                          </button>
+                          <button
+                            type="button"
+                            className={filterType === 'employee' ? 'active' : ''}
+                            onClick={() => {
+                              setFilterType('employee')
+                              setFilterValue('')
+                            }}
+                          >
+                            Person
+                          </button>
+                        </div>
+                        <select
+                          className="input schedule-filter-select"
+                          value={filterValue}
+                          onChange={(e) => setFilterValue(e.target.value)}
+                        >
+                          <option value="">
+                            {filterType === 'role' ? 'All roles' : 'All people'}
+                          </option>
+                          {(filterType === 'role' ? roleOptions : employeeOptions).map(option => (
+                            <option key={option} value={option}>{option}</option>
+                          ))}
+                        </select>
+                        {filterValue && (
+                          <button
+                            type="button"
+                            className="schedule-filter-clear"
+                            onClick={() => setFilterValue('')}
+                          >
+                            Clear
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                    <ScheduleTable
+                      data={selectedSchedule.data}
+                      employees={employees}
+                      roles={roles}
+                      onUpdate={handleScheduleUpdate}
+                      highlightFilter={activeHighlightFilter}
+                    />
+                  </>
                 ) : (
                   <div className="schedule-output">
                     <pre>{selectedSchedule.content}</pre>
@@ -390,6 +461,32 @@ function Schedules() {
       )}
     </main>
   )
+}
+
+function getScheduleRoles(data) {
+  const roles = []
+  Object.values(data?.days || {}).forEach(day => {
+    ;(day.shifts || []).forEach(shift => {
+      if (shift.role) roles.push(shift.role)
+    })
+  })
+  ;(data?.summary || []).forEach(row => {
+    if (row.role) roles.push(row.role)
+  })
+  return roles
+}
+
+function getScheduleEmployees(data) {
+  const names = []
+  Object.values(data?.days || {}).forEach(day => {
+    ;(day.shifts || []).forEach(shift => {
+      if (shift.employee) names.push(shift.employee)
+    })
+  })
+  ;(data?.summary || []).forEach(row => {
+    if (row.employee) names.push(row.employee)
+  })
+  return names
 }
 
 export default Schedules

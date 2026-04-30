@@ -45,6 +45,7 @@ function Settings() {
   const [preventClopening, setPreventClopening] = useState(true)
   const [minHoursBetweenShifts, setMinHoursBetweenShifts] = useState(10)
   const [allowEmployeeFullView, setAllowEmployeeFullView] = useState(false)
+  const [allowEmployeeAvailabilityUpdates, setAllowEmployeeAvailabilityUpdates] = useState(false)
   const [roles, setRoles] = useState([])
   const [coverageRules, setCoverageRules] = useState('')
 
@@ -84,6 +85,7 @@ function Settings() {
         if (d.preventClopening !== undefined) setPreventClopening(d.preventClopening)
         if (d.minHoursBetweenShifts) setMinHoursBetweenShifts(d.minHoursBetweenShifts)
         if (d.allowEmployeeFullView !== undefined) setAllowEmployeeFullView(d.allowEmployeeFullView)
+        if (d.allowEmployeeAvailabilityUpdates !== undefined) setAllowEmployeeAvailabilityUpdates(d.allowEmployeeAvailabilityUpdates)
         if (d.roles) setRoles(d.roles)
         if (d.coverageRules !== undefined) setCoverageRules(d.coverageRules)
         setLoading(false)
@@ -125,6 +127,9 @@ function Settings() {
   }
   function toggleAllowEmployeeFullView() {
     const v = !allowEmployeeFullView; setAllowEmployeeFullView(v); saveToFirebase({ allowEmployeeFullView: v })
+  }
+  function toggleEmployeeAvailabilityUpdates() {
+    const v = !allowEmployeeAvailabilityUpdates; setAllowEmployeeAvailabilityUpdates(v); saveToFirebase({ allowEmployeeAvailabilityUpdates: v })
   }
   function updateMinHours(v) {
     const n = parseInt(v) || 8; setMinHoursBetweenShifts(n); saveToFirebase({ minHoursBetweenShifts: n })
@@ -449,7 +454,7 @@ function Settings() {
 
       <Section
         title="Team access"
-        subtitle="Control what employees can see when they log in."
+        subtitle="Control what employees can see and update when they log in."
         icon={Eye}
       >
         <div className="rule-card">
@@ -462,6 +467,20 @@ function Settings() {
               type="checkbox"
               checked={allowEmployeeFullView}
               onChange={toggleAllowEmployeeFullView}
+            />
+            <span className="slider"></span>
+          </label>
+        </div>
+        <div className="rule-card">
+          <div className="rule-info">
+            <p className="rule-title">Let employees update availability</p>
+            <p className="rule-description">When on, employees can submit their own weekly availability and time off. Managers can still edit everything from the team page.</p>
+          </div>
+          <label className="switch">
+            <input
+              type="checkbox"
+              checked={allowEmployeeAvailabilityUpdates}
+              onChange={toggleEmployeeAvailabilityUpdates}
             />
             <span className="slider"></span>
           </label>

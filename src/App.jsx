@@ -118,6 +118,7 @@ function App() {
   <Route path="/schedules" element={<ProtectedRoute><Schedules /></ProtectedRoute>} />
   <Route path="/invite" element={<ProtectedRoute><Invite /></ProtectedRoute>} />
   <Route path="/my-schedule" element={<ProtectedRoute><MySchedule /></ProtectedRoute>} />
+  <Route path="/my-availability" element={<ProtectedRoute><Availability /></ProtectedRoute>} />
   <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
 </Routes>
 

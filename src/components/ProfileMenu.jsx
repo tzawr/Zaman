@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { SlidersHorizontal, LogOut, Calendar, LayoutDashboard, Users, BookOpen, Link2, UserCircle } from 'lucide-react'
+import { SlidersHorizontal, LogOut, Calendar, Clock, LayoutDashboard, Users, BookOpen, Link2, UserCircle } from 'lucide-react'
 import { doc, onSnapshot } from 'firebase/firestore'
 import { db } from '../firebase'
 import { useAuth } from '../AuthContext'
@@ -89,6 +89,7 @@ function ProfileMenu({ darkMode, setDarkMode }) {
           {isEmployee ? (
             <>
               <NavItem icon={Calendar}        label="My Schedule"         onClick={() => go('/my-schedule')} />
+              <NavItem icon={Clock}           label="My availability"     onClick={() => go('/my-availability')} />
               <NavItem icon={LayoutDashboard} label="Manager Dashboard"   onClick={() => go('/dashboard', { managerMode: true })} />
             </>
           ) : (

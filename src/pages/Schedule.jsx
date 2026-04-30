@@ -133,7 +133,11 @@ function Schedule() {
       setGenerating(true)
 
       // Step 1: Parse both coverage rules and special instructions into structured constraints (AI, cached)
-      const parsedRules = await parseSchedulingInstructionsCached(userSettings.coverageRules, prompt)
+      const parsedRules = enhanceParsedRules(
+        await parseSchedulingInstructionsCached(userSettings.coverageRules, prompt),
+        prompt,
+        employees
+      )
 
       // Step 2: Build deterministic constraints from structured rules
       const constraints = buildConstraintsFromParsedRules(parsedRules, userSettings.operatingHours)
@@ -147,8 +151,8 @@ function Schedule() {
           ...constraints,
           seed: baseSeed + attempt,
         })
-        const violations = validateSchedule(candidate, employees, parsedRules?.coverage)
-        const score = scoreScheduleCandidate(candidate, violations, employees)
+        const violations = validateSchedule(candidate, employees, parsedRules)
+        const score = scoreScheduleCandidate(candidate, violations, employees, parsedRules?.employeeRules)
         if (!best || score < best.score) {
           best = { result: candidate, violations, score }
         }
@@ -157,6 +161,7 @@ function Schedule() {
 
       // Step 4: Validate and surface any unsatisfied constraints as issues
       const result = best.result
+      result.summary = calculateScheduleSummary(result, employees)
       if (best.violations.length > 0) {
         console.warn('[scheduler] violations:', best.violations)
         result.issues = best.violations
@@ -207,13 +212,13 @@ function Schedule() {
   }
 
   async function handleExport(type) {
-    if (!scheduleData) return
+    if (!activeScheduleData) return
     setExporting(type)
     setExportMenuOpen(false)
     
     try {
       if (type === 'csv') {
-        exportToCSV(scheduleData, weekStart)
+        exportToCSV(activeScheduleData, weekStart)
       } else if (type === 'png') {
         await exportToPNG('schedule-export-target', weekStart)
       } else if (type === 'pdf') {
@@ -240,6 +245,7 @@ function Schedule() {
   const openDaysCount = userSettings?.operatingHours
     ? Object.values(userSettings.operatingHours).filter(d => d.open).length
     : 0
+  const activeScheduleData = scheduleData ? withFreshSummary(scheduleData, employees) : null
 
     return (
       <main className="app-page">
@@ -414,7 +420,7 @@ function Schedule() {
   {error && <p className="hint-text">{error}</p>}
 </div>
 
-{scheduleData && (
+{activeScheduleData && (
   <div className="schedule-output-section">
     <div className="schedule-result-bar">
       <div className="schedule-result-bar-left">
@@ -429,7 +435,7 @@ function Schedule() {
         <button
           className="schedule-result-btn"
           onClick={() => {
-            navigator.clipboard.writeText(JSON.stringify(scheduleData, null, 2))
+            navigator.clipboard.writeText(JSON.stringify(activeScheduleData, null, 2))
             setCopied(true)
             setTimeout(() => setCopied(false), 2000)
           }}
@@ -489,7 +495,7 @@ function Schedule() {
     </div>
 
     <ScheduleTable
-      data={scheduleData}
+      data={activeScheduleData}
       employees={employees}
       roles={userSettings?.roles || []}
       onUpdate={handleScheduleUpdate}
@@ -498,6 +504,50 @@ function Schedule() {
 )}
     </main>
   )
+}
+
+function withFreshSummary(schedule, employees) {
+  return {
+    ...schedule,
+    summary: calculateScheduleSummary(schedule, employees),
+  }
+}
+
+function calculateScheduleSummary(schedule, employees) {
+  const totals = {}
+
+  Object.values(schedule?.days || {}).forEach(day => {
+    ;(day.shifts || []).forEach(shift => {
+      const hours = Number(shift.hours) || shiftHours(shift.start, shift.end)
+      totals[shift.employee] = (totals[shift.employee] || 0) + hours
+    })
+  })
+
+  const employeeRows = employees.map(emp => {
+    const scheduled = Math.round((totals[emp.name] || 0) * 10) / 10
+    const target = Number(emp.targetHours) || 0
+    delete totals[emp.name]
+    return {
+      employee: emp.name,
+      role: emp.role || '',
+      scheduledHours: scheduled,
+      targetHours: target,
+      difference: Math.round((scheduled - target) * 10) / 10,
+    }
+  })
+
+  const unknownRows = Object.entries(totals).map(([employee, total]) => {
+    const scheduled = Math.round(total * 10) / 10
+    return {
+      employee,
+      role: '',
+      scheduledHours: scheduled,
+      targetHours: 0,
+      difference: scheduled,
+    }
+  })
+
+  return [...employeeRows, ...unknownRows]
 }
 
 // Helper: Get next Monday in YYYY-MM-DD format
@@ -535,11 +585,13 @@ function hashScheduleSeed(weekStart, prompt, counter) {
   return hash >>> 0
 }
 
-function scoreScheduleCandidate(schedule, violations, employees) {
+function scoreScheduleCandidate(schedule, violations, employees, employeeRules = null) {
   let score = violations.length * 1000
   const shiftsByEmployee = {}
+  const shiftsByDay = {}
 
-  Object.values(schedule.days || {}).forEach(day => {
+  Object.entries(schedule.days || {}).forEach(([dayKey, day]) => {
+    shiftsByDay[dayKey] = day.shifts || []
     ;(day.shifts || []).forEach(shift => {
       if (!shiftsByEmployee[shift.employee]) shiftsByEmployee[shift.employee] = []
       shiftsByEmployee[shift.employee].push(shift)
@@ -575,6 +627,33 @@ function scoreScheduleCandidate(schedule, violations, employees) {
       score += unusedAvailableDays * Math.abs(Number(row.difference) || 0) * 30
     }
   })
+
+  if (employeeRules) {
+    ;(employeeRules.pairTogether || []).forEach(([a, b]) => {
+      Object.values(shiftsByDay).forEach(shifts => {
+        const hasA = shifts.some(s => s.employee === a)
+        const hasB = shifts.some(s => s.employee === b)
+        if (hasA !== hasB) score += 900
+        if (hasA && hasB && !pairedShiftsOverlap(shifts, a, b)) score += 250
+      })
+    })
+
+    ;(employeeRules.avoidTogether || []).forEach(([a, b]) => {
+      Object.values(shiftsByDay).forEach(shifts => {
+        const aShifts = shifts.filter(s => s.employee === a)
+        const bShifts = shifts.filter(s => s.employee === b)
+        if (aShifts.some(aShift => bShifts.some(bShift => shiftsOverlap(aShift, bShift)))) {
+          score += 900
+        }
+      })
+    })
+
+    Object.entries(employeeRules.shiftHoursByEmployee || {}).forEach(([employee, hours]) => {
+      ;(shiftsByEmployee[employee] || []).forEach(shift => {
+        score += Math.abs((Number(shift.hours) || 0) - Number(hours)) * 500
+      })
+    })
+  }
 
   return score
 }
@@ -659,12 +738,82 @@ function fallbackRecommendations(violations) {
   return recommendations.slice(0, 5)
 }
 
+function enhanceParsedRules(parsedRules, specialInstructions, employees) {
+  const heuristicRules = parseLocalInstructionHints(specialInstructions, employees)
+  if (!heuristicRules) return parsedRules
+
+  const next = parsedRules
+    ? JSON.parse(JSON.stringify(parsedRules))
+    : {}
+  next.employeeRules = next.employeeRules || {}
+
+  if (heuristicRules.pairTogether?.length) {
+    const existing = next.employeeRules.pairTogether || []
+    heuristicRules.pairTogether.forEach(pair => {
+      if (!existing.some(current => samePair(current, pair))) existing.push(pair)
+    })
+    next.employeeRules.pairTogether = existing
+  }
+
+  if (heuristicRules.shiftHoursByEmployee) {
+    next.employeeRules.shiftHoursByEmployee = {
+      ...(next.employeeRules.shiftHoursByEmployee || {}),
+      ...heuristicRules.shiftHoursByEmployee,
+    }
+  }
+
+  return next
+}
+
+function parseLocalInstructionHints(text, employees) {
+  if (!text?.trim() || !employees?.length) return null
+
+  const rules = { pairTogether: [], shiftHoursByEmployee: {} }
+  const sentences = text
+    .split(/[\n.!?]+/)
+    .map(s => s.trim())
+    .filter(Boolean)
+
+  sentences.forEach(sentence => {
+    const lower = sentence.toLowerCase()
+    const mentioned = employees
+      .filter(emp => lower.includes(emp.name.toLowerCase()))
+      .map(emp => emp.name)
+
+    if (mentioned.length >= 2 && /\b(together|same shift|training|train)\b/i.test(sentence)) {
+      const pair = [mentioned[0], mentioned[1]]
+      if (!rules.pairTogether.some(current => samePair(current, pair))) rules.pairTogether.push(pair)
+    }
+
+    mentioned.forEach(name => {
+      const numberMatch = sentence.match(/\b(\d+(?:\.\d+)?)\s*(?:-| )?hour\b/i)
+      const wordFour = /\bfour\s*(?:-| )?hour\b/i.test(sentence)
+      const wantsShortShift = /\b(short|shorter|half)\b/i.test(sentence) && /\bshift/i.test(sentence)
+      const hours = numberMatch ? Number(numberMatch[1]) : wordFour || wantsShortShift ? 4 : null
+      if (hours && hours >= 4 && hours <= 8.5 && /\bshift/i.test(sentence)) {
+        rules.shiftHoursByEmployee[name] = hours
+      }
+    })
+  })
+
+  if (!rules.pairTogether.length && Object.keys(rules.shiftHoursByEmployee).length === 0) return null
+  return rules
+}
+
+function samePair(a, b) {
+  return Array.isArray(a) &&
+    Array.isArray(b) &&
+    a.length >= 2 &&
+    b.length >= 2 &&
+    ((a[0] === b[0] && a[1] === b[1]) || (a[0] === b[1] && a[1] === b[0]))
+}
+
 async function parseSchedulingInstructionsCached(coverageRulesText, specialInstructions) {
   const combined = (coverageRulesText || '').trim() + '\n---\n' + (specialInstructions || '').trim()
   if (!combined.replace(/---/g, '').trim()) return null
   let hash = 0
   for (let i = 0; i < combined.length; i++) hash = (Math.imul(31, hash) + combined.charCodeAt(i)) | 0
-  const key = 'hengam_rules_v2_' + Math.abs(hash)
+  const key = 'hengam_rules_v3_' + Math.abs(hash)
   try {
     const cached = localStorage.getItem(key)
     if (cached) return JSON.parse(cached)
@@ -715,6 +864,7 @@ Return a JSON object. Omit any fields not mentioned or implied:
     "maxDays": {"Nura": 5},
     "maxCloses": {"Nura": 2},
     "preferShiftWindows": {"Isabel": {"start": "04:00", "end": "12:00"}},
+    "shiftHoursByEmployee": {"Amir": 4},
     "trainingPairs": [{"trainee": "New Hire", "mentorRole": "Shift Supervisor"}],
     "preferredEmployeesByDay": {"friday": ["Sam", "Alex"]}
   }
@@ -736,6 +886,7 @@ Field meanings:
 - employeeRules.maxDays: maximum days per week per employee {"Name": N}
 - employeeRules.maxCloses: maximum closing shifts per week per employee {"Name": N}
 - employeeRules.preferShiftWindows: preferred time window per employee {"Name": {"start": "HH:MM", "end": "HH:MM"}}
+- employeeRules.shiftHoursByEmployee: exact shift length by employee when text says someone should have 4-hour shifts, shorter shifts, half shifts, or any specific shift length
 - employeeRules.trainingPairs: if trainee is working, ensure a mentor with mentorRole is also scheduled
 - employeeRules.preferredEmployeesByDay: employees to prioritize on specific days {"dayname": ["Name"]}
 - All times in 24-hour HH:MM format`
@@ -754,14 +905,16 @@ Field meanings:
   }
 }
 
-// JS validator — checks hard rules and structured coverage rules.
+// JS validator — checks hard rules and structured scheduling rules.
 // Never makes scheduling decisions. Returns violation strings for the AI to fix.
-function validateSchedule(data, employees, coverageRules = null) {
+function validateSchedule(data, employees, parsedRules = null) {
   const violations = []
   const DAYS = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday']
   const empMap = Object.fromEntries(employees.map(e => [e.name, e]))
   const weekTotals = {}
   const toM = t => { const [h, m] = (t || '0:0').split(':').map(Number); return h * 60 + (m || 0) }
+  const coverageRules = parsedRules?.coverage || null
+  const employeeRules = parsedRules?.employeeRules || null
 
   DAYS.forEach(day => {
     const dayData = data.days?.[day]
@@ -871,7 +1024,60 @@ function validateSchedule(data, employees, coverageRules = null) {
         })
       }
     }
+
+    if (employeeRules) {
+      ;(employeeRules.pairTogether || []).forEach(([a, b]) => {
+        const aShifts = shifts.filter(s => s.employee === a)
+        const bShifts = shifts.filter(s => s.employee === b)
+        if (aShifts.length !== bShifts.length || (aShifts.length > 0 && bShifts.length === 0)) {
+          violations.push(`${capitalize(day)}: ${a} and ${b} must be scheduled together`)
+        } else if (aShifts.length && !aShifts.some(aShift => bShifts.some(bShift => shiftsOverlap(aShift, bShift)))) {
+          violations.push(`${capitalize(day)}: ${a} and ${b} are both scheduled but their shifts do not overlap`)
+        }
+      })
+
+      ;(employeeRules.avoidTogether || []).forEach(([a, b]) => {
+        const aShifts = shifts.filter(s => s.employee === a)
+        const bShifts = shifts.filter(s => s.employee === b)
+        if (aShifts.some(aShift => bShifts.some(bShift => shiftsOverlap(aShift, bShift)))) {
+          violations.push(`${capitalize(day)}: ${a} and ${b} must not work the same shift`)
+        }
+      })
+
+      Object.entries(employeeRules.shiftHoursByEmployee || {}).forEach(([employee, expectedHours]) => {
+        shifts
+          .filter(s => s.employee === employee)
+          .forEach(shift => {
+            const actualHours = Number(shift.hours) || shiftHours(shift.start, shift.end)
+            if (Math.abs(actualHours - Number(expectedHours)) > 0.05) {
+              violations.push(`${capitalize(day)}: ${employee} should have ${expectedHours}h shifts — scheduled ${actualHours}h`)
+            }
+          })
+      })
+    }
   })
+
+  if (employeeRules) {
+    Object.entries(employeeRules.maxDays || {}).forEach(([employee, max]) => {
+      const days = DAYS.filter(day =>
+        (data.days?.[day]?.shifts || []).some(shift => shift.employee === employee)
+      ).length
+      if (days > Number(max)) {
+        violations.push(`${employee}: scheduled ${days} days but maximum is ${max}`)
+      }
+    })
+
+    Object.entries(employeeRules.maxCloses || {}).forEach(([employee, max]) => {
+      const closes = DAYS.filter(day => {
+        const shifts = data.days?.[day]?.shifts || []
+        const latestEnd = shifts.reduce((latest, shift) => Math.max(latest, toM(shift.end)), 0)
+        return shifts.some(shift => shift.employee === employee && toM(shift.end) >= latestEnd - 30)
+      }).length
+      if (closes > Number(max)) {
+        violations.push(`${employee}: scheduled ${closes} closing shifts but maximum is ${max}`)
+      }
+    })
+  }
 
   // --- Weekly target check (over AND under) ---
   employees.forEach(emp => {
@@ -906,11 +1112,12 @@ function buildConstraintsFromParsedRules(parsedRules, operatingHours) {
   const maxDays = {}
   const maxCloses = {}
   const preferWindows = {}
+  const shiftHoursByEmployee = {}
   const trainingPairs = []
   const prioritize = {}
   const minimumStaff = []
 
-  if (!parsedRules) return { slots, pairs, avoid, maxDays, maxCloses, preferWindows, trainingPairs, prioritize, minimumStaff }
+  if (!parsedRules) return { slots, pairs, avoid, maxDays, maxCloses, preferWindows, shiftHoursByEmployee, trainingPairs, prioritize, minimumStaff }
 
   const { coverage, employeeRules } = parsedRules
 
@@ -958,11 +1165,12 @@ function buildConstraintsFromParsedRules(parsedRules, operatingHours) {
     if (employeeRules.maxDays) Object.assign(maxDays, employeeRules.maxDays)
     if (employeeRules.maxCloses) Object.assign(maxCloses, employeeRules.maxCloses)
     if (employeeRules.preferShiftWindows) Object.assign(preferWindows, employeeRules.preferShiftWindows)
+    if (employeeRules.shiftHoursByEmployee) Object.assign(shiftHoursByEmployee, employeeRules.shiftHoursByEmployee)
     if (Array.isArray(employeeRules.trainingPairs)) trainingPairs.push(...employeeRules.trainingPairs)
     if (employeeRules.preferredEmployeesByDay) Object.assign(prioritize, employeeRules.preferredEmployeesByDay)
   }
 
-  return { slots, pairs, avoid, maxDays, maxCloses, preferWindows, trainingPairs, prioritize, minimumStaff }
+  return { slots, pairs, avoid, maxDays, maxCloses, preferWindows, shiftHoursByEmployee, trainingPairs, prioritize, minimumStaff }
 }
 
 function shiftHours(start, end) {
@@ -972,6 +1180,27 @@ function shiftHours(start, end) {
   let h = (eh + em / 60) - (sh + sm / 60)
   if (h < 0) h += 24
   return Math.round(h * 10) / 10
+}
+
+function shiftStartMins(shift) {
+  const [h, m] = (shift.start || '0:0').split(':').map(Number)
+  return h * 60 + (m || 0)
+}
+
+function shiftEndMins(shift) {
+  const [h, m] = (shift.end || '0:0').split(':').map(Number)
+  const mins = h * 60 + (m || 0)
+  return mins === 0 ? 24 * 60 : mins
+}
+
+function shiftsOverlap(a, b) {
+  return shiftStartMins(a) < shiftEndMins(b) && shiftEndMins(a) > shiftStartMins(b)
+}
+
+function pairedShiftsOverlap(shifts, a, b) {
+  const aShifts = shifts.filter(shift => shift.employee === a)
+  const bShifts = shifts.filter(shift => shift.employee === b)
+  return aShifts.some(aShift => bShifts.some(bShift => shiftsOverlap(aShift, bShift)))
 }
 
 function capitalize(s) {

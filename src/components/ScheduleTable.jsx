@@ -13,14 +13,14 @@ const DAYS = [
 
 function colorForEmployee(name) {
   const colors = [
-    { bg: 'rgba(99, 102, 241, 0.12)', border: 'rgba(99, 102, 241, 0.3)', text: '#A5B4FC', lightText: '#4F46E5', lightBg: 'rgba(99, 102, 241, 0.12)' },
-    { bg: 'rgba(139, 92, 246, 0.12)', border: 'rgba(139, 92, 246, 0.3)', text: '#C4B5FD', lightText: '#7C3AED', lightBg: 'rgba(139, 92, 246, 0.12)' },
-    { bg: 'rgba(236, 72, 153, 0.12)', border: 'rgba(236, 72, 153, 0.3)', text: '#F9A8D4', lightText: '#DB2777', lightBg: 'rgba(236, 72, 153, 0.11)' },
-    { bg: 'rgba(16, 185, 129, 0.12)', border: 'rgba(16, 185, 129, 0.3)', text: '#6EE7B7', lightText: '#059669', lightBg: 'rgba(16, 185, 129, 0.12)' },
-    { bg: 'rgba(245, 158, 11, 0.12)', border: 'rgba(245, 158, 11, 0.3)', text: '#FCD34D', lightText: '#B45309', lightBg: 'rgba(245, 158, 11, 0.13)' },
-    { bg: 'rgba(14, 165, 233, 0.12)', border: 'rgba(14, 165, 233, 0.3)', text: '#7DD3FC', lightText: '#0284C7', lightBg: 'rgba(14, 165, 233, 0.12)' },
-    { bg: 'rgba(239, 68, 68, 0.12)', border: 'rgba(239, 68, 68, 0.3)', text: '#FCA5A5', lightText: '#DC2626', lightBg: 'rgba(239, 68, 68, 0.11)' },
-    { bg: 'rgba(168, 85, 247, 0.12)', border: 'rgba(168, 85, 247, 0.3)', text: '#D8B4FE', lightText: '#9333EA', lightBg: 'rgba(168, 85, 247, 0.12)' },
+    { bg: 'rgba(30, 64, 175, 0.18)', border: 'rgba(96, 165, 250, 0.26)', text: '#BFDBFE', lightText: '#1D4ED8', lightBg: 'rgba(96, 165, 250, 0.12)' },
+    { bg: 'rgba(77, 92, 124, 0.18)', border: 'rgba(148, 163, 184, 0.24)', text: '#CBD5E1', lightText: '#475569', lightBg: 'rgba(148, 163, 184, 0.12)' },
+    { bg: 'rgba(67, 56, 202, 0.2)', border: 'rgba(174, 132, 184, 0.28)', text: '#C7D2FE', lightText: '#4338CA', lightBg: 'rgba(99, 102, 241, 0.12)' },
+    { bg: 'rgba(96, 165, 250, 0.14)', border: 'rgba(96, 165, 250, 0.28)', text: '#FDE68A', lightText: '#B45309', lightBg: 'rgba(245, 158, 11, 0.13)' },
+    { bg: 'rgba(96, 165, 250, 0.12)', border: 'rgba(96, 165, 250, 0.25)', text: '#BFDBFE', lightText: '#2563EB', lightBg: 'rgba(96, 165, 250, 0.1)' },
+    { bg: 'rgba(15, 31, 62, 0.74)', border: 'rgba(96, 165, 250, 0.2)', text: '#DBEAFE', lightText: '#1E3A8A', lightBg: 'rgba(30, 64, 175, 0.1)' },
+    { bg: 'rgba(124, 45, 18, 0.16)', border: 'rgba(251, 146, 60, 0.24)', text: '#FED7AA', lightText: '#C2410C', lightBg: 'rgba(251, 146, 60, 0.11)' },
+    { bg: 'rgba(88, 28, 135, 0.16)', border: 'rgba(167, 139, 250, 0.24)', text: '#DDD6FE', lightText: '#6D28D9', lightBg: 'rgba(167, 139, 250, 0.11)' },
   ]
   let hash = 0
   for (let i = 0; i < name.length; i++) {
@@ -120,11 +120,19 @@ function calcHours(start, end) {
   return Math.round(hours * 10) / 10
 }
 
-function ScheduleTable({ data, employees = [], roles = [], onUpdate }) {
+function ScheduleTable({ data, employees = [], roles = [], onUpdate, highlightFilter = null }) {
   const [editing, setEditing] = useState(null) // { dayKey, shift } or { dayKey, shift: null } for new
   const newShiftCounter = useRef(0)
   
   if (!data || !data.days) return null
+
+  const hasHighlight = Boolean(highlightFilter?.type && highlightFilter?.value)
+  const matchesHighlight = (item = {}) => {
+    if (!hasHighlight) return true
+    if (highlightFilter.type === 'role') return item.role === highlightFilter.value
+    if (highlightFilter.type === 'employee') return item.employee === highlightFilter.value
+    return true
+  }
 
   function handleShiftClick(dayKey, shift) {
     setEditing({ dayKey, shift: { ...shift } })
@@ -216,7 +224,7 @@ function ScheduleTable({ data, employees = [], roles = [], onUpdate }) {
                     return (
                       <div
                         key={shift.id}
-                        className="schedule-shift"
+                        className={`schedule-shift ${hasHighlight && !matchesHighlight(shift) ? 'schedule-shift-muted' : ''}`}
                         style={{
                           '--shift-bg': color.bg,
                           '--shift-border': color.border,
@@ -292,7 +300,10 @@ function ScheduleTable({ data, employees = [], roles = [], onUpdate }) {
               const trendClass = isOver ? 'over' : isUnder ? 'under' : 'on-target'
               
               return (
-                <div key={s.employee} className="schedule-summary-card">
+                <div
+                  key={s.employee}
+                  className={`schedule-summary-card ${hasHighlight && !matchesHighlight(s) ? 'schedule-summary-card-muted' : ''}`}
+                >
                   <div className="schedule-summary-avatar" style={{
                     '--shift-bg': color.bg,
                     '--shift-border': color.border,

@@ -102,43 +102,66 @@ export function exportToCSV(data, weekStart) {
 
 // ========== PNG EXPORT ==========
 export async function exportToPNG(elementId, weekStart) {
-  const element = document.getElementById(elementId)
-  if (!element) {
+  const source = document.getElementById(elementId)
+  if (!source) {
     throw new Error('Schedule element not found')
   }
+  const { element, cleanup } = prepareExportElement(source)
   
-  const canvas = await html2canvas(element, {
-    backgroundColor: '#0A0A0B',
-    scale: 2,
-    logging: false,
-    useCORS: true,
-  })
-  
-  canvas.toBlob(blob => {
-    if (!blob) return
-    const url = URL.createObjectURL(blob)
-    const link = document.createElement('a')
-    link.href = url
-    link.download = `schedule-${weekStart || 'export'}.png`
-    document.body.appendChild(link)
-    link.click()
-    document.body.removeChild(link)
-    setTimeout(() => URL.revokeObjectURL(url), 100)
-  })
-}
-
-export async function exportToPDF(elementId, weekStart) {
-    const element = document.getElementById(elementId)
-    if (!element) {
-      throw new Error('Schedule element not found')
-    }
-    
+  try {
     const canvas = await html2canvas(element, {
       backgroundColor: '#0A0A0B',
       scale: 2,
       logging: false,
       useCORS: true,
+      width: element.scrollWidth,
+      height: element.scrollHeight,
+      windowWidth: Math.max(document.documentElement.clientWidth, element.scrollWidth),
+      windowHeight: Math.max(document.documentElement.clientHeight, element.scrollHeight),
+      scrollX: 0,
+      scrollY: 0,
     })
+  
+    canvas.toBlob(blob => {
+      if (!blob) return
+      const url = URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = url
+      link.download = `schedule-${weekStart || 'export'}.png`
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      setTimeout(() => URL.revokeObjectURL(url), 100)
+    })
+  } finally {
+    cleanup()
+  }
+}
+
+export async function exportToPDF(elementId, weekStart) {
+    const source = document.getElementById(elementId)
+    if (!source) {
+      throw new Error('Schedule element not found')
+    }
+    const { element, cleanup } = prepareExportElement(source)
+    
+    let canvas
+    try {
+      canvas = await html2canvas(element, {
+        backgroundColor: '#0A0A0B',
+        scale: 2,
+        logging: false,
+        useCORS: true,
+        width: element.scrollWidth,
+        height: element.scrollHeight,
+        windowWidth: Math.max(document.documentElement.clientWidth, element.scrollWidth),
+        windowHeight: Math.max(document.documentElement.clientHeight, element.scrollHeight),
+        scrollX: 0,
+        scrollY: 0,
+      })
+    } finally {
+      cleanup()
+    }
     
     // Standard landscape A4 in points
     const pdfWidth = 842
@@ -205,6 +228,41 @@ export async function exportToPDF(elementId, weekStart) {
   }
 
 // ========== HELPER ==========
+function prepareExportElement(source) {
+  const clone = source.cloneNode(true)
+  clone.removeAttribute('id')
+  clone.classList.add('schedule-export-clone')
+  clone.style.width = `${source.scrollWidth}px`
+  clone.style.maxWidth = 'none'
+  clone.style.height = 'auto'
+  clone.style.overflow = 'visible'
+  clone.style.position = 'fixed'
+  clone.style.left = '0'
+  clone.style.top = '0'
+  clone.style.zIndex = '-1'
+  clone.style.pointerEvents = 'none'
+  clone.style.background = '#0A0A0B'
+
+  document.body.appendChild(clone)
+
+  clone.querySelectorAll('*').forEach(node => {
+    node.style.animation = 'none'
+    node.style.transition = 'none'
+    if (node.classList.contains('schedule-table-wrapper')) {
+      node.style.maxWidth = 'none'
+      node.style.overflow = 'visible'
+    }
+    if (node.classList.contains('schedule-table')) {
+      node.style.width = `${node.scrollWidth}px`
+    }
+  })
+
+  return {
+    element: clone,
+    cleanup: () => clone.remove(),
+  }
+}
+
 function downloadFile(content, filename, mimeType) {
   const blob = new Blob([content], { type: mimeType })
   const url = URL.createObjectURL(blob)

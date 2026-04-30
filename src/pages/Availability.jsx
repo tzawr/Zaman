@@ -1,8 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { motion } from 'framer-motion'
-import { ArrowLeft, Check, X, ArrowRight, Palmtree, Plus, Clock } from 'lucide-react'
-import { doc, onSnapshot, updateDoc } from 'firebase/firestore'
+import { ArrowLeft, Check, X, ArrowRight, Palmtree, Plus, Clock, Lock } from 'lucide-react'
+import { doc, getDoc, onSnapshot, updateDoc, serverTimestamp } from 'firebase/firestore'
 import { db } from '../firebase'
 import { useAuth } from '../AuthContext'
 import { useToast } from '../components/Toast'
@@ -30,7 +29,10 @@ function Availability() {
   const { currentUser } = useAuth()
   const toast = useToast()
 
+  const [activeEmployeeId, setActiveEmployeeId] = useState(employeeId || '')
   const [employee, setEmployee] = useState(null)
+  const [portalMode, setPortalMode] = useState(employeeId ? 'manager' : 'employee')
+  const [employeeCanEdit, setEmployeeCanEdit] = useState(false)
   const [availability, setAvailability] = useState(DEFAULT_AVAIL)
   const [timeOff, setTimeOff] = useState([])
   const [newTimeOffStart, setNewTimeOffStart] = useState('')
@@ -44,15 +46,58 @@ function Availability() {
   }, [currentUser, navigate])
 
   useEffect(() => {
-    if (!currentUser || !employeeId) return
-    const unsub = onSnapshot(doc(db, 'employees', employeeId), (snap) => {
+    if (!currentUser) return
+    let unsubManager = null
+
+    async function resolvePortal() {
+      if (employeeId) {
+        setPortalMode('manager')
+        setEmployeeCanEdit(true)
+        setActiveEmployeeId(employeeId)
+        return
+      }
+
+      const userSnap = await getDoc(doc(db, 'users', currentUser.uid))
+      if (!userSnap.exists()) {
+        navigate('/signin')
+        return
+      }
+      const userData = userSnap.data()
+      if (userData.accountType !== 'employee' || !userData.linkedEmployeeId || !userData.managerId) {
+        navigate('/dashboard')
+        return
+      }
+      setPortalMode('employee')
+      setActiveEmployeeId(userData.linkedEmployeeId)
+      unsubManager = onSnapshot(doc(db, 'users', userData.managerId), (managerSnap) => {
+        setEmployeeCanEdit(managerSnap.exists() && managerSnap.data().allowEmployeeAvailabilityUpdates === true)
+      })
+    }
+
+    resolvePortal().catch(() => {
+      toast.error('Failed to load availability portal.')
+      navigate('/my-schedule')
+    })
+
+    return () => {
+      if (unsubManager) unsubManager()
+    }
+  }, [currentUser, employeeId, navigate, toast])
+
+  useEffect(() => {
+    if (!currentUser || !activeEmployeeId) return
+    const unsub = onSnapshot(doc(db, 'employees', activeEmployeeId), (snap) => {
       if (!snap.exists()) {
-        navigate('/employees')
+        navigate(portalMode === 'employee' ? '/my-schedule' : '/employees')
         return
       }
       const data = snap.data()
-      if (data.userId !== currentUser.uid) {
-        navigate('/employees')
+      const canViewAsManager = portalMode === 'manager' && data.userId === currentUser.uid
+      const canViewAsEmployee = portalMode === 'employee' && data.accountUserId === currentUser.uid
+      const canViewLinkedEmployee = portalMode === 'employee' && data.invitedUserId === currentUser.uid
+      const canViewLegacyEmployee = portalMode === 'employee' && employeeId === undefined
+      if (!canViewAsManager && !canViewAsEmployee && !canViewLinkedEmployee && !canViewLegacyEmployee) {
+        navigate(portalMode === 'employee' ? '/my-schedule' : '/employees')
         return
       }
       setEmployee(data)
@@ -63,13 +108,26 @@ function Availability() {
       setLoading(false)
     })
     return () => unsub()
-  }, [currentUser, employeeId, navigate])
+  }, [currentUser, activeEmployeeId, portalMode, employeeId, navigate])
+
+  const canEdit = portalMode === 'manager' || employeeCanEdit
+  const isEmployeePortal = portalMode === 'employee'
+  const backPath = isEmployeePortal ? '/my-schedule' : '/employees'
 
   async function saveAvailability(next) {
+    if (!canEdit) {
+      toast.info('Your manager is managing availability right now.')
+      return
+    }
     try {
       setSaving(true)
-      await updateDoc(doc(db, 'employees', employeeId), { availability: next })
-    } catch (err) {
+      await updateDoc(doc(db, 'employees', activeEmployeeId), {
+        availability: next,
+        availabilityUpdatedAt: serverTimestamp(),
+        availabilityUpdatedBy: currentUser.uid,
+        availabilityUpdatedByType: isEmployeePortal ? 'employee' : 'manager'
+      })
+    } catch {
       toast.error('Failed to save.')
     } finally {
       setSaving(false)
@@ -77,10 +135,19 @@ function Availability() {
   }
 
   async function saveTimeOff(next) {
+    if (!canEdit) {
+      toast.info('Your manager is managing time off right now.')
+      return
+    }
     try {
       setSaving(true)
-      await updateDoc(doc(db, 'employees', employeeId), { timeOff: next })
-    } catch (err) {
+      await updateDoc(doc(db, 'employees', activeEmployeeId), {
+        timeOff: next,
+        timeOffUpdatedAt: serverTimestamp(),
+        timeOffUpdatedBy: currentUser.uid,
+        timeOffUpdatedByType: isEmployeePortal ? 'employee' : 'manager'
+      })
+    } catch {
       toast.error('Failed to save.')
     } finally {
       setSaving(false)
@@ -88,6 +155,10 @@ function Availability() {
   }
 
   function toggleDay(dayKey) {
+    if (!canEdit) {
+      toast.info('Your manager is managing availability right now.')
+      return
+    }
     const next = {
       ...availability,
       [dayKey]: { ...availability[dayKey], available: !availability[dayKey].available }
@@ -97,6 +168,7 @@ function Availability() {
   }
 
   function updateTime(dayKey, field, value) {
+    if (!canEdit) return
     const next = {
       ...availability,
       [dayKey]: { ...availability[dayKey], [field]: value }
@@ -106,6 +178,10 @@ function Availability() {
   }
 
   function addTimeOff() {
+    if (!canEdit) {
+      toast.info('Your manager is managing time off right now.')
+      return
+    }
     if (!newTimeOffStart || !newTimeOffEnd) {
       toast.info('Please pick both dates')
       return
@@ -130,6 +206,10 @@ function Availability() {
   }
 
   function removeTimeOff(id) {
+    if (!canEdit) {
+      toast.info('Your manager is managing time off right now.')
+      return
+    }
     const next = timeOff.filter(t => t.id !== id)
     setTimeOff(next)
     saveTimeOff(next)
@@ -147,16 +227,22 @@ function Availability() {
     <main className="app-page">
       <button 
         className="app-back-link"
-        onClick={() => navigate('/employees')}
+        onClick={() => navigate(backPath)}
       >
         <ArrowLeft size={14} />
-        <span>Back to team</span>
+        <span>{isEmployeePortal ? 'Back to my schedule' : 'Back to team'}</span>
       </button>
 
       <PageHero
-        eyebrow={employee.role}
-        title={employee.name}
-        subtitle={`Set weekly availability and time off for ${employee.name}. Changes save automatically.`}
+        eyebrow={isEmployeePortal ? 'Employee portal' : employee.role}
+        title={isEmployeePortal ? 'My availability' : employee.name}
+        subtitle={
+          isEmployeePortal
+            ? canEdit
+              ? 'Update your weekly availability and time off. Your manager sees the changes before building the next schedule.'
+              : 'Your manager is managing availability right now. You can still review what is on file.'
+            : `Set weekly availability and time off for ${employee.name}. Changes save automatically.`
+        }
       >
         {saving && (
           <span className="saving-pill">
@@ -164,11 +250,17 @@ function Availability() {
             Saving...
           </span>
         )}
+        {isEmployeePortal && !canEdit && (
+          <span className="saving-pill">
+            <Lock size={12} />
+            Manager controlled
+          </span>
+        )}
       </PageHero>
 
       <Section 
         title="Weekly availability" 
-        subtitle="What hours are they available each day?"
+        subtitle={isEmployeePortal ? 'What hours can you usually work each day?' : 'What hours are they available each day?'}
         icon={Clock}
       >
         <div className="day-list">
@@ -179,6 +271,7 @@ function Availability() {
                 <button 
                   className="day-toggle"
                   onClick={() => toggleDay(day.key)}
+                  disabled={!canEdit}
                   aria-label={`Toggle ${day.label}`}
                 >
                   <span className="day-name">{day.label}</span>
@@ -202,6 +295,7 @@ function Availability() {
                       type="time"
                       className="time-input"
                       value={d.start}
+                      disabled={!canEdit}
                       onChange={(e) => updateTime(day.key, 'start', e.target.value)}
                     />
                     <span className="time-arrow"><ArrowRight size={16} /></span>
@@ -209,6 +303,7 @@ function Availability() {
                       type="time"
                       className="time-input"
                       value={d.end}
+                      disabled={!canEdit}
                       onChange={(e) => updateTime(day.key, 'end', e.target.value)}
                     />
                   </div>
@@ -220,8 +315,8 @@ function Availability() {
       </Section>
 
       <Section 
-        title="Time off" 
-        subtitle="Vacation, appointments, or any dates they can't work."
+        title={isEmployeePortal ? 'Time off requests' : 'Time off'} 
+        subtitle={isEmployeePortal ? 'Add dates you cannot work. Hengam uses these before your manager builds the next schedule.' : "Vacation, appointments, or any dates they can't work."}
         icon={Palmtree}
       >
         {timeOff.length > 0 && (
@@ -235,6 +330,7 @@ function Availability() {
                 <button 
                   className="timeoff-remove"
                   onClick={() => removeTimeOff(t.id)}
+                  disabled={!canEdit}
                   aria-label="Remove time off"
                 >
                   ×
@@ -252,6 +348,7 @@ function Availability() {
                 type="date"
                 className="input"
                 value={newTimeOffStart}
+                disabled={!canEdit}
                 onChange={(e) => setNewTimeOffStart(e.target.value)}
               />
             </div>
@@ -261,6 +358,7 @@ function Availability() {
                 type="date"
                 className="input"
                 value={newTimeOffEnd}
+                disabled={!canEdit}
                 onChange={(e) => setNewTimeOffEnd(e.target.value)}
               />
             </div>
@@ -271,13 +369,14 @@ function Availability() {
                 className="input"
                 placeholder="e.g. vacation"
                 value={newTimeOffReason}
+                disabled={!canEdit}
                 onChange={(e) => setNewTimeOffReason(e.target.value)}
               />
             </div>
           </div>
-          <button className="add-button" onClick={addTimeOff}>
+          <button className="add-button" onClick={addTimeOff} disabled={!canEdit}>
             <Plus size={14} />
-            <span>Add time off</span>
+            <span>{isEmployeePortal ? 'Submit time off' : 'Add time off'}</span>
           </button>
         </div>
       </Section>

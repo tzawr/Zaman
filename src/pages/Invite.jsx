@@ -114,7 +114,7 @@ function Invite() {
               </button>
             </div>
             <p className="shift-modal-day">
-              Share this link with {inviteModal.employeeName}. They'll create a free account and see only their own shifts.
+              Share this link with {inviteModal.employeeName}. They'll create a free account for their shifts, availability, and time off.
             </p>
             <div className="invite-link-box">
               <span className="invite-link-text">{inviteModal.link}</span>
