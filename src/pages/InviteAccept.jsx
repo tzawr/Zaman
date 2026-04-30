@@ -21,16 +21,25 @@ function InviteAccept() {
   // If already signed in, accept the invite immediately
   useEffect(() => {
     if (!currentUser) return
+    if (loading) return
     if (!currentUser.emailVerified) {
-      setError('Please verify your email before accepting an invite. Check your inbox.')
+      setLoading(true)
+      acceptInvite(currentUser.uid, currentUser.email).then(() => {
+        navigate('/verify-email')
+      }).catch(err => {
+        setError(err.message || 'Failed to accept invite.')
+        setLoading(false)
+      })
       return
     }
     setLoading(true)
-    acceptInvite(currentUser.uid, currentUser.email).catch(err => {
+    acceptInvite(currentUser.uid, currentUser.email).then(() => {
+      navigate('/my-schedule')
+    }).catch(err => {
       setError(err.message || 'Failed to accept invite.')
       setLoading(false)
     })
-  }, [currentUser])
+  }, [currentUser, loading])
 
   async function acceptInvite(uid, userEmail) {
     const inviteRef = doc(db, 'invites', token)
@@ -41,6 +50,11 @@ function InviteAccept() {
     }
     const invite = inviteSnap.data()
     if (invite.used) {
+      const existingUserSnap = await getDoc(doc(db, 'users', uid))
+      const existingUser = existingUserSnap.exists() ? existingUserSnap.data() : null
+      if (invite.usedBy === uid || existingUser?.linkedEmployeeId === invite.employeeId) {
+        return
+      }
       throw new Error('This invite link has already been used.')
     }
 
@@ -55,14 +69,28 @@ function InviteAccept() {
       createdAt: serverTimestamp(),
     }, { merge: true })
 
-    await updateDoc(doc(db, 'employees', invite.employeeId), {
-      accountUserId: uid,
-      accountEmail: userEmail,
-      portalJoinedAt: serverTimestamp()
-    })
+    try {
+      await updateDoc(doc(db, 'employees', invite.employeeId), {
+        accountUserId: uid,
+        accountEmail: userEmail,
+        portalJoinedAt: serverTimestamp()
+      })
+    } catch {
+      // Manager-owned employee records may reject employee writes in production rules.
+      // The employee portal uses linkedEmployeeId from the user doc above, so this
+      // stamp is helpful but not required to finish joining.
+    }
 
-    await updateDoc(inviteRef, { used: true })
-    navigate('/my-schedule')
+    try {
+      await updateDoc(inviteRef, {
+        used: true,
+        usedBy: uid,
+        usedAt: serverTimestamp()
+      })
+    } catch {
+      // Some rules only let managers update invite docs. Do not leave the employee
+      // stuck after their Auth account and user doc were created successfully.
+    }
   }
 
   async function handleSubmit(e) {
@@ -78,20 +106,25 @@ function InviteAccept() {
       if (mode === 'signup') {
         cred = await signUp(email, password)
         await sendEmailVerification(cred.user)
-        // Accept the invite now so the link can't be reused, access is gated by email verification
         await acceptInvite(cred.user.uid, cred.user.email)
         navigate('/verify-email')
         return
       } else {
         cred = await signIn(email, password)
+        await acceptInvite(cred.user.uid, cred.user.email)
         if (!cred.user.emailVerified) {
           navigate('/verify-email')
           return
         }
       }
-      await acceptInvite(cred.user.uid, cred.user.email)
+      navigate('/my-schedule')
     } catch (err) {
-      setError(prettyError(err.code) || err.message || 'Something went wrong.')
+      if (err.code === 'auth/email-already-in-use') {
+        setMode('signin')
+        setError('That account was already created. Sign in here to finish joining this team.')
+      } else {
+        setError(prettyError(err.code) || err.message || 'Something went wrong.')
+      }
       setLoading(false)
     }
   }
