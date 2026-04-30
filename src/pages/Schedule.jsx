@@ -254,7 +254,7 @@ function Schedule() {
         <PageHero
           eyebrow="AI Scheduling"
           title="Generate schedule"
-          subtitle="Pick a week, add any special rules, and let Zaman build your schedule in seconds."
+          subtitle="Pick a week, add any special rules, and let Hengam build your schedule in seconds."
         >
           <div className="page-hero-actions">
             <button 
@@ -319,12 +319,12 @@ function Schedule() {
     <div className="ai-instr-heading">
       <div className="ai-instr-badge">
         <Sparkles size={11} />
-        <span>Zaman AI</span>
+        <span>Hengam AI</span>
       </div>
       <h2 className="ai-instr-title">Special instructions</h2>
       <p className="ai-instr-subtitle">
         Describe anything in plain English — names, exceptions, relationships, preferences.
-        Zaman reads it all and builds around it. No other scheduler can do this.
+        Hengam reads it all and builds around it. No other scheduler can do this.
       </p>
     </div>
   </div>
@@ -374,7 +374,7 @@ function Schedule() {
   </div>
 
   <div className="ai-understands">
-    <div className="ai-understands-label">What Zaman reads</div>
+    <div className="ai-understands-label">What Hengam reads</div>
     <div className="ai-understands-grid">
       {AI_UNDERSTANDS.map(item => (
         <div key={item.text} className="ai-understands-item">
@@ -664,7 +664,7 @@ async function parseSchedulingInstructionsCached(coverageRulesText, specialInstr
   if (!combined.replace(/---/g, '').trim()) return null
   let hash = 0
   for (let i = 0; i < combined.length; i++) hash = (Math.imul(31, hash) + combined.charCodeAt(i)) | 0
-  const key = 'zaman_rules_v2_' + Math.abs(hash)
+  const key = 'hengam_rules_v2_' + Math.abs(hash)
   try {
     const cached = localStorage.getItem(key)
     if (cached) return JSON.parse(cached)

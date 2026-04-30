@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { motion, useInView, animate } from 'framer-motion'
+import { motion } from 'framer-motion'
 import { 
   ArrowRight, 
   Sparkles, 
@@ -13,8 +13,6 @@ import {
   Check,
   MessageSquare,
   TrendingUp,
-  Star,
-  Quote,
   ArrowUpRight,
   Play,
   AlertTriangle,
@@ -36,13 +34,11 @@ function Landing() {
     <div className="landing landing-v2">
       <Hero onCTA={handleCTA} isSignedIn={!!currentUser} />
       <MarqueeStrip />
-      <ProductStory />
+      <PremiumPanels />
       <HowItWorks />
       <TrustSection />
       <PlaygroundDemo />
       <Features />
-      <StatsSection />
-      <Testimonials />
       <Pricing onCTA={handleCTA} />
       <FinalCTA onCTA={handleCTA} />
     </div>
@@ -56,7 +52,6 @@ function Hero({ onCTA, isSignedIn }) {
   return (
     <section ref={containerRef} className="landing-hero hero-v2">
       <div className="landing-grid-overlay" />
-      <ConstraintEngineScene />
 
       <motion.div 
         className="landing-hero-content"
@@ -88,7 +83,7 @@ function Hero({ onCTA, isSignedIn }) {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.7, delay: 0.3, ease: 'easeOut' }}
         >
-          Zaman turns plain-English coverage rules, availability, time off,
+          Hengam turns plain-English coverage rules, availability, time off,
           and target hours into a checked schedule with clear business tradeoffs.
         </motion.p>
 
@@ -161,113 +156,12 @@ function Hero({ onCTA, isSignedIn }) {
         <div className="hero-preview-frame">
           <div className="hero-preview-topline">
             <span className="hero-preview-status" />
-            <span>Schedule graph ready</span>
+            <span>Checked schedule ready</span>
           </div>
-          <HeroOrbit3D />
           <MockupCard />
-          <div className="hero-floating-card hero-floating-card-left">
-            <Target size={15} />
-            <div>
-              <strong>13 targets checked</strong>
-              <span>Hours balanced before review</span>
-            </div>
-          </div>
-          <div className="hero-floating-card hero-floating-card-right">
-            <AlertTriangle size={15} />
-            <div>
-              <strong>1 tradeoff explained</strong>
-              <span>Availability blocks 40h goal</span>
-            </div>
-          </div>
         </div>
       </motion.div>
     </section>
-  )
-}
-
-function ConstraintEngineScene() {
-  const nodes = [
-    { label: 'Rules', className: 'rules' },
-    { label: 'Coverage', className: 'coverage' },
-    { label: 'Availability', className: 'availability' },
-    { label: 'Targets', className: 'targets' },
-    { label: 'Validator', className: 'validator' },
-    { label: 'Schedule', className: 'schedule' },
-  ]
-
-  return (
-    <div className="constraint-scene-3d" aria-hidden="true">
-      <div className="constraint-stage">
-        <div className="constraint-ring constraint-ring-outer" />
-        <div className="constraint-ring constraint-ring-inner" />
-        <div className="constraint-line line-a" />
-        <div className="constraint-line line-b" />
-        <div className="constraint-line line-c" />
-        <div className="constraint-line line-d" />
-        {nodes.map(node => (
-          <div key={node.label} className={`constraint-node node-${node.className}`}>
-            <span />
-            <em>{node.label}</em>
-          </div>
-        ))}
-        <div className="constraint-core">
-          <Sparkles size={18} />
-        </div>
-      </div>
-    </div>
-  )
-}
-
-function HeroOrbit3D() {
-  const cards = [
-    { label: 'Rules', value: '12 parsed', className: 'rules' },
-    { label: 'Coverage', value: '7 windows', className: 'coverage' },
-    { label: 'Hours', value: '13 targets', className: 'hours' },
-    { label: 'Review', value: '1 tradeoff', className: 'review' },
-  ]
-
-  return (
-    <div className="hero-orbit-3d" aria-hidden="true">
-      <div className="orbit-rings">
-        <span className="orbit-ring ring-one" />
-        <span className="orbit-ring ring-two" />
-        <span className="orbit-ring ring-three" />
-      </div>
-      <div className="schedule-cube">
-        <div className="cube-face cube-front">
-          <span>Mon</span>
-          <i />
-          <i />
-          <i />
-        </div>
-        <div className="cube-face cube-back">
-          <span>Tue</span>
-          <i />
-          <i />
-        </div>
-        <div className="cube-face cube-right">
-          <span>Wed</span>
-          <i />
-          <i />
-          <i />
-        </div>
-        <div className="cube-face cube-left">
-          <span>Rules</span>
-          <i />
-          <i />
-        </div>
-        <div className="cube-face cube-top">
-          <span>AI</span>
-        </div>
-        <div className="cube-face cube-bottom" />
-      </div>
-      {cards.map(card => (
-        <div key={card.label} className={`orbit-card orbit-${card.className}`}>
-          <strong>{card.label}</strong>
-          <span>{card.value}</span>
-        </div>
-      ))}
-    </div>
   )
 }
 
@@ -368,7 +262,7 @@ function MockupCard() {
         <div className="mockup-dots">
           <span></span><span></span><span></span>
         </div>
-        <div className="mockup-url">zaman.app/schedule</div>
+        <div className="mockup-url">hengam.app/schedule</div>
       </div>
       <div className="mockup-body">
         <div className="proof-layout">
@@ -470,84 +364,223 @@ function MarqueeStrip() {
   )
 }
 
-function ProductStory() {
-  const steps = [
-    {
-      icon: MessageSquare,
-      label: 'Manager input',
-      title: 'Say the rules naturally',
-      text: 'Opening needs two people by 4am. No clopening. Keep trainees with mentors.',
-    },
-    {
-      icon: Brain,
-      label: 'AI parsing',
-      title: 'Turn words into constraints',
-      text: 'Roles, coverage windows, avoid-pairs, max days, and preferences become structured rules.',
-    },
-    {
-      icon: Zap,
-      label: 'Scheduler',
-      title: 'Build the week deterministically',
-      text: 'The engine fills shifts, balances target hours, and checks each assignment against availability.',
-    },
-    {
-      icon: AlertTriangle,
-      label: 'Business review',
-      title: 'Explain the real tradeoffs',
-      text: 'If a week is impossible, Zaman says why and gives the manager the cleanest next move.',
-    },
+function PremiumPanels() {
+  useEffect(() => {
+    const panels = document.querySelectorAll('.premium-panel')
+    const observer = new IntersectionObserver(
+      entries => {
+        entries.forEach(entry => {
+          if (entry.isIntersecting) {
+            entry.target.classList.add('is-visible')
+            observer.unobserve(entry.target)
+          }
+        })
+      },
+      { threshold: 0.28 }
+    )
+
+    panels.forEach(panel => observer.observe(panel))
+
+    return () => observer.disconnect()
+  }, [])
+
+  const eventRows = [
+    { time: '4 AM', title: 'Opening shift', status: 'ready', avatars: ['M', 'E'] },
+    { time: '8 AM', title: 'Morning rush', status: 'active', avatars: ['N', 'S', 'A'] },
+    { time: '12 PM', title: 'Coverage check', status: 'ready', avatars: ['L', 'R'] },
+    { time: '3 PM', title: 'Coverage gap', status: 'gap', avatars: ['+'] },
+  ]
+
+  const ruleRows = [
+    { label: 'Pairing', value: 'Mentors stay with trainees' },
+    { label: 'Rest', value: 'No clopening' },
+    { label: 'Hours', value: 'Weekly targets balanced' },
+    { label: 'Review', value: 'Every gap explained' },
+  ]
+
+  const coverageStats = [
+    { value: '4', label: 'coverage windows' },
+    { value: '13', label: 'hour targets' },
+    { value: '1', label: 'open gap' },
+  ]
+
+  const issueAdvice = [
+    'Move a trained lead into the opening window',
+    'Keep the low-risk afternoon coverage stable',
+    'Publish with one clear open shift if unavailable',
   ]
 
   return (
-    <section className="landing-section product-story-section">
+    <section className="landing-section premium-panels-section">
       <SectionHeader
-        eyebrow="Product system"
-        title="From messy notes to a checked schedule"
-        description="A scheduling workflow that feels smart because every step is visible."
+        eyebrow="Scheduling intelligence"
+        title="The week, explained before anyone sees it"
+        description="Hengam turns manager notes, coverage rules, availability, target hours, and validation results into one review-ready scheduling workflow."
       />
 
-      <div className="product-story-grid">
-        <div className="story-rail">
-          {steps.map((step, index) => (
-            <motion.div
-              key={step.label}
-              className="story-step-card"
-              initial={{ opacity: 0, x: -24 }}
-              whileInView={{ opacity: 1, x: 0 }}
-              viewport={{ once: true, margin: '-80px' }}
-              transition={{ duration: 0.55, delay: index * 0.08, ease: 'easeOut' }}
-            >
-              <div className="story-step-icon">
-                <step.icon size={18} />
-              </div>
-              <div>
-                <span>{step.label}</span>
-                <strong>{step.title}</strong>
-                <p>{step.text}</p>
-              </div>
-            </motion.div>
-          ))}
-        </div>
-
+      <div className="premium-panel-grid">
         <motion.div
-          className="story-engine-card"
+          className="premium-panel premium-panel-wide"
           initial={{ opacity: 0, y: 28 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true, margin: '-80px' }}
-          transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
+          transition={{ duration: 0.65, ease: [0.16, 1, 0.3, 1] }}
         >
-          <div className="story-engine-3d" aria-hidden="true">
-            <div className="story-plane plane-back" />
-            <div className="story-plane plane-mid" />
-            <div className="story-plane plane-front" />
-            <div className="story-flow-card story-flow-rules">Rules parsed</div>
-            <div className="story-flow-card story-flow-hours">Hours balanced</div>
-            <div className="story-flow-card story-flow-review">Ready to review</div>
+          <span className="premium-border-sweep" />
+          <div className="premium-panel-copy">
+            <h3>Coverage-aware schedule board</h3>
+            <p>Openers, closers, pre-closers, staffing windows, and open gaps are visible before the schedule is published.</p>
           </div>
-          <div className="story-engine-copy">
-            <span>Constraint engine</span>
-            <strong>Every schedule is generated, scored, and explained.</strong>
-            <p>Managers get a schedule they can use, plus a clear reason when reality blocks a perfect week.</p>
+          <div className="premium-coverage-stats" aria-hidden="true">
+            {coverageStats.map(stat => (
+              <span key={stat.label}>
+                <strong>{stat.value}</strong>
+                <small>{stat.label}</small>
+              </span>
+            ))}
+          </div>
+          <div className="premium-coverage-health" aria-hidden="true">
+            <span>Mon opening covered</span>
+            <span>Targets balanced</span>
+            <span>1 manager review</span>
+          </div>
+          <div className="premium-calendar-scene" aria-hidden="true">
+            <div className="premium-calendar-card">
+              <div className="premium-calendar-head">
+                <span>May</span>
+                <strong>04 - 10</strong>
+              </div>
+              <div className="premium-calendar-grid">
+                {Array.from({ length: 28 }).map((_, i) => (
+                  <span key={i} className={i === 11 ? 'active' : i % 6 === 0 ? 'muted' : ''}>{i + 1}</span>
+                ))}
+              </div>
+            </div>
+            <div className="premium-timeline">
+              <div className="premium-now-line">
+                <span>8:50 AM</span>
+                <i />
+              </div>
+              {eventRows.map((event, index) => (
+                <div key={event.time} className={`premium-event-row is-${event.status}`} style={{ '--i': index }}>
+                  <span className="premium-event-time">{event.time}</span>
+                  <article className="premium-event-chip">
+                    <div>
+                      <strong>{event.title}</strong>
+                      <small>{event.status === 'gap' ? 'Needs one more person' : 'Role coverage checked'}</small>
+                    </div>
+                    <span className="premium-avatars" aria-hidden="true">
+                      {event.avatars.map((avatar, avatarIndex) => (
+                        <b key={`${event.title}-${avatarIndex}`}>{avatar}</b>
+                      ))}
+                    </span>
+                  </article>
+                </div>
+              ))}
+            </div>
+          </div>
+        </motion.div>
+
+        <motion.div
+          className="premium-panel premium-panel-stack"
+          initial={{ opacity: 0, y: 28 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, margin: '-80px' }}
+          transition={{ duration: 0.65, delay: 0.08, ease: [0.16, 1, 0.3, 1] }}
+        >
+          <span className="premium-border-sweep" />
+          <div className="premium-panel-copy">
+            <h3>Plain English becomes constraints</h3>
+            <p>Managers can type or speak rules. Hengam parses them once, then the scheduler follows them deterministically.</p>
+          </div>
+          <div className="premium-rule-input-demo" aria-hidden="true">
+            <div className="premium-rule-input-box">
+              <span>Manager note</span>
+              <p>No clopening. Pair trainees with mentors. Hit weekly targets before adding extra coverage.</p>
+            </div>
+            <div className="premium-parser-line">
+              <Sparkles size={14} />
+              <span>Parsing rules into constraints</span>
+              <i />
+              <i />
+              <i />
+            </div>
+            <div className="premium-parsed-pills">
+            {ruleRows.map((item, index) => (
+              <span key={item.label} style={{ '--i': index }}>
+                <Check size={13} />
+                <strong>{item.label}</strong>
+                <small>{item.value}</small>
+              </span>
+            ))}
+            </div>
+            <div className="premium-ready-status">
+              <Target size={14} />
+              <span>Ready for deterministic scheduler</span>
+            </div>
+          </div>
+        </motion.div>
+
+        <motion.div
+          className="premium-panel"
+          initial={{ opacity: 0, y: 28 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, margin: '-80px' }}
+          transition={{ duration: 0.65, delay: 0.16, ease: [0.16, 1, 0.3, 1] }}
+        >
+          <span className="premium-border-sweep" />
+          <div className="premium-panel-copy">
+            <h3>Professional issue language</h3>
+            <p>Validation problems are translated into manager-friendly business advice, not scary raw errors.</p>
+          </div>
+          <div className="premium-demo-group">
+            <div className="premium-note-card" aria-hidden="true">
+              <AlertTriangle size={15} />
+              <span>Saturday opening needs a shift lead. Try moving an available lead from a lower-risk window.</span>
+            </div>
+            <div className="premium-typing" aria-hidden="true">
+              <i />
+              <i />
+              <i />
+            </div>
+            <div className="premium-advice-list" aria-hidden="true">
+              {issueAdvice.map((advice, index) => (
+                <span key={advice} style={{ '--i': index }}>
+                  <Check size={12} />
+                  {advice}
+                </span>
+              ))}
+            </div>
+          </div>
+        </motion.div>
+
+        <motion.div
+          className="premium-panel"
+          initial={{ opacity: 0, y: 28 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, margin: '-80px' }}
+          transition={{ duration: 0.65, delay: 0.24, ease: [0.16, 1, 0.3, 1] }}
+        >
+          <span className="premium-border-sweep" />
+          <div className="premium-panel-copy">
+            <h3>History, exports, and review</h3>
+            <p>Save generated weeks, compare versions, and export clean schedules for the team.</p>
+          </div>
+          <div className="premium-demo-group">
+            <div className="premium-document-stack" aria-hidden="true">
+              <div className="premium-doc doc-back" />
+              <div className="premium-doc doc-mid" />
+              <div className="premium-doc doc-front">
+                <span />
+                <span />
+                <span />
+              </div>
+            </div>
+            <div className="premium-export-row" aria-hidden="true">
+              <button type="button">CSV</button>
+              <button type="button">PNG</button>
+              <button type="button">PDF</button>
+            </div>
           </div>
         </motion.div>
       </div>
@@ -573,8 +606,8 @@ function HowItWorks() {
     {
       icon: Sparkles,
       number: '03',
-      title: 'Zaman builds your week',
-      description: 'Zaman analyzes every constraint and generates a schedule in seconds. Review, tweak, publish.',
+      title: 'Hengam builds your week',
+      description: 'Hengam analyzes every constraint and generates a schedule in seconds. Review, tweak, publish.',
     },
   ]
 
@@ -583,7 +616,7 @@ function HowItWorks() {
       <SectionHeader 
         eyebrow="How it works"
         title="From rules to a checked schedule"
-        description="Zaman turns plain English and employee availability into a schedule with clear tradeoffs."
+        description="Hengam turns plain English and employee availability into a schedule with clear tradeoffs."
       />
 
       <div className="landing-steps steps-v2">
@@ -636,7 +669,7 @@ function TrustSection() {
           <div className="landing-section-eyebrow">Why managers trust it</div>
           <h2 className="landing-section-title">It does not pretend impossible weeks are solved.</h2>
           <p className="landing-section-desc">
-            Zaman separates understanding from scheduling: AI reads the manager’s rules,
+            Hengam separates understanding from scheduling: AI reads the manager’s rules,
             deterministic code builds the week, and the validator explains the remaining conflicts.
           </p>
         </div>
@@ -714,7 +747,7 @@ function PlaygroundDemo() {
                 <div className="playground-loading">
                   <span className="dot" /><span className="dot" /><span className="dot" />
                 </div>
-                <p>Zaman parsed the rules, built a schedule, and flagged what could not be satisfied.</p>
+                <p>Hengam parsed the rules, built a schedule, and flagged what could not be satisfied.</p>
               </div>
             </motion.div>
           )}
@@ -762,7 +795,7 @@ function Features() {
     { icon: Brain, title: 'Plain-English rules', description: 'Type coverage needs, pairing rules, time-off notes, and manager preferences.' },
     { icon: Clock, title: 'Real shift windows', description: 'Handle opens, closes, pre-closes, minimum staffing windows, and custom hours.' },
     { icon: Shield, title: 'Hard checks', description: 'Availability, roles, target hours, time off, and clopening rules are checked before saving.' },
-    { icon: AlertTriangle, title: 'Impossible weeks explained', description: 'When the week cannot work, Zaman tells you exactly what blocked it.' },
+    { icon: AlertTriangle, title: 'Impossible weeks explained', description: 'When the week cannot work, Hengam tells you exactly what blocked it.' },
     { icon: TrendingUp, title: 'Target hours', description: "Set each person's weekly target and see who is under, over, or on track." },
     { icon: Zap, title: 'Fast drafts', description: 'Generate multiple schedule variants locally after the rules are understood.' },
   ]
@@ -826,7 +859,7 @@ function FeatureCard({ feature, index }) {
       <div 
         className="feature-glow"
         style={{
-          background: `radial-gradient(circle at ${tilt.glow.x}% ${tilt.glow.y}%, rgba(99, 102, 241, 0.15), transparent 60%)`
+          background: `radial-gradient(circle at ${tilt.glow.x}% ${tilt.glow.y}%, rgba(96, 165, 250, 0.16), transparent 60%)`
         }}
       />
       <div className="landing-feature-icon">
@@ -835,129 +868,6 @@ function FeatureCard({ feature, index }) {
       <h3 className="landing-feature-title">{feature.title}</h3>
       <p className="landing-feature-desc">{feature.description}</p>
     </motion.div>
-  )
-}
-
-// ========== STATS ==========
-function StatsSection() {
-  const stats = [
-    { value: 30, suffix: 'sec', label: 'Average schedule generation time', max: 60 },
-    { value: 8, suffix: 'hrs', label: 'Saved per manager per week', max: 10 },
-    { value: 100, suffix: '%', label: 'Respects availability — always', max: 100 },
-  ]
-
-  return (
-    <section className="landing-section landing-stats-section">
-      <div className="landing-stats-grid stats-v2">
-        {stats.map((stat, i) => (
-          <StatCard key={i} stat={stat} index={i} />
-        ))}
-      </div>
-    </section>
-  )
-}
-
-function StatCard({ stat, index }) {
-  const ref = useRef(null)
-  const inView = useInView(ref, { once: true, margin: '-100px' })
-  const [value, setValue] = useState(0)
-  const [barWidth, setBarWidth] = useState(0)
-
-  useEffect(() => {
-    if (!inView) return
-    const controls = animate(0, stat.value, {
-      duration: 1.8,
-      ease: 'easeOut',
-      onUpdate: (v) => setValue(Math.round(v))
-    })
-    const barTimeout = setTimeout(() => {
-      setBarWidth((stat.value / stat.max) * 100)
-    }, 200)
-    return () => {
-      controls.stop()
-      clearTimeout(barTimeout)
-    }
-  }, [inView, stat.value, stat.max])
-
-  return (
-    <motion.div
-      ref={ref}
-      className="landing-stat stat-v2"
-      initial={{ opacity: 0, y: 30 }}
-      whileInView={{ opacity: 1, y: 0 }}
-      viewport={{ once: true, margin: '-50px' }}
-      transition={{ duration: 0.6, delay: index * 0.1 }}
-    >
-      <div className="landing-stat-value">
-        <span className="landing-stat-number">{value}</span>
-        <span className="landing-stat-suffix">{stat.suffix}</span>
-      </div>
-      <p className="landing-stat-label">{stat.label}</p>
-      <div className="stat-bar">
-        <div 
-          className="stat-bar-fill" 
-          style={{ width: `${barWidth}%` }}
-        />
-      </div>
-    </motion.div>
-  )
-}
-
-// ========== TESTIMONIALS ==========
-function Testimonials() {
-  const testimonials = [
-    {
-      quote: "I used to spend 4 hours every Sunday building schedules. Now it's 15 minutes.",
-      author: "Cafe Manager",
-      role: "Coffee shop, 12 staff",
-    },
-    {
-      quote: "Zaman actually listens to my rules. No more weird shifts I have to fix manually.",
-      author: "Restaurant Owner",
-      role: "Bistro, 18 staff",
-    },
-    {
-      quote: "Export to PDF saved my life. I just text the schedule image to everyone Sunday night.",
-      author: "Retail Manager",
-      role: "Boutique, 8 staff",
-    },
-  ]
-
-  return (
-    <section className="landing-section testimonials-section">
-      <SectionHeader 
-        eyebrow="What managers say"
-        title="Built for the people who hate scheduling most"
-        description="Early users have things to say."
-      />
-      
-      <div className="testimonials-grid">
-        {testimonials.map((t, i) => (
-          <motion.div
-            key={i}
-            className="testimonial-card"
-            initial={{ opacity: 0, y: 30 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true, margin: '-50px' }}
-            transition={{ duration: 0.6, delay: i * 0.1 }}
-          >
-            <Quote size={24} className="testimonial-quote-icon" />
-            <p className="testimonial-quote">{t.quote}</p>
-            <div className="testimonial-author">
-              <div className="testimonial-stars">
-                {[...Array(5)].map((_, i) => (
-                  <Star key={i} size={12} fill="currentColor" />
-                ))}
-              </div>
-              <div>
-                <div className="testimonial-name">{t.author}</div>
-                <div className="testimonial-role">{t.role}</div>
-              </div>
-            </div>
-          </motion.div>
-        ))}
-      </div>
-    </section>
   )
 }
 
@@ -1030,7 +940,7 @@ function Pricing({ onCTA }) {
               className={tier.highlighted ? 'landing-cta-primary' : 'landing-cta-ghost'}
               onClick={() => {
                 if (tier.name === 'Business') {
-                  window.location.href = 'mailto:contact@zamanapp.com?subject=Zaman Business inquiry'
+                  window.location.href = 'mailto:contact@hengamapp.com?subject=Hengam Business inquiry'
                 } else {
                   onCTA()
                 }
@@ -1059,7 +969,7 @@ function FinalCTA({ onCTA }) {
       >
         <h2 className="landing-final-title">Ready to stop dreading scheduling?</h2>
         <p className="landing-final-subtitle">
-          Join teams using Zaman to build better schedules in less time.
+          Join teams using Hengam to build better schedules in less time.
         </p>
         <button className="landing-cta-primary landing-cta-large cta-glow" onClick={onCTA}>
           <span>Get started — free</span>

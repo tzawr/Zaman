@@ -79,7 +79,7 @@ function SignIn() {
         </div>
         
         <h1 className="auth-title">
-          Sign in to <span className="landing-gradient-text">Zaman</span>
+          Sign in to <span className="landing-gradient-text">Hengam</span>
         </h1>
         <p className="auth-subtitle">
           Continue building better schedules.

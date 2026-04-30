@@ -39,7 +39,7 @@ function Security() {
             </li>
           </ul>
           <p>
-            Schedule generation uses Zaman's scheduling engine. We send only the minimum necessary data
+            Schedule generation uses Hengam's scheduling engine. We send only the minimum necessary data
             (employee names, roles, availability) — never contact information or credentials.
           </p>
         </div>
@@ -48,7 +48,7 @@ function Security() {
       <Section title="Responsible disclosure" icon={ShieldCheck} delay={0.15}>
         <div className="legal-text">
           <p>
-            If you discover a security vulnerability in Zaman, please report it responsibly.
+            If you discover a security vulnerability in Hengam, please report it responsibly.
             Email us at{' '}
             <a href="mailto:aliseyfiazadsa6@gmail.com">aliseyfiazadsa6@gmail.com</a> with a
             description of the issue and steps to reproduce it.

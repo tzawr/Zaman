@@ -73,7 +73,7 @@ function SignUp() {
         </div>
         
         <h1 className="auth-title">
-          Create your <span className="landing-gradient-text">Zaman</span> account
+          Create your <span className="landing-gradient-text">Hengam</span> account
         </h1>
         <p className="auth-subtitle">
           Build better schedules in minutes.

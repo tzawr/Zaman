@@ -87,7 +87,7 @@ function VerifyEmailToken() {
             </div>
             <h1 className="auth-title">You're in!</h1>
             <p className="auth-subtitle">
-              Your email is verified. Taking you to Zaman now...
+              Your email is verified. Taking you to Hengam now...
             </p>
           </>
         )}

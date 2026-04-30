@@ -7,7 +7,7 @@ export default async function handler(req, res) {
   const apiKey = process.env.RESEND_API_KEY
   if (!apiKey) return res.status(500).json({ error: 'Email service not configured' })
 
-  const verifyUrl = `${origin || 'https://zaman.app'}/verify-email/${token}`
+  const verifyUrl = `${origin || 'https://hengam.app'}/verify-email/${token}`
 
   const html = `
 <!DOCTYPE html>
@@ -21,7 +21,7 @@ export default async function handler(req, res) {
         <!-- Header -->
         <tr>
           <td style="padding:32px 40px 24px;border-bottom:1px solid rgba(255,255,255,0.06);">
-            <p style="margin:0;font-size:22px;font-weight:700;color:#ffffff;letter-spacing:-0.02em;">Zaman</p>
+            <p style="margin:0;font-size:22px;font-weight:700;color:#ffffff;letter-spacing:-0.02em;">Hengam</p>
             <p style="margin:4px 0 0;font-size:12px;color:#6b7280;text-transform:uppercase;letter-spacing:0.08em;">Scheduling</p>
           </td>
         </tr>
@@ -31,13 +31,13 @@ export default async function handler(req, res) {
           <td style="padding:36px 40px;">
             <p style="margin:0 0 8px;font-size:24px;font-weight:700;color:#ffffff;letter-spacing:-0.02em;">Verify your email</p>
             <p style="margin:0 0 28px;font-size:15px;color:#9ca3af;line-height:1.6;">
-              Thanks for signing up for Zaman. Click the button below to verify your email address and activate your account.
+              Thanks for signing up for Hengam. Click the button below to verify your email address and activate your account.
             </p>
 
             <!-- CTA Button -->
             <table cellpadding="0" cellspacing="0" style="margin:0 0 28px;">
               <tr>
-                <td style="background:linear-gradient(135deg,#6366f1,#8b5cf6);border-radius:10px;">
+                <td style="background:linear-gradient(135deg,#bfdbfe,#60a5fa,#2563eb);border-radius:10px;">
                   <a href="${verifyUrl}" style="display:inline-block;padding:14px 32px;font-size:15px;font-weight:600;color:#ffffff;text-decoration:none;letter-spacing:-0.01em;">
                     Verify my email &rarr;
                   </a>
@@ -53,7 +53,7 @@ export default async function handler(req, res) {
             </p>
 
             <p style="margin:0;font-size:13px;color:#6b7280;line-height:1.6;">
-              This link expires in <strong style="color:#9ca3af;">24 hours</strong>. If you didn't create a Zaman account, you can safely ignore this email.
+              This link expires in <strong style="color:#9ca3af;">24 hours</strong>. If you didn't create a Hengam account, you can safely ignore this email.
             </p>
           </td>
         </tr>
@@ -62,8 +62,8 @@ export default async function handler(req, res) {
         <tr>
           <td style="padding:20px 40px;border-top:1px solid rgba(255,255,255,0.06);">
             <p style="margin:0;font-size:12px;color:#4b5563;">
-              © 2026 Zaman · Built in Irvine, CA<br>
-              <span style="color:#374151;">You're receiving this because you created a Zaman account with ${email}</span>
+              © 2026 Hengam · Built in Irvine, CA<br>
+              <span style="color:#374151;">You're receiving this because you created a Hengam account with ${email}</span>
             </p>
           </td>
         </tr>
@@ -82,9 +82,9 @@ export default async function handler(req, res) {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        from: 'Zaman <onboarding@resend.dev>',
+        from: 'Hengam <onboarding@resend.dev>',
         to: [email],
-        subject: 'Verify your Zaman account',
+        subject: 'Verify your Hengam account',
         html,
       }),
     })

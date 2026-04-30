@@ -218,7 +218,7 @@ function Settings() {
       <PageHero
         eyebrow="Your workspace"
         title="Workspace"
-        subtitle="Configure how your business operates. Zaman uses these rules every time it builds a schedule."
+        subtitle="Configure how your business operates. Hengam uses these rules every time it builds a schedule."
       >
         {saving && (
           <span className="saving-pill">
@@ -368,7 +368,7 @@ function Settings() {
 
       <Section
         title="Coverage rules"
-        subtitle="Describe your coverage needs in plain English. Zaman AI reads this every time it builds a schedule."
+        subtitle="Describe your coverage needs in plain English. Hengam AI reads this every time it builds a schedule."
         icon={AlignLeft}
       >
         <div className="instruction-editor coverage-rule-editor">
@@ -409,7 +409,7 @@ function Settings() {
 
       <Section
         title="Scheduling rules"
-        subtitle="Constraints Zaman will always respect when building schedules."
+        subtitle="Constraints Hengam will always respect when building schedules."
         icon={Shield}
       >
         <div className="rule-card">

@@ -126,7 +126,7 @@ function Dashboard() {
 <main className="app-page">
   <PageHero
   eyebrow={`${getGreeting()}, ${userData?.displayName || 'Manager'}`}
-  title={<>Welcome to <span className="landing-gradient-text">Zaman</span></>}
+  title={<>Welcome to <span className="landing-gradient-text">Hengam</span></>}
   subtitle="Your scheduling command center."
 >
 </PageHero>

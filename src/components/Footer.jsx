@@ -12,7 +12,7 @@ function Footer() {
       <div className="footer-inner">
         <div className="footer-main">
           <div className="footer-brand">
-            <h3 className="footer-logo">Zaman</h3>
+            <h3 className="footer-logo">Hengam</h3>
             <p className="footer-tagline">
               Shift scheduling that understands your rules, checks your constraints,
               and tells you when a week cannot work.
@@ -54,7 +54,7 @@ function Footer() {
 
         <div className="footer-bottom">
           <p className="footer-copyright">
-            © {year} Zaman. All rights reserved.
+            © {year} Hengam. All rights reserved.
           </p>
           <p className="footer-made">
             Built for cafes, restaurants, retail teams, and shift managers.

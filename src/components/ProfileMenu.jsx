@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Moon, Sun, SlidersHorizontal, LogOut, Calendar, LayoutDashboard, Users, BookOpen, Link2, UserCircle } from 'lucide-react'
+import { SlidersHorizontal, LogOut, Calendar, LayoutDashboard, Users, BookOpen, Link2, UserCircle } from 'lucide-react'
 import { doc, onSnapshot } from 'firebase/firestore'
 import { db } from '../firebase'
 import { useAuth } from '../AuthContext'
@@ -101,14 +101,6 @@ function ProfileMenu({ darkMode, setDarkMode }) {
           )}
 
           <div className="dropdown-divider" />
-
-          {/* Appearance + settings */}
-          <button className="dropdown-item" onClick={() => setDarkMode(!darkMode)}>
-            <span className="dropdown-icon">
-              {darkMode ? <Sun size={16} /> : <Moon size={16} />}
-            </span>
-            <span>{darkMode ? 'Light mode' : 'Dark mode'}</span>
-          </button>
 
           <NavItem icon={UserCircle} label="Profile" onClick={() => go('/profile')} />
           {!isEmployee && (

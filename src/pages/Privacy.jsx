@@ -16,7 +16,7 @@ function Privacy() {
           <p>We collect only what's needed to run the service:</p>
           <ul>
             <li><strong>Account info</strong> — your name, email address, and hashed password.</li>
-            <li><strong>Workspace data</strong> — employee names, roles, availability, and schedules you create inside Zaman.</li>
+            <li><strong>Workspace data</strong> — employee names, roles, availability, and schedules you create inside Hengam.</li>
             <li><strong>Usage data</strong> — pages visited and features used, to improve the product.</li>
           </ul>
           <p>
@@ -30,13 +30,13 @@ function Privacy() {
         <div className="legal-text">
           <p>Your information is used to:</p>
           <ul>
-            <li>Provide, maintain, and improve Zaman.</li>
+            <li>Provide, maintain, and improve Hengam.</li>
             <li>Send transactional emails — account confirmations, schedule exports, team invites.</li>
             <li>Respond to support requests.</li>
             <li>Detect and prevent fraud or abuse.</li>
           </ul>
           <p>
-            Schedule generation uses Zaman's scheduling engine. We send only employee names, roles, and
+            Schedule generation uses Hengam's scheduling engine. We send only employee names, roles, and
             availability — no contact information or passwords — to generate a schedule.
           </p>
         </div>

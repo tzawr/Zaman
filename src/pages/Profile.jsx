@@ -338,7 +338,7 @@ function Profile() {
       </div>
 
       {/* Personal info */}
-      <Section title="Personal info" subtitle="Your name as shown across Zaman." icon={User}>
+      <Section title="Personal info" subtitle="Your name as shown across Hengam." icon={User}>
         <div className="profile-edit-grid">
           <div className="auth-field">
             <label className="form-label">Display name</label>

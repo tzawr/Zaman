@@ -9,7 +9,7 @@ const PLANS = [
     name: 'Free',
     price: '$0',
     period: 'forever',
-    description: 'Try Zaman with a small team before you commit.',
+    description: 'Try Hengam with a small team before you commit.',
     features: [
       'Up to 5 employees',
       '1 schedule generation per week',
@@ -65,7 +65,7 @@ function PricingPage() {
       <PageHero
         eyebrow="Pricing"
         title="Simple plans for shift teams"
-        subtitle="Start free, then upgrade when Zaman becomes part of your weekly scheduling rhythm."
+        subtitle="Start free, then upgrade when Hengam becomes part of your weekly scheduling rhythm."
       >
         <div className="page-hero-actions">
           <button className="settings-button" onClick={() => navigate(currentUser ? '/dashboard' : '/signin')}>
@@ -101,7 +101,7 @@ function PricingPage() {
             {plan.name === 'Business' ? (
               <a
                 className="landing-cta-ghost pricing-page-cta"
-                href="mailto:aliseyfiazadsa6@gmail.com?subject=Zaman Business plan"
+                href="mailto:aliseyfiazadsa6@gmail.com?subject=Hengam Business plan"
               >
                 <Mail size={16} />
                 <span>{plan.cta}</span>
@@ -131,7 +131,7 @@ function PricingPage() {
           </div>
           <div>
             <h3>Clear issues</h3>
-            <p>If a week cannot work, Zaman explains what is missing instead of pretending everything is fine.</p>
+            <p>If a week cannot work, Hengam explains what is missing instead of pretending everything is fine.</p>
           </div>
         </div>
       </Section>

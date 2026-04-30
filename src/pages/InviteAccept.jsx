@@ -126,7 +126,7 @@ function InviteAccept() {
 
         <h1 className="auth-title">
           Join your team on{' '}
-          <span className="landing-gradient-text">Zaman</span>
+          <span className="landing-gradient-text">Hengam</span>
         </h1>
         <p className="auth-subtitle">
           {mode === 'signup'
@@ -188,7 +188,7 @@ function InviteAccept() {
             </>
           ) : (
             <>
-              New to Zaman?{' '}
+              New to Hengam?{' '}
               <button className="link-button" onClick={() => setMode('signup')}>
                 Create account
               </button>

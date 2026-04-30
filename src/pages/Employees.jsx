@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { ArrowLeft, Plus, Users, Sparkles, BookOpen, Settings as SettingsIcon, ArrowRight, Link2, Copy, Check, X } from 'lucide-react'
+import { ArrowLeft, SlidersHorizontal, Plus, Users, Sparkles, BookOpen, Settings as SettingsIcon, ArrowRight, Link2, Copy, Check, X } from 'lucide-react'
 import { collection, query, where, onSnapshot, addDoc, deleteDoc, doc, setDoc, serverTimestamp } from 'firebase/firestore'
 import { db } from '../firebase'
 import { useAuth } from '../AuthContext'
@@ -157,8 +157,8 @@ function Employees() {
             className="settings-button"
             onClick={() => navigate('/settings')}
           >
-            <SettingsIcon size={16} />
-            <span>Settings</span>
+            <SlidersHorizontal size={16} />
+            <span>Workspace</span>
           </button>
         </div>
       </PageHero>

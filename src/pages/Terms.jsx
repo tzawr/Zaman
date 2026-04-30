@@ -8,16 +8,16 @@ function Terms() {
       <PageHero
         eyebrow="Legal"
         title="Terms of Service"
-        subtitle="Last updated April 25, 2025. By using Zaman you agree to these terms."
+        subtitle="Last updated April 25, 2025. By using Hengam you agree to these terms."
       />
 
-      <Section title="Using Zaman" icon={FileText} delay={0.05}>
+      <Section title="Using Hengam" icon={FileText} delay={0.05}>
         <div className="legal-text">
           <p>
             By creating an account you agree to these Terms. If you don't agree, don't use the
             service.
           </p>
-          <p>Zaman is an employee scheduling tool for shift managers and their teams.</p>
+          <p>Hengam is an employee scheduling tool for shift managers and their teams.</p>
           <ul>
             <li>You must be 18 or older to create a manager account.</li>
             <li>You're responsible for keeping your credentials secure.</li>
@@ -32,10 +32,10 @@ function Terms() {
         <div className="legal-text">
           <p>You agree not to:</p>
           <ul>
-            <li>Use Zaman for any unlawful purpose.</li>
+            <li>Use Hengam for any unlawful purpose.</li>
             <li>Upload content that is harmful, offensive, or infringes on others' rights.</li>
             <li>Attempt to gain unauthorized access to other accounts or our systems.</li>
-            <li>Reverse engineer, decompile, or extract the source code of Zaman.</li>
+            <li>Reverse engineer, decompile, or extract the source code of Hengam.</li>
             <li>Use automated scripts to access the service without our written permission.</li>
           </ul>
         </div>
@@ -49,8 +49,8 @@ function Terms() {
             are sent only to individuals who've agreed to participate.
           </p>
           <p>
-            Zaman-generated schedules are a starting point — you remain solely responsible for
-            reviewing, approving, and communicating final schedules to your team. Zaman makes no
+            Hengam-generated schedules are a starting point — you remain solely responsible for
+            reviewing, approving, and communicating final schedules to your team. Hengam makes no
             guarantee that generated schedules comply with labor laws, union agreements, or other
             regulatory requirements.
           </p>
@@ -60,11 +60,11 @@ function Terms() {
       <Section title="Liability & changes" icon={Scale} delay={0.2}>
         <div className="legal-text">
           <p>
-            Zaman is provided "as is" without warranties of any kind. We don't warrant the service
+            Hengam is provided "as is" without warranties of any kind. We don't warrant the service
             will be uninterrupted or error-free.
           </p>
           <p>
-            To the maximum extent permitted by law, Zaman and its founders shall not be liable for
+            To the maximum extent permitted by law, Hengam and its founders shall not be liable for
             any indirect, incidental, special, or consequential damages arising from your use of the
             service.
           </p>

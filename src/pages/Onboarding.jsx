@@ -142,7 +142,7 @@ function Onboarding() {
               </div>
               <h1 className="auth-title">Let's get to know you</h1>
               <p className="auth-subtitle">
-                Tell us who you are so we can personalize Zaman.
+                Tell us who you are so we can personalize Hengam.
               </p>
 
               <div className="auth-form">
