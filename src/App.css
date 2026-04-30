@@ -10584,27 +10584,12 @@ input[type="time"]::-webkit-calendar-picker-indicator:hover {
   background-image: none;
 }
 
-.recaptcha-wrapper {
-  min-height: 78px;
-  display: flex;
-  align-items: center;
-  overflow: visible;
-}
-
-.recaptcha-wrapper iframe {
-  max-width: 100%;
-}
-
 @media (max-width: 500px) {
   .phone-input-row {
     flex-direction: column;
   }
   .phone-country-select {
     width: 100%;
-  }
-  .recaptcha-wrapper {
-    transform: scale(0.92);
-    transform-origin: left center;
   }
 }
 

@@ -104,7 +104,6 @@ function Profile() {
   const [phoneError, setPhoneError] = useState('')
   const [phoneInfo, setPhoneInfo] = useState('')
   const [verificationId, setVerificationId] = useState('')
-  const [recaptchaReady, setRecaptchaReady] = useState(false)
   const recaptchaRef = useRef(null)
 
   // Password change
@@ -144,16 +143,14 @@ function Profile() {
     }
   }, [])
 
-  // Initialize reCAPTCHA as soon as the phone form opens so it's warm by the time
-  // the user clicks "Send code". Keep it visible: invisible reCAPTCHA can fail to
-  // surface a challenge on production domains, mobile browsers, or incognito.
+  // Firebase Phone Auth needs a RecaptchaVerifier on web. Keep it invisible and
+  // attached to the send button so Google's own challenge appears only if needed.
   useEffect(() => {
     if (phoneStep !== 'enter-phone') {
       if (recaptchaRef.current) {
         recaptchaRef.current.clear()
         recaptchaRef.current = null
       }
-      setTimeout(() => setRecaptchaReady(false), 0)
       return
     }
     const t = setTimeout(() => {
@@ -161,12 +158,9 @@ function Profile() {
         recaptchaRef.current.clear()
         recaptchaRef.current = null
       }
-      setRecaptchaReady(false)
       try {
-        recaptchaRef.current = new RecaptchaVerifier(auth, 'recaptcha-container', {
-          size: 'normal',
-          callback: () => setRecaptchaReady(true),
-          'expired-callback': () => setRecaptchaReady(false),
+        recaptchaRef.current = new RecaptchaVerifier(auth, 'phone-send-code-button', {
+          size: 'invisible',
         })
         recaptchaRef.current.render().catch(() => {
           setPhoneError('Could not load reCAPTCHA. Refresh the page and try again.')
@@ -229,7 +223,6 @@ function Profile() {
     const localNumber = phoneNumber.trim().replace(/[\s\-()]/g, '')
     if (!localNumber) { setPhoneError('Enter your phone number.'); return }
     if (!recaptchaRef.current) { setPhoneError('reCAPTCHA not ready yet — wait a moment and try again.'); return }
-    if (!recaptchaReady) { setPhoneError('Complete the reCAPTCHA first.'); return }
     const fullPhone = countryCode + localNumber
     setPhoneLoading(true)
     setPhoneError('')
@@ -243,12 +236,9 @@ function Profile() {
     } catch (err) {
       // Tear down and rebuild the verifier so the next attempt starts clean
       if (recaptchaRef.current) { recaptchaRef.current.clear(); recaptchaRef.current = null }
-      setRecaptchaReady(false)
       try {
-        recaptchaRef.current = new RecaptchaVerifier(auth, 'recaptcha-container', {
-          size: 'normal',
-          callback: () => setRecaptchaReady(true),
-          'expired-callback': () => setRecaptchaReady(false),
+        recaptchaRef.current = new RecaptchaVerifier(auth, 'phone-send-code-button', {
+          size: 'invisible',
         })
         recaptchaRef.current.render().catch(() => {
           setPhoneError('Could not reload reCAPTCHA. Refresh the page and try again.')
@@ -521,15 +511,13 @@ function Profile() {
               Full number: {countryCode}{phoneNumber.trim().replace(/[\s\-()]/g, '') || '…'}
             </p>
             {phoneInfo && <div className="auth-success">{phoneInfo}</div>}
-            <div className="recaptcha-wrapper">
-              <div id="recaptcha-container" />
-            </div>
             {phoneError && <div className="auth-error">{phoneError}</div>}
             <div style={{ display: 'flex', gap: 8 }}>
               <button className="settings-button" onClick={() => { setPhoneStep('idle'); setPhoneError(''); setPhoneNumber('') }}>
                 Cancel
               </button>
               <button
+                id="phone-send-code-button"
                 className="landing-cta-primary auth-submit"
                 onClick={handleSendPhoneCode}
                 disabled={phoneLoading}
