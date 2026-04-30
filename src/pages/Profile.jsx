@@ -5,6 +5,7 @@ import { doc, onSnapshot, setDoc, serverTimestamp } from 'firebase/firestore'
 import {
   updateProfile,
   updatePassword,
+  updatePhoneNumber,
   verifyBeforeUpdateEmail,
   reauthenticateWithCredential,
   EmailAuthProvider,
@@ -102,6 +103,7 @@ function Profile() {
   const [phoneLoading, setPhoneLoading] = useState(false)
   const [phoneError, setPhoneError] = useState('')
   const [verificationId, setVerificationId] = useState('')
+  const [recaptchaReady, setRecaptchaReady] = useState(false)
   const recaptchaRef = useRef(null)
 
   // Password change
@@ -142,14 +144,15 @@ function Profile() {
   }, [])
 
   // Initialize reCAPTCHA as soon as the phone form opens so it's warm by the time
-  // the user clicks "Send code". A 150ms timeout lets React finish painting the DOM
-  // before we attach the widget (avoids the reCAPTCHA timeout on real numbers).
+  // the user clicks "Send code". Keep it visible: invisible reCAPTCHA can fail to
+  // surface a challenge on production domains, mobile browsers, or incognito.
   useEffect(() => {
     if (phoneStep !== 'enter-phone') {
       if (recaptchaRef.current) {
         recaptchaRef.current.clear()
         recaptchaRef.current = null
       }
+      setTimeout(() => setRecaptchaReady(false), 0)
       return
     }
     const t = setTimeout(() => {
@@ -157,13 +160,19 @@ function Profile() {
         recaptchaRef.current.clear()
         recaptchaRef.current = null
       }
+      setRecaptchaReady(false)
       try {
         recaptchaRef.current = new RecaptchaVerifier(auth, 'recaptcha-container', {
-          size: 'invisible',
-          'data-s': 'v2',
+          size: 'normal',
+          callback: () => setRecaptchaReady(true),
+          'expired-callback': () => setRecaptchaReady(false),
         })
-        recaptchaRef.current.render().catch(() => {})
-      } catch {}
+        recaptchaRef.current.render().catch(() => {
+          setPhoneError('Could not load reCAPTCHA. Refresh the page and try again.')
+        })
+      } catch {
+        setPhoneError('Could not load reCAPTCHA. Refresh the page and try again.')
+      }
     }, 150)
     return () => clearTimeout(t)
   }, [phoneStep])
@@ -219,6 +228,7 @@ function Profile() {
     const localNumber = phoneNumber.trim().replace(/[\s\-()]/g, '')
     if (!localNumber) { setPhoneError('Enter your phone number.'); return }
     if (!recaptchaRef.current) { setPhoneError('reCAPTCHA not ready yet — wait a moment and try again.'); return }
+    if (!recaptchaReady) { setPhoneError('Complete the reCAPTCHA first.'); return }
     const fullPhone = countryCode + localNumber
     setPhoneLoading(true)
     setPhoneError('')
@@ -230,10 +240,19 @@ function Profile() {
     } catch (err) {
       // Tear down and rebuild the verifier so the next attempt starts clean
       if (recaptchaRef.current) { recaptchaRef.current.clear(); recaptchaRef.current = null }
+      setRecaptchaReady(false)
       try {
-        recaptchaRef.current = new RecaptchaVerifier(auth, 'recaptcha-container', { size: 'invisible', 'data-s': 'v2' })
-        recaptchaRef.current.render().catch(() => {})
-      } catch {}
+        recaptchaRef.current = new RecaptchaVerifier(auth, 'recaptcha-container', {
+          size: 'normal',
+          callback: () => setRecaptchaReady(true),
+          'expired-callback': () => setRecaptchaReady(false),
+        })
+        recaptchaRef.current.render().catch(() => {
+          setPhoneError('Could not reload reCAPTCHA. Refresh the page and try again.')
+        })
+      } catch {
+        setPhoneError('Could not reload reCAPTCHA. Refresh the page and try again.')
+      }
       setPhoneError(err.message || 'Failed to send code. Make sure the number is correct.')
     } finally {
       setPhoneLoading(false)
@@ -246,7 +265,11 @@ function Profile() {
     setPhoneError('')
     try {
       const credential = PhoneAuthProvider.credential(verificationId, phoneCode.trim())
-      await linkWithCredential(currentUser, credential)
+      if (linkedPhone) {
+        await updatePhoneNumber(currentUser, credential)
+      } else {
+        await linkWithCredential(currentUser, credential)
+      }
       setPhoneStep('idle'); setPhoneNumber(''); setPhoneCode(''); setVerificationId('')
       toast.success('Phone number verified!')
     } catch (err) {
@@ -312,9 +335,6 @@ function Profile() {
 
   return (
     <main className="app-page">
-      {/* Always in the DOM so reCAPTCHA never tries to access a null node */}
-      <div id="recaptcha-container" style={{ display: 'none' }} />
-
       <button className="app-back-link" onClick={() => navigate(isEmployee ? '/my-schedule' : '/dashboard')}>
         <ArrowLeft size={14} />
         <span>Back</span>
@@ -489,6 +509,9 @@ function Profile() {
             <p style={{ fontSize: 12, color: 'var(--text-tertiary)', margin: 0 }}>
               Full number: {countryCode}{phoneNumber.trim().replace(/[\s\-()]/g, '') || '…'}
             </p>
+            <div className="recaptcha-wrapper">
+              <div id="recaptcha-container" />
+            </div>
             {phoneError && <div className="auth-error">{phoneError}</div>}
             <div style={{ display: 'flex', gap: 8 }}>
               <button className="settings-button" onClick={() => { setPhoneStep('idle'); setPhoneError(''); setPhoneNumber('') }}>
