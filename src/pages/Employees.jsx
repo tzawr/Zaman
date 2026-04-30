@@ -97,6 +97,9 @@ function Employees() {
       managerId: currentUser.uid,
       employeeId: emp.id,
       employeeName: emp.name,
+      employeeRole: emp.role,
+      allowEmployeeFullView: userData?.allowEmployeeFullView === true,
+      allowEmployeeAvailabilityUpdates: userData?.allowEmployeeAvailabilityUpdates !== false,
       createdAt: serverTimestamp(),
       used: false,
     })

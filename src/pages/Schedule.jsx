@@ -26,6 +26,7 @@ import {
   query, 
   where, 
   onSnapshot, 
+  getDocs,
   doc, 
   addDoc, 
   serverTimestamp,
@@ -91,13 +92,43 @@ function Schedule() {
       where('userId', '==', currentUser.uid)
     )
     
-    const unsubscribe = onSnapshot(q, (snapshot) => {
+    const unsubscribe = onSnapshot(q, async (snapshot) => {
       const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))
-      setEmployees(data)
+      setEmployees(await mergeEmployeePortalAvailability(data))
     })
     
     return () => unsubscribe()
   }, [currentUser])
+
+  async function mergeEmployeePortalAvailability(team) {
+    if (!currentUser || team.length === 0) return team
+    try {
+      const portalQuery = query(
+        collection(db, 'users'),
+        where('managerId', '==', currentUser.uid),
+        where('accountType', '==', 'employee')
+      )
+      const portalSnap = await getDocs(portalQuery)
+      const portalByEmployeeId = new Map()
+      portalSnap.docs.forEach(portalDoc => {
+        const data = portalDoc.data()
+        if (data.linkedEmployeeId) portalByEmployeeId.set(data.linkedEmployeeId, data)
+      })
+      return team.map(emp => {
+        const portal = portalByEmployeeId.get(emp.id)
+        if (!portal) return emp
+        return {
+          ...emp,
+          availability: portal.availability || emp.availability,
+          timeOff: portal.timeOff || emp.timeOff,
+          availabilityUpdatedAt: portal.availabilityUpdatedAt || emp.availabilityUpdatedAt,
+          availabilityUpdatedByType: portal.availabilityUpdatedByType || emp.availabilityUpdatedByType,
+        }
+      })
+    } catch {
+      return team
+    }
+  }
 
   // Load user settings
   useEffect(() => {
@@ -131,12 +162,13 @@ function Schedule() {
 
     try {
       setGenerating(true)
+      const schedulingEmployees = await mergeEmployeePortalAvailability(employees)
 
       // Step 1: Parse both coverage rules and special instructions into structured constraints (AI, cached)
       const parsedRules = enhanceParsedRules(
         await parseSchedulingInstructionsCached(userSettings.coverageRules, prompt),
         prompt,
-        employees
+        schedulingEmployees
       )
 
       // Step 2: Build deterministic constraints from structured rules
@@ -147,12 +179,12 @@ function Schedule() {
       generationSeedRef.current += 1
       const baseSeed = hashScheduleSeed(weekStart, prompt, generationSeedRef.current)
       for (let attempt = 0; attempt < 20; attempt++) {
-        const candidate = runScheduler(employees, userSettings, weekStart, {
+        const candidate = runScheduler(schedulingEmployees, userSettings, weekStart, {
           ...constraints,
           seed: baseSeed + attempt,
         })
-        const violations = validateSchedule(candidate, employees, parsedRules)
-        const score = scoreScheduleCandidate(candidate, violations, employees, parsedRules?.employeeRules)
+        const violations = validateSchedule(candidate, schedulingEmployees, parsedRules)
+        const score = scoreScheduleCandidate(candidate, violations, schedulingEmployees, parsedRules?.employeeRules)
         if (!best || score < best.score) {
           best = { result: candidate, violations, score }
         }
@@ -161,11 +193,11 @@ function Schedule() {
 
       // Step 4: Validate and surface any unsatisfied constraints as issues
       const result = best.result
-      result.summary = calculateScheduleSummary(result, employees)
+      result.summary = calculateScheduleSummary(result, schedulingEmployees)
       if (best.violations.length > 0) {
         console.warn('[scheduler] violations:', best.violations)
         result.issues = best.violations
-        result.recommendations = await generateScheduleRecommendations(result, best.violations, employees)
+        result.recommendations = await generateScheduleRecommendations(result, best.violations, schedulingEmployees)
       }
 
       // Step 5: Save and display

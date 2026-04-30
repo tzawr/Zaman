@@ -10,7 +10,7 @@ import Section from '../components/Section'
 
 function Invite() {
   const navigate = useNavigate()
-  const { currentUser } = useAuth()
+  const { currentUser, userData } = useAuth()
 
   const [employees, setEmployees] = useState([])
   const [loading, setLoading] = useState(true)
@@ -32,6 +32,9 @@ function Invite() {
       managerId: currentUser.uid,
       employeeId: emp.id,
       employeeName: emp.name,
+      employeeRole: emp.role,
+      allowEmployeeFullView: userData?.allowEmployeeFullView === true,
+      allowEmployeeAvailabilityUpdates: userData?.allowEmployeeAvailabilityUpdates !== false,
       createdAt: serverTimestamp(),
       used: false,
     })

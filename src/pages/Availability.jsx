@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { ArrowLeft, Check, X, ArrowRight, Palmtree, Plus, Clock, Lock } from 'lucide-react'
-import { doc, getDoc, onSnapshot, updateDoc, serverTimestamp } from 'firebase/firestore'
+import { doc, onSnapshot, updateDoc, serverTimestamp } from 'firebase/firestore'
 import { db } from '../firebase'
 import { useAuth } from '../AuthContext'
 import { useToast } from '../components/Toast'
@@ -47,57 +47,55 @@ function Availability() {
 
   useEffect(() => {
     if (!currentUser) return
-    let unsubManager = null
 
-    async function resolvePortal() {
-      if (employeeId) {
-        setPortalMode('manager')
-        setEmployeeCanEdit(true)
-        setActiveEmployeeId(employeeId)
-        return
-      }
+    if (employeeId) {
+      setPortalMode('manager')
+      setEmployeeCanEdit(true)
+      setActiveEmployeeId(employeeId)
+      return
+    }
 
-      const userSnap = await getDoc(doc(db, 'users', currentUser.uid))
-      if (!userSnap.exists()) {
+    setPortalMode('employee')
+    const unsub = onSnapshot(doc(db, 'users', currentUser.uid), (snap) => {
+      if (!snap.exists()) {
         navigate('/signin')
         return
       }
-      const userData = userSnap.data()
+      const userData = snap.data()
       if (userData.accountType !== 'employee' || !userData.linkedEmployeeId || !userData.managerId) {
         navigate('/dashboard')
         return
       }
-      setPortalMode('employee')
-      setActiveEmployeeId(userData.linkedEmployeeId)
-      unsubManager = onSnapshot(doc(db, 'users', userData.managerId), (managerSnap) => {
-        setEmployeeCanEdit(managerSnap.exists() && managerSnap.data().allowEmployeeAvailabilityUpdates === true)
-      })
-    }
 
-    resolvePortal().catch(() => {
+      setActiveEmployeeId(userData.linkedEmployeeId)
+      setEmployeeCanEdit(userData.allowEmployeeAvailabilityUpdates !== false)
+      setEmployee({
+        name: userData.employeeName || userData.displayName || 'My availability',
+        role: userData.employeeRole || 'Employee',
+      })
+      if (userData.availability && Object.keys(userData.availability).length > 0) {
+        setAvailability({ ...DEFAULT_AVAIL, ...userData.availability })
+      }
+      setTimeOff(userData.timeOff || [])
+      setLoading(false)
+    }, () => {
       toast.error('Failed to load availability portal.')
       navigate('/my-schedule')
     })
 
-    return () => {
-      if (unsubManager) unsubManager()
-    }
+    return () => unsub()
   }, [currentUser, employeeId, navigate, toast])
 
   useEffect(() => {
-    if (!currentUser || !activeEmployeeId) return
+    if (!currentUser || !activeEmployeeId || portalMode === 'employee') return
     const unsub = onSnapshot(doc(db, 'employees', activeEmployeeId), (snap) => {
       if (!snap.exists()) {
-        navigate(portalMode === 'employee' ? '/my-schedule' : '/employees')
+        navigate('/employees')
         return
       }
       const data = snap.data()
-      const canViewAsManager = portalMode === 'manager' && data.userId === currentUser.uid
-      const canViewAsEmployee = portalMode === 'employee' && data.accountUserId === currentUser.uid
-      const canViewLinkedEmployee = portalMode === 'employee' && data.invitedUserId === currentUser.uid
-      const canViewLegacyEmployee = portalMode === 'employee' && employeeId === undefined
-      if (!canViewAsManager && !canViewAsEmployee && !canViewLinkedEmployee && !canViewLegacyEmployee) {
-        navigate(portalMode === 'employee' ? '/my-schedule' : '/employees')
+      if (data.userId !== currentUser.uid) {
+        navigate('/employees')
         return
       }
       setEmployee(data)
@@ -106,9 +104,12 @@ function Availability() {
       }
       setTimeOff(data.timeOff || [])
       setLoading(false)
+    }, () => {
+      toast.error('Failed to load employee availability.')
+      navigate('/employees')
     })
     return () => unsub()
-  }, [currentUser, activeEmployeeId, portalMode, employeeId, navigate])
+  }, [currentUser, activeEmployeeId, portalMode, navigate, toast])
 
   const canEdit = portalMode === 'manager' || employeeCanEdit
   const isEmployeePortal = portalMode === 'employee'
@@ -121,7 +122,10 @@ function Availability() {
     }
     try {
       setSaving(true)
-      await updateDoc(doc(db, 'employees', activeEmployeeId), {
+      const targetRef = isEmployeePortal
+        ? doc(db, 'users', currentUser.uid)
+        : doc(db, 'employees', activeEmployeeId)
+      await updateDoc(targetRef, {
         availability: next,
         availabilityUpdatedAt: serverTimestamp(),
         availabilityUpdatedBy: currentUser.uid,
@@ -141,7 +145,10 @@ function Availability() {
     }
     try {
       setSaving(true)
-      await updateDoc(doc(db, 'employees', activeEmployeeId), {
+      const targetRef = isEmployeePortal
+        ? doc(db, 'users', currentUser.uid)
+        : doc(db, 'employees', activeEmployeeId)
+      await updateDoc(targetRef, {
         timeOff: next,
         timeOffUpdatedAt: serverTimestamp(),
         timeOffUpdatedBy: currentUser.uid,

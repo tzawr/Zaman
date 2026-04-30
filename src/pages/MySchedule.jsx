@@ -47,7 +47,6 @@ function MySchedule() {
   const { currentUser } = useAuth()
 
   const [userDoc, setUserDoc] = useState(null)
-  const [managerDoc, setManagerDoc] = useState(null)
   const [schedules, setSchedules] = useState([])
   const [weekIndex, setWeekIndex] = useState(0)
   const [viewMode, setViewMode] = useState('mine') // 'mine' | 'full'
@@ -70,15 +69,6 @@ function MySchedule() {
       setLoading(false)
     })
   }, [currentUser, navigate])
-
-  // Load manager's settings reactively (for allowEmployeeFullView)
-  useEffect(() => {
-    if (!userDoc?.managerId) return
-    const unsub = onSnapshot(doc(db, 'users', userDoc.managerId), snap => {
-      if (snap.exists()) setManagerDoc(snap.data())
-    })
-    return () => unsub()
-  }, [userDoc])
 
   // Load schedules
   useEffect(() => {
@@ -115,7 +105,7 @@ function MySchedule() {
   }
 
   const employeeName = userDoc?.employeeName || ''
-  const canSeeFullSchedule = managerDoc?.allowEmployeeFullView === true
+  const canSeeFullSchedule = userDoc?.allowEmployeeFullView === true
   const totalWeeks = schedules.length
   const currentSchedule = schedules[weekIndex] || null
 

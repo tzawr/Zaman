@@ -65,6 +65,9 @@ function InviteAccept() {
       managerId: invite.managerId,
       linkedEmployeeId: invite.employeeId,
       employeeName: invite.employeeName,
+      employeeRole: invite.employeeRole || 'Employee',
+      allowEmployeeFullView: invite.allowEmployeeFullView === true,
+      allowEmployeeAvailabilityUpdates: invite.allowEmployeeAvailabilityUpdates !== false,
       onboarded: true,
       createdAt: serverTimestamp(),
     }, { merge: true })
