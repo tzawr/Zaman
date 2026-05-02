@@ -55,7 +55,7 @@ function AppShell() {
 
   return (
     <BrowserRouter>
-      <div className={`${darkMode ? 'app dark' : 'app light'} ${isRtl ? 'rtl' : 'ltr'}`} dir={isRtl ? 'rtl' : 'ltr'}>
+      <div className={`${darkMode ? 'app dark' : 'app light'} ${isRtl ? 'rtl' : 'ltr'}`} dir="ltr">
         <nav className="navbar">
           <Link to="/" className="logo-link">
             <h1 className="logo">Hengam</h1>

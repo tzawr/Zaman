@@ -1,3 +1,5 @@
+@import url('https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;500;600;700;800;900&display=swap');
+
 :root {
   /* Backgrounds — dark, layered */
   --bg-base: #030816;
@@ -2632,13 +2634,15 @@ input:checked + .slider:before {
   font-size: clamp(40px, 7vw, 80px);
   font-weight: 800;
   letter-spacing: -0.04em;
-  line-height: 1.02;
+  line-height: 1.08;
   margin-bottom: 24px;
   background: linear-gradient(180deg, var(--text-primary) 0%, rgba(250, 250, 250, 0.65) 100%);
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;
   max-width: 900px;
+  overflow: visible;
+  text-wrap: balance;
 }
 
 .landing-gradient-text {
@@ -3196,12 +3200,14 @@ input:checked + .slider:before {
   font-size: clamp(32px, 5vw, 52px);
   font-weight: 700;
   letter-spacing: -0.03em;
-  line-height: 1.1;
+  line-height: 1.16;
   margin-bottom: 16px;
   background: linear-gradient(180deg, var(--text-primary) 0%, rgba(250, 250, 250, 0.7) 100%);
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;
+  overflow: visible;
+  text-wrap: balance;
 }
 
 .landing-section-desc {
@@ -6674,30 +6680,61 @@ select.input {
 }
 
 .app.rtl {
-  direction: rtl;
-  font-family: Tahoma, 'Segoe UI', Arial, sans-serif;
-}
-
-.app.rtl .navbar-right-group,
-.app.rtl .navbar-actions {
   direction: ltr;
+  font-family: 'Vazirmatn', var(--font-sans);
 }
 
 .app.rtl .navbar-center,
 .app.rtl .auth-card,
-.app.rtl .footer-inner,
-.app.rtl .landing-section-header,
 .app.rtl .landing-hero-content,
-.app.rtl .landing-qa-panel {
+.app.rtl .footer-inner {
   direction: rtl;
 }
 
 .app.rtl .auth-card,
-.app.rtl .landing-section-header,
-.app.rtl .landing-qa-item,
-.app.rtl .landing-qa-aside,
+.app.rtl .landing-hero-content,
 .app.rtl .footer-brand,
 .app.rtl .footer-col {
+  text-align: right;
+}
+
+.app.rtl .landing-section-header,
+.app.rtl .landing-final-content {
+  direction: rtl;
+  text-align: center;
+}
+
+.app.rtl .landing-section-eyebrow,
+.app.rtl .landing-section-title,
+.app.rtl .landing-section-desc,
+.app.rtl .landing-feature-title,
+.app.rtl .landing-feature-desc,
+.app.rtl .landing-pricing-desc,
+.app.rtl .landing-pricing-features,
+.app.rtl .premium-panel-copy,
+.app.rtl .premium-rule-input-demo,
+.app.rtl .premium-note-card,
+.app.rtl .premium-advice-list,
+.app.rtl .trust-copy,
+.app.rtl .trust-checks,
+.app.rtl .landing-qa-copy,
+.app.rtl .landing-qa-aside,
+.app.rtl .landing-final-title,
+.app.rtl .landing-final-subtitle {
+  direction: rtl;
+}
+
+.app.rtl .landing-feature-title,
+.app.rtl .landing-feature-desc,
+.app.rtl .landing-pricing-card,
+.app.rtl .premium-panel-copy,
+.app.rtl .premium-rule-input-demo,
+.app.rtl .premium-note-card,
+.app.rtl .premium-advice-list,
+.app.rtl .trust-copy,
+.app.rtl .trust-check-group,
+.app.rtl .landing-qa-item,
+.app.rtl .landing-qa-aside {
   text-align: right;
 }
 
@@ -6705,23 +6742,61 @@ select.input {
 .app.rtl .auth-subtitle,
 .app.rtl .auth-eyebrow,
 .app.rtl .auth-perk,
+.app.rtl .landing-hero-title,
+.app.rtl .landing-hero-subtitle,
+.app.rtl .landing-eyebrow,
+.app.rtl .landing-section-eyebrow,
+.app.rtl .landing-section-title,
+.app.rtl .landing-section-desc,
+.app.rtl .landing-feature-title,
+.app.rtl .landing-feature-desc,
+.app.rtl .landing-pricing-card,
+.app.rtl .landing-final-title,
+.app.rtl .landing-final-subtitle,
+.app.rtl .premium-panel-copy h3,
+.app.rtl .premium-panel-copy p,
+.app.rtl .landing-qa-copy strong,
+.app.rtl .landing-qa-copy span,
 .app.rtl .footer-tagline,
 .app.rtl .footer-made,
 .app.rtl .footer-copyright {
   letter-spacing: 0;
 }
 
-.app.rtl .auth-field > div,
-.app.rtl .auth-perks,
-.app.rtl .auth-eyebrow,
-.app.rtl .google-auth-btn,
-.app.rtl .auth-submit,
-.app.rtl .footer-trust {
-  flex-direction: row-reverse;
-}
-
 .app.rtl .auth-footer {
   text-align: center;
+}
+
+.app.rtl .hero-v2 .landing-hero-content {
+  align-items: flex-end;
+}
+
+.app.rtl .hero-v2 .landing-hero-actions,
+.app.rtl .hero-v2 .landing-hero-meta {
+  justify-content: flex-end;
+}
+
+.app.rtl .hero-proof-row {
+  text-align: right;
+}
+
+.app.rtl .hero-v2 .landing-hero-title {
+  font-size: clamp(38px, 3.9vw, 60px);
+  line-height: 1.18;
+}
+
+.app.rtl .landing-section-title {
+  font-size: clamp(30px, 4.2vw, 54px);
+  line-height: 1.25;
+}
+
+.app.rtl .premium-panel-copy h3 {
+  line-height: 1.28;
+}
+
+.app.rtl .landing-cta-primary svg,
+.app.rtl .landing-cta-ghost svg {
+  transform: scaleX(-1);
 }
 
 /* Onboarding specific */
@@ -7756,7 +7831,7 @@ input[type="time"]::-webkit-calendar-picker-indicator:hover {
 .hero-v2 .landing-hero-title {
   max-width: 680px;
   font-size: clamp(44px, 4.8vw, 72px);
-  line-height: 1.02;
+  line-height: 1.1;
   margin-bottom: 20px;
   background: linear-gradient(180deg, #eaf2ff 0%, #cbd5e1 52%, rgba(147, 197, 253, 0.78) 100%);
   -webkit-background-clip: text;
@@ -9203,7 +9278,7 @@ input[type="time"]::-webkit-calendar-picker-indicator:hover {
 .premium-panel-stack .premium-panel-copy h3 {
   max-width: 520px;
   font-size: clamp(36px, 4.2vw, 54px);
-  line-height: 1.04;
+  line-height: 1.14;
 }
 
 .premium-panel-stack .premium-panel-copy p {
@@ -9222,9 +9297,10 @@ input[type="time"]::-webkit-calendar-picker-indicator:hover {
 .premium-panel-copy h3 {
   color: #eaf2ff;
   font-size: clamp(28px, 3vw, 42px);
-  line-height: 1.08;
+  line-height: 1.18;
   letter-spacing: -0.04em;
   margin: 0 0 12px;
+  text-wrap: balance;
 }
 
 .premium-panel:not(.premium-panel-wide) .premium-panel-copy h3 {
@@ -9827,6 +9903,7 @@ input[type="time"]::-webkit-calendar-picker-indicator:hover {
     background var(--transition-fast),
     transform var(--transition-fast),
     box-shadow var(--transition-fast);
+  box-sizing: border-box;
 }
 
 .landing-qa-item:hover,
@@ -9868,7 +9945,8 @@ input[type="time"]::-webkit-calendar-picker-indicator:hover {
   color: #eaf2ff;
   font-size: 16px;
   font-weight: 800;
-  line-height: 1.25;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
 }
 
 .landing-qa-copy span {
@@ -9891,14 +9969,6 @@ input[type="time"]::-webkit-calendar-picker-indicator:hover {
 
 .app.rtl .landing-qa-item {
   grid-template-columns: auto minmax(0, 1fr) auto;
-}
-
-.app.rtl .landing-qa-arrow {
-  transform: rotate(180deg);
-}
-
-.app.rtl .landing-qa-item.active .landing-qa-arrow {
-  transform: rotate(90deg);
 }
 
 .landing-qa-aside {
@@ -10218,6 +10288,9 @@ input[type="time"]::-webkit-calendar-picker-indicator:hover {
     padding: 12px;
   }
   .landing-qa-item {
+    grid-template-columns: 1fr auto;
+  }
+  .app.rtl .landing-qa-item {
     grid-template-columns: 1fr auto;
   }
   .landing-qa-number {
@@ -12517,6 +12590,75 @@ input[type="time"]::-webkit-calendar-picker-indicator:hover {
 
 .app.light .premium-export-row button {
   color: #1e3a8a;
+}
+
+.app.light .landing-qa-panel {
+  border-color: rgba(37, 99, 235, 0.16);
+  background:
+    radial-gradient(circle at 82% 8%, rgba(96, 165, 250, 0.16), transparent 30%),
+    linear-gradient(135deg, rgba(37, 99, 235, 0.06), transparent 48%),
+    rgba(255, 255, 255, 0.92);
+  box-shadow:
+    0 24px 70px rgba(37, 99, 235, 0.11),
+    inset 0 1px 0 rgba(255, 255, 255, 0.9);
+}
+
+.app.light .landing-qa-item {
+  border-color: rgba(37, 99, 235, 0.14);
+  background:
+    linear-gradient(135deg, rgba(37, 99, 235, 0.055), rgba(255, 255, 255, 0.86)),
+    #ffffff;
+  color: #0f172a;
+  box-shadow: 0 12px 30px rgba(37, 99, 235, 0.06);
+}
+
+.app.light .landing-qa-item:hover,
+.app.light .landing-qa-item.active {
+  border-color: rgba(37, 99, 235, 0.34);
+  background:
+    linear-gradient(135deg, rgba(37, 99, 235, 0.12), rgba(255, 255, 255, 0.96)),
+    #ffffff;
+  box-shadow: 0 20px 48px rgba(37, 99, 235, 0.14);
+}
+
+.app.light .landing-qa-copy strong,
+.app.light .qa-aside-copy strong {
+  color: #0f172a;
+}
+
+.app.light .landing-qa-copy span,
+.app.light .qa-aside-copy span {
+  color: #526073;
+}
+
+.app.light .landing-qa-number,
+.app.light .qa-aside-icon {
+  color: #2563eb;
+  border-color: rgba(37, 99, 235, 0.22);
+  background: rgba(37, 99, 235, 0.08);
+}
+
+.app.light .landing-qa-aside {
+  border-color: rgba(37, 99, 235, 0.16);
+  background:
+    radial-gradient(circle at 22% 10%, rgba(96, 165, 250, 0.24), transparent 34%),
+    linear-gradient(145deg, rgba(37, 99, 235, 0.1), transparent 54%),
+    rgba(255, 255, 255, 0.86);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.78);
+}
+
+.app.light .qa-aside-orbit {
+  border-color: rgba(37, 99, 235, 0.14);
+  background:
+    linear-gradient(rgba(37, 99, 235, 0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(37, 99, 235, 0.05) 1px, transparent 1px),
+    rgba(239, 246, 255, 0.6);
+}
+
+.app.light .qa-aside-steps span {
+  color: #1e3a8a;
+  border-color: rgba(37, 99, 235, 0.14);
+  background: rgba(37, 99, 235, 0.07);
 }
 
 /* Schedule history list shape should match in light and dark mode */

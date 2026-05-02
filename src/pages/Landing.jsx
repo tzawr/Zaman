@@ -49,7 +49,7 @@ function Landing() {
 // ========== HERO ==========
 function Hero({ onCTA, isSignedIn }) {
   const containerRef = useRef(null)
-  const { t } = useI18n()
+  const { t, isRtl } = useI18n()
 
   return (
     <section ref={containerRef} className="landing-hero hero-v2">
@@ -57,6 +57,7 @@ function Hero({ onCTA, isSignedIn }) {
 
       <motion.div 
         className="landing-hero-content"
+        dir={isRtl ? 'rtl' : 'ltr'}
       >
         <motion.div
           initial={{ opacity: 0, y: 20, scale: 0.95 }}
@@ -157,7 +158,7 @@ function Hero({ onCTA, isSignedIn }) {
         <div className="hero-preview-frame">
           <div className="hero-preview-topline">
             <span className="hero-preview-status" />
-            <span>Checked schedule ready</span>
+            <span>{t('heroPreviewReady')}</span>
           </div>
           <MockupCard />
         </div>
@@ -222,43 +223,44 @@ function FloatingShapes() {
 }
 
 function MockupCard() {
+  const { t, isRtl } = useI18n()
   const days = [
     {
-      day: 'Mon',
+      day: t('mockDayMon'),
       shifts: [
-        { name: 'Maya', role: 'Shift Supervisor', time: '4a - 11a', color: 'pink' },
-        { name: 'Eli', role: 'Barista', time: '4a - 12p', color: 'red' },
-        { name: 'Owen', role: 'Shift Supervisor', time: '12:30p - 8:30p', color: 'purple' },
+        { name: 'Maya', role: t('roleShiftSupervisor'), time: '4a - 11a', color: 'pink' },
+        { name: 'Eli', role: t('roleBarista'), time: '4a - 12p', color: 'red' },
+        { name: 'Owen', role: t('roleShiftSupervisor'), time: '12:30p - 8:30p', color: 'purple' },
       ],
     },
     {
-      day: 'Tue',
+      day: t('mockDayTue'),
       shifts: [
-        { name: 'Maya', role: 'Shift Supervisor', time: '4a - 11a', color: 'pink' },
-        { name: 'Noah', role: 'Barista', time: '5a - 11:30a', color: 'blue' },
-        { name: 'Riley', role: 'Barista', time: '12:30p - 8p', color: 'red' },
+        { name: 'Maya', role: t('roleShiftSupervisor'), time: '4a - 11a', color: 'pink' },
+        { name: 'Noah', role: t('roleBarista'), time: '5a - 11:30a', color: 'blue' },
+        { name: 'Riley', role: t('roleBarista'), time: '12:30p - 8p', color: 'red' },
       ],
     },
     {
-      day: 'Wed',
+      day: t('mockDayWed'),
       shifts: [
-        { name: 'Owen', role: 'Shift Supervisor', time: '4a - 12p', color: 'purple' },
-        { name: 'Sofia', role: 'Barista', time: '4a - 11a', color: 'pink' },
-        { name: 'Theo', role: 'Shift Supervisor', time: '12p - 8p', color: 'pink' },
+        { name: 'Owen', role: t('roleShiftSupervisor'), time: '4a - 12p', color: 'purple' },
+        { name: 'Sofia', role: t('roleBarista'), time: '4a - 11a', color: 'pink' },
+        { name: 'Theo', role: t('roleShiftSupervisor'), time: '12p - 8p', color: 'pink' },
       ],
     },
     {
-      day: 'Sun',
+      day: t('mockDaySun'),
       shifts: [
-        { name: 'Lena', role: 'Shift Supervisor', time: '4a - 12p', color: 'purple' },
-        { name: 'Leo', role: 'Manager', time: '10a - 4p', color: 'green' },
-        { name: 'Open shift', role: 'Barista', time: '12p - 3p', color: 'empty' },
+        { name: 'Lena', role: t('roleShiftSupervisor'), time: '4a - 12p', color: 'purple' },
+        { name: 'Leo', role: t('roleManager'), time: '10a - 4p', color: 'green' },
+        { name: t('mockOpenShift'), role: t('roleBarista'), time: '12p - 3p', color: 'empty' },
       ],
     },
   ]
 
   return (
-    <div className="mockup-window mockup-v2 product-proof">
+    <div className="mockup-window mockup-v2 product-proof" dir={isRtl ? 'rtl' : 'ltr'}>
       <div className="mockup-header">
         <div className="mockup-dots">
           <span></span><span></span><span></span>
@@ -268,34 +270,34 @@ function MockupCard() {
       <div className="mockup-body">
         <div className="proof-layout">
           <aside className="proof-rules">
-            <div className="proof-label">Manager rules</div>
+            <div className="proof-label">{t('mockManagerRules')}</div>
             <div className="proof-rule">
               <Clock size={13} />
-              <span>1 supervisor + 1 barista by 4am</span>
+              <span>{t('mockRuleCoverage')}</span>
             </div>
             <div className="proof-rule">
               <Users size={13} />
-              <span>Hit weekly target hours when possible</span>
+              <span>{t('mockRuleTargets')}</span>
             </div>
             <div className="proof-rule">
               <Shield size={13} />
-              <span>No clopening or availability breaks</span>
+              <span>{t('mockRuleRest')}</span>
             </div>
             <div className="proof-rule proof-warning">
               <AlertTriangle size={13} />
-              <span>Leo is off two days, 10am-4pm only</span>
+              <span>{t('mockRuleAvailability')}</span>
             </div>
           </aside>
 
           <div className="proof-schedule-wrap">
             <div className="mockup-title-row">
               <div>
-                <div className="mockup-title">Week of May 4</div>
-                <div className="proof-subtitle">Generated from constraints, then checked.</div>
+                <div className="mockup-title">{t('mockWeekTitle')}</div>
+                <div className="proof-subtitle">{t('mockWeekSubtitle')}</div>
               </div>
               <div className="mockup-badge">
                 <Sparkles size={12} />
-                <span>Ready to review</span>
+                <span>{t('mockReadyReview')}</span>
               </div>
             </div>
 
@@ -332,7 +334,7 @@ function MockupCard() {
               </div>
               <div className="proof-issue">
                 <AlertTriangle size={14} />
-                <span>Only 30h possible with current availability.</span>
+                <span>{t('mockIssue')}</span>
               </div>
             </div>
           </div>
@@ -344,19 +346,20 @@ function MockupCard() {
 
 // ========== MARQUEE STRIP ==========
 function MarqueeStrip() {
+  const { t } = useI18n()
   const items = [
-    'Restaurants', 'Coffee shops', 'Retail', 'Salons', 'Gyms', 'Bars', 
-    'Bakeries', 'Boutiques', 'Studios', 'Clinics', 'Auto shops', 'Pet care'
+    'marqueeRestaurants', 'marqueeCoffee', 'marqueeRetail', 'marqueeSalons', 'marqueeGyms', 'marqueeBars',
+    'marqueeBakeries', 'marqueeBoutiques', 'marqueeStudios', 'marqueeClinics', 'marqueeAuto', 'marqueeCare'
   ]
   return (
     <section className="marquee-section">
-      <p className="marquee-label">Built for shift teams in</p>
+      <p className="marquee-label">{t('marqueeLabel')}</p>
       <div className="marquee">
         <div className="marquee-track">
           {items.map((item) => (
             <span key={item} className="marquee-item">
               <span className="marquee-dot" />
-              {item}
+              {t(item)}
             </span>
           ))}
         </div>
@@ -366,6 +369,7 @@ function MarqueeStrip() {
 }
 
 function PremiumPanels() {
+  const { t, isRtl } = useI18n()
   useEffect(() => {
     const panels = document.querySelectorAll('.premium-panel')
     const observer = new IntersectionObserver(
@@ -386,37 +390,37 @@ function PremiumPanels() {
   }, [])
 
   const eventRows = [
-    { time: '4 AM', title: 'Opening shift', status: 'ready', avatars: ['M', 'E'] },
-    { time: '8 AM', title: 'Morning rush', status: 'active', avatars: ['N', 'S', 'A'] },
-    { time: '12 PM', title: 'Coverage check', status: 'ready', avatars: ['L', 'R'] },
-    { time: '3 PM', title: 'Coverage gap', status: 'gap', avatars: ['+'] },
+    { time: '4 AM', title: t('premiumOpeningShift'), status: 'ready', avatars: ['M', 'E'] },
+    { time: '8 AM', title: t('premiumMorningRush'), status: 'active', avatars: ['N', 'S', 'A'] },
+    { time: '12 PM', title: t('premiumCoverageCheck'), status: 'ready', avatars: ['L', 'R'] },
+    { time: '3 PM', title: t('premiumCoverageGap'), status: 'gap', avatars: ['+'] },
   ]
 
   const ruleRows = [
-    { label: 'Pairing', value: 'Mentors stay with trainees' },
-    { label: 'Rest', value: 'No clopening' },
-    { label: 'Hours', value: 'Weekly targets balanced' },
-    { label: 'Review', value: 'Every gap explained' },
+    { label: t('premiumPairing'), value: t('premiumPairingValue') },
+    { label: t('premiumRest'), value: t('premiumRestValue') },
+    { label: t('premiumHours'), value: t('premiumHoursValue') },
+    { label: t('premiumReview'), value: t('premiumReviewValue') },
   ]
 
   const coverageStats = [
-    { value: '4', label: 'coverage windows' },
-    { value: '13', label: 'hour targets' },
-    { value: '1', label: 'open gap' },
+    { value: '4', label: t('premiumStatWindows') },
+    { value: '13', label: t('premiumStatTargets') },
+    { value: '1', label: t('premiumStatGap') },
   ]
 
   const issueAdvice = [
-    'Move a trained lead into the opening window',
-    'Keep the low-risk afternoon coverage stable',
-    'Publish with one clear open shift if unavailable',
+    t('premiumAdvice1'),
+    t('premiumAdvice2'),
+    t('premiumAdvice3'),
   ]
 
   return (
     <section className="landing-section premium-panels-section">
       <SectionHeader
-        eyebrow="Scheduling intelligence"
-        title="The week, explained before anyone sees it"
-        description="Hengam turns manager notes, coverage rules, availability, target hours, and validation results into one review-ready scheduling workflow."
+        eyebrow={t('premiumEyebrow')}
+        title={t('premiumTitle')}
+        description={t('premiumDescription')}
       />
 
       <div className="premium-panel-grid">
@@ -429,8 +433,8 @@ function PremiumPanels() {
         >
           <span className="premium-border-sweep" />
           <div className="premium-panel-copy">
-            <h3>Coverage-aware schedule board</h3>
-            <p>Openers, closers, pre-closers, staffing windows, and open gaps are visible before the schedule is published.</p>
+            <h3>{t('premiumCoverageTitle')}</h3>
+            <p>{t('premiumCoverageCopy')}</p>
           </div>
           <div className="premium-coverage-stats" aria-hidden="true">
             {coverageStats.map(stat => (
@@ -441,14 +445,14 @@ function PremiumPanels() {
             ))}
           </div>
           <div className="premium-coverage-health" aria-hidden="true">
-            <span>Mon opening covered</span>
-            <span>Targets balanced</span>
-            <span>1 manager review</span>
+            <span>{t('premiumHealthOpening')}</span>
+            <span>{t('premiumHealthTargets')}</span>
+            <span>{t('premiumHealthReview')}</span>
           </div>
           <div className="premium-calendar-scene" aria-hidden="true">
             <div className="premium-calendar-card">
               <div className="premium-calendar-head">
-                <span>May</span>
+                <span>{t('mockMonthMay')}</span>
                 <strong>04 - 10</strong>
               </div>
               <div className="premium-calendar-grid">
@@ -468,7 +472,7 @@ function PremiumPanels() {
                   <article className="premium-event-chip">
                     <div>
                       <strong>{event.title}</strong>
-                      <small>{event.status === 'gap' ? 'Needs one more person' : 'Role coverage checked'}</small>
+                      <small>{event.status === 'gap' ? t('premiumNeedsOne') : t('premiumRoleChecked')}</small>
                     </div>
                     <span className="premium-avatars" aria-hidden="true">
                       {event.avatars.map((avatar, avatarIndex) => (
@@ -491,17 +495,17 @@ function PremiumPanels() {
         >
           <span className="premium-border-sweep" />
           <div className="premium-panel-copy">
-            <h3>Plain English becomes constraints</h3>
-            <p>Managers can type or speak rules. Hengam parses them once, then the scheduler follows them deterministically.</p>
+            <h3>{t('premiumRulesTitle')}</h3>
+            <p>{t('premiumRulesCopy')}</p>
           </div>
-          <div className="premium-rule-input-demo" aria-hidden="true">
+          <div className="premium-rule-input-demo" aria-hidden="true" dir={isRtl ? 'rtl' : 'ltr'}>
             <div className="premium-rule-input-box">
-              <span>Manager note</span>
-              <p>No clopening. Pair trainees with mentors. Hit weekly targets before adding extra coverage.</p>
+              <span>{t('premiumManagerNote')}</span>
+              <p>{t('premiumManagerNoteCopy')}</p>
             </div>
             <div className="premium-parser-line">
               <Sparkles size={14} />
-              <span>Parsing rules into constraints</span>
+              <span>{t('premiumParsing')}</span>
               <i />
               <i />
               <i />
@@ -517,7 +521,7 @@ function PremiumPanels() {
             </div>
             <div className="premium-ready-status">
               <Target size={14} />
-              <span>Ready for deterministic scheduler</span>
+              <span>{t('premiumReady')}</span>
             </div>
           </div>
         </motion.div>
@@ -531,13 +535,13 @@ function PremiumPanels() {
         >
           <span className="premium-border-sweep" />
           <div className="premium-panel-copy">
-            <h3>Professional issue language</h3>
-            <p>Validation problems are translated into manager-friendly business advice, not scary raw errors.</p>
+            <h3>{t('premiumIssueTitle')}</h3>
+            <p>{t('premiumIssueCopy')}</p>
           </div>
           <div className="premium-demo-group">
             <div className="premium-note-card" aria-hidden="true">
               <AlertTriangle size={15} />
-              <span>Saturday opening needs a shift lead. Try moving an available lead from a lower-risk window.</span>
+              <span>{t('premiumIssueNote')}</span>
             </div>
             <div className="premium-typing" aria-hidden="true">
               <i />
@@ -564,8 +568,8 @@ function PremiumPanels() {
         >
           <span className="premium-border-sweep" />
           <div className="premium-panel-copy">
-            <h3>History, exports, and review</h3>
-            <p>Save generated weeks, compare versions, and export clean schedules for the team.</p>
+            <h3>{t('premiumHistoryTitle')}</h3>
+            <p>{t('premiumHistoryCopy')}</p>
           </div>
           <div className="premium-demo-group">
             <div className="premium-document-stack" aria-hidden="true">
@@ -591,33 +595,34 @@ function PremiumPanels() {
 
 // ========== HOW IT WORKS ==========
 function HowItWorks() {
+  const { t } = useI18n()
   const steps = [
     {
       icon: Users,
       number: '01',
-      title: 'Add your team',
-      description: 'Add employees, their roles, target hours, and weekly availability. Takes 2 minutes per person.',
+      title: t('step1Title'),
+      description: t('step1Desc'),
     },
     {
       icon: Calendar,
       number: '02',
-      title: 'Set your rules',
-      description: 'Operating hours, coverage minimums, time off requests, and custom scheduling rules.',
+      title: t('step2Title'),
+      description: t('step2Desc'),
     },
     {
       icon: Sparkles,
       number: '03',
-      title: 'Hengam builds your week',
-      description: 'Hengam analyzes every constraint and generates a schedule in seconds. Review, tweak, publish.',
+      title: t('step3Title'),
+      description: t('step3Desc'),
     },
   ]
 
   return (
     <section id="how-it-works" className="landing-section steps-section">
       <SectionHeader 
-        eyebrow="How it works"
-        title="From rules to a checked schedule"
-        description="Hengam turns plain English and employee availability into a schedule with clear tradeoffs."
+        eyebrow={t('stepsEyebrow')}
+        title={t('stepsTitle')}
+        description={t('stepsDescription')}
       />
 
       <div className="landing-steps steps-v2">
@@ -648,18 +653,19 @@ function HowItWorks() {
 
 // ========== TRUST SECTION ==========
 function TrustSection() {
+  const { t } = useI18n()
   const checks = [
     {
-      label: 'Hard rules',
-      items: ['Correct roles', 'Availability windows', 'Time off', 'One shift per day'],
+      label: t('trustHardRules'),
+      items: [t('trustCorrectRoles'), t('trustAvailability'), t('trustTimeOff'), t('trustOneShift')],
     },
     {
-      label: 'Coverage',
-      items: ['Openers', 'Closers', 'Minimum staffing', 'Pre-closing shifts'],
+      label: t('trustCoverage'),
+      items: [t('trustOpeners'), t('trustClosers'), t('trustMinimumStaffing'), t('trustPreClosing')],
     },
     {
-      label: 'Fairness',
-      items: ['Target hours', 'Fewer short shifts', 'Under/over warnings', 'Explainable gaps'],
+      label: t('trustFairness'),
+      items: [t('trustTargetHours'), t('trustFewerShort'), t('trustWarnings'), t('trustExplainable')],
     },
   ]
 
@@ -667,11 +673,10 @@ function TrustSection() {
     <section className="landing-section trust-section">
       <div className="trust-panel">
         <div className="trust-copy">
-          <div className="landing-section-eyebrow">Why managers trust it</div>
-          <h2 className="landing-section-title">It does not pretend impossible weeks are solved.</h2>
+          <div className="landing-section-eyebrow">{t('trustEyebrow')}</div>
+          <h2 className="landing-section-title">{t('trustTitle')}</h2>
           <p className="landing-section-desc">
-            Hengam separates understanding from scheduling: AI reads the manager’s rules,
-            deterministic code builds the week, and the validator explains the remaining conflicts.
+            {t('trustDescription')}
           </p>
         </div>
 
@@ -781,21 +786,22 @@ function PlaygroundDemo() {
 
 // ========== FEATURES ==========
 function Features() {
+  const { t } = useI18n()
   const features = [
-    { icon: Brain, title: 'Plain-English rules', description: 'Type coverage needs, pairing rules, time-off notes, and manager preferences.' },
-    { icon: Clock, title: 'Real shift windows', description: 'Handle opens, closes, pre-closes, minimum staffing windows, and custom hours.' },
-    { icon: Shield, title: 'Hard checks', description: 'Availability, roles, target hours, time off, and clopening rules are checked before saving.' },
-    { icon: AlertTriangle, title: 'Impossible weeks explained', description: 'When the week cannot work, Hengam tells you exactly what blocked it.' },
-    { icon: TrendingUp, title: 'Target hours', description: "Set each person's weekly target and see who is under, over, or on track." },
-    { icon: Zap, title: 'Fast drafts', description: 'Generate multiple schedule variants locally after the rules are understood.' },
+    { icon: Brain, title: t('featureRulesTitle'), description: t('featureRulesDesc') },
+    { icon: Clock, title: t('featureWindowsTitle'), description: t('featureWindowsDesc') },
+    { icon: Shield, title: t('featureChecksTitle'), description: t('featureChecksDesc') },
+    { icon: AlertTriangle, title: t('featureImpossibleTitle'), description: t('featureImpossibleDesc') },
+    { icon: TrendingUp, title: t('featureTargetsTitle'), description: t('featureTargetsDesc') },
+    { icon: Zap, title: t('featureDraftsTitle'), description: t('featureDraftsDesc') },
   ]
 
   return (
     <section className="landing-section">
       <SectionHeader 
-        eyebrow="Features"
-        title="The boring reliability managers need"
-        description="AI helps understand the request. The scheduler handles the math."
+        eyebrow={t('featuresEyebrow')}
+        title={t('featuresTitle')}
+        description={t('featuresDescription')}
       />
       <div className="landing-features-grid features-v2">
         {features.map((feature, i) => (
@@ -863,32 +869,36 @@ function FeatureCard({ feature, index }) {
 
 // ========== PRICING ==========
 function Pricing({ onCTA }) {
+  const { t } = useI18n()
   const tiers = [
     {
-      name: 'Free',
+      id: 'free',
+      name: t('tierFree'),
       price: '$0',
-      period: 'forever',
-      description: 'Perfect for testing with your team.',
-      features: ['Up to 5 employees', '1 schedule generation per week', 'Basic scheduling', 'Email support'],
-      cta: 'Start free',
+      period: t('priceForever'),
+      description: t('priceFreeDesc'),
+      features: [t('priceUpTo5'), t('priceOneSchedule'), t('priceBasic'), t('priceEmailSupport')],
+      cta: t('priceFreeCta'),
       highlighted: false,
     },
     {
-      name: 'Pro',
+      id: 'pro',
+      name: t('tierPro'),
       price: '$9',
-      period: 'per month',
-      description: 'For growing small businesses.',
-      features: ['Up to 25 employees', 'Unlimited schedule generations', 'Custom scheduling rules', 'Schedule history', 'Priority support'],
-      cta: 'Start Pro',
+      period: t('priceMonthly'),
+      description: t('priceProDesc'),
+      features: [t('priceUpTo25'), t('priceUnlimitedSchedules'), t('priceCustomRules'), t('priceHistory'), t('pricePriority')],
+      cta: t('priceProCta'),
       highlighted: true,
     },
     {
-      name: 'Business',
+      id: 'business',
+      name: t('tierBusiness'),
       price: '$19',
-      period: 'per month',
-      description: 'For bigger teams and chains.',
-      features: ['Unlimited employees', 'Unlimited everything', 'Advanced rules & constraints', 'Multiple locations (coming)', 'Dedicated support'],
-      cta: 'Contact us',
+      period: t('priceMonthly'),
+      description: t('priceBusinessDesc'),
+      features: [t('priceUnlimitedEmployees'), t('priceUnlimitedEverything'), t('priceAdvanced'), t('priceLocations'), t('priceDedicated')],
+      cta: t('priceBusinessCta'),
       highlighted: false,
     },
   ]
@@ -896,9 +906,9 @@ function Pricing({ onCTA }) {
   return (
     <section className="landing-section">
       <SectionHeader 
-        eyebrow="Pricing"
-        title="Simple pricing. No surprises."
-        description="Start free. Upgrade when you're ready."
+        eyebrow={t('pricingEyebrow')}
+        title={t('pricingTitle')}
+        description={t('pricingDescription')}
       />
 
       <div className="landing-pricing-grid">
@@ -911,7 +921,7 @@ function Pricing({ onCTA }) {
             viewport={{ once: true, margin: '-50px' }}
             transition={{ duration: 0.5, delay: i * 0.1 }}
           >
-            {tier.highlighted && <div className="landing-pricing-badge">Most popular</div>}
+            {tier.highlighted && <div className="landing-pricing-badge">{t('pricePopular')}</div>}
             <div className="landing-pricing-name">{tier.name}</div>
             <div className="landing-pricing-price">
               <span className="landing-pricing-amount">{tier.price}</span>
@@ -929,7 +939,7 @@ function Pricing({ onCTA }) {
             <button 
               className={tier.highlighted ? 'landing-cta-primary' : 'landing-cta-ghost'}
               onClick={() => {
-                if (tier.name === 'Business') {
+                if (tier.id === 'business') {
                   window.location.href = 'mailto:contact@hengamapp.com?subject=Hengam Business inquiry'
                 } else {
                   onCTA()
@@ -947,6 +957,7 @@ function Pricing({ onCTA }) {
 
 // ========== FINAL CTA ==========
 function FinalCTA({ onCTA }) {
+  const { t } = useI18n()
   return (
     <section className="landing-final final-v2">
       <div className="landing-final-glow"></div>
@@ -957,12 +968,12 @@ function FinalCTA({ onCTA }) {
         viewport={{ once: true, margin: '-100px' }}
         transition={{ duration: 0.7 }}
       >
-        <h2 className="landing-final-title">Ready to stop dreading scheduling?</h2>
+        <h2 className="landing-final-title">{t('finalTitle')}</h2>
         <p className="landing-final-subtitle">
-          Join teams using Hengam to build better schedules in less time.
+          {t('finalSubtitle')}
         </p>
         <button className="landing-cta-primary landing-cta-large cta-glow" onClick={onCTA}>
-          <span>Get started — free</span>
+          <span>{t('heroCtaOut')}</span>
           <ArrowRight size={20} />
         </button>
       </motion.div>
