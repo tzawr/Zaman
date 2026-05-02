@@ -694,95 +694,68 @@ function TrustSection() {
 
 // ========== PLAYGROUND DEMO ==========
 function PlaygroundDemo() {
-  const [activeTab, setActiveTab] = useState('generate')
-  
-  const tabs = [
-    { key: 'generate', label: 'Generate', icon: Sparkles },
-    { key: 'edit', label: 'Edit', icon: MessageSquare },
-    { key: 'export', label: 'Export', icon: ArrowUpRight },
+  const [openQuestion, setOpenQuestion] = useState(0)
+
+  const questions = [
+    {
+      question: 'Does Hengam replace the manager’s judgment?',
+      answer: 'No. Hengam drafts the week, checks the constraints, and explains problems. The manager can still edit shifts, override decisions, and publish only when the schedule looks right.',
+    },
+    {
+      question: 'Can employees enter their own availability?',
+      answer: 'Yes. Managers can invite employees to a portal where they add availability and time off. Managers can also keep control and enter availability themselves.',
+    },
+    {
+      question: 'What happens when the week is impossible?',
+      answer: 'Hengam does not hide it. It shows review items and recommendations, such as missing opening coverage, unavailable people, or target-hour gaps.',
+    },
+    {
+      question: 'Can I give instructions in normal language?',
+      answer: 'Yes. You can type rules like “Ali is training Nura, put them together” or “Amir should have shorter 4-hour shifts,” and Hengam turns them into scheduling constraints.',
+    },
+    {
+      question: 'Can I still export and share the schedule?',
+      answer: 'Yes. Finished schedules can be saved in history and exported for sharing with the team.',
+    },
   ]
 
   return (
     <section className="landing-section playground-section">
       <SectionHeader 
-        eyebrow="Live preview"
-        title="Built for review, not blind trust"
-        description="Generate, adjust, and export the weekly schedule from one place."
+        eyebrow="Questions & answers"
+        title="What managers usually ask first"
+        description="Straight answers about control, employee availability, and what happens when a week cannot work."
       />
       
       <motion.div 
-        className="playground"
+        className="landing-qa-panel"
         initial={{ opacity: 0, y: 30 }}
         whileInView={{ opacity: 1, y: 0 }}
         viewport={{ once: true, margin: '-50px' }}
         transition={{ duration: 0.7 }}
       >
-        <div className="playground-tabs">
-          {tabs.map(tab => (
+        <div className="landing-qa-list">
+          {questions.map((item, index) => {
+            const isOpen = openQuestion === index
+            return (
             <button
-              key={tab.key}
-              className={`playground-tab ${activeTab === tab.key ? 'active' : ''}`}
-              onClick={() => setActiveTab(tab.key)}
+              key={item.question}
+              type="button"
+              className={`landing-qa-item ${isOpen ? 'active' : ''}`}
+              onClick={() => setOpenQuestion(isOpen ? -1 : index)}
             >
-              <tab.icon size={14} />
-              <span>{tab.label}</span>
+              <span className="landing-qa-number">{String(index + 1).padStart(2, '0')}</span>
+              <span className="landing-qa-copy">
+                <strong>{item.question}</strong>
+                {isOpen && <span>{item.answer}</span>}
+              </span>
+              <ArrowRight size={16} className="landing-qa-arrow" />
             </button>
-          ))}
+          )})}
         </div>
-        
-        <div className="playground-screen">
-          {activeTab === 'generate' && (
-            <motion.div 
-              key="generate"
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.4 }}
-              className="playground-content"
-            >
-              <div className="playground-prompt">
-                <Sparkles size={14} />
-                <span>"Opening needs 2 people by 4am. Leo is off Sat/Sun."</span>
-              </div>
-              <div className="playground-result">
-                <div className="playground-loading">
-                  <span className="dot" /><span className="dot" /><span className="dot" />
-                </div>
-                <p>Hengam parsed the rules, built a schedule, and flagged what could not be satisfied.</p>
-              </div>
-            </motion.div>
-          )}
-          {activeTab === 'edit' && (
-            <motion.div 
-              key="edit"
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.4 }}
-              className="playground-content"
-            >
-              <div className="playground-edit-row">
-                <div className="playground-shift purple">Sam · 6a-2p</div>
-                <ArrowRight size={14} />
-                <div className="playground-shift purple highlighted">Sam · 6a-3p (+1h)</div>
-              </div>
-              <p className="playground-caption">Click any shift, edit times, drag to swap people. Hours recalc instantly.</p>
-            </motion.div>
-          )}
-          {activeTab === 'export' && (
-            <motion.div 
-              key="export"
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.4 }}
-              className="playground-content"
-            >
-              <div className="playground-formats">
-                <div className="format-pill">CSV</div>
-                <div className="format-pill">PNG</div>
-                <div className="format-pill">PDF</div>
-              </div>
-              <p className="playground-caption">One click. Three formats. Send to your team however they prefer.</p>
-            </motion.div>
-          )}
+        <div className="landing-qa-aside">
+          <MessageSquare size={18} />
+          <span>Have a workflow question? Hengam is built around manager review, not auto-publishing.</span>
         </div>
       </motion.div>
     </section>
