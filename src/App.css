@@ -6794,6 +6794,34 @@ select.input {
   line-height: 1.28;
 }
 
+.app.rtl .premium-panel:not(.premium-panel-wide):not(.premium-panel-stack) .premium-panel-copy {
+  max-width: 100%;
+  padding-bottom: 18px;
+}
+
+.app.rtl .premium-panel:not(.premium-panel-wide):not(.premium-panel-stack) .premium-panel-copy h3 {
+  font-size: clamp(24px, 2.1vw, 34px);
+  line-height: 1.34;
+}
+
+.app.rtl .premium-panel:not(.premium-panel-wide):not(.premium-panel-stack) .premium-panel-copy p {
+  font-size: 15px;
+  line-height: 1.9;
+}
+
+.app.rtl .premium-note-card {
+  align-items: flex-start;
+  font-size: 14px;
+  line-height: 1.9;
+}
+
+.app.rtl .premium-advice-list span {
+  justify-content: flex-start;
+  font-size: 12px;
+  line-height: 1.75;
+  min-height: 40px;
+}
+
 .app.rtl .landing-cta-primary svg,
 .app.rtl .landing-cta-ghost svg {
   transform: scaleX(-1);
@@ -7096,10 +7124,48 @@ input[type="time"]::-webkit-calendar-picker-indicator:hover {
 .app.light .schedules-main-title,
 .app.light .dashboard-title,
 .app.light .auth-title {
-  background: linear-gradient(180deg, #0A0A0B 0%, #555560 100%);
+  background: linear-gradient(180deg, #06101f 0%, #172554 58%, #2563eb 118%);
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;
+}
+
+.app.light .landing-section-header {
+  position: relative;
+}
+
+.app.light .landing-section-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 34px;
+  padding: 7px 15px;
+  border: 1px solid rgba(37, 99, 235, 0.2);
+  border-radius: 999px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.94), rgba(239, 246, 255, 0.78));
+  color: #2563eb;
+  box-shadow:
+    0 10px 28px rgba(37, 99, 235, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.9);
+}
+
+.app.light .landing-section-title {
+  filter: drop-shadow(0 12px 22px rgba(37, 99, 235, 0.1));
+}
+
+.app.light .landing-section-title::after {
+  content: '';
+  display: block;
+  width: 74px;
+  height: 3px;
+  margin: 18px auto 0;
+  border-radius: 999px;
+  background: linear-gradient(90deg, transparent, rgba(37, 99, 235, 0.72), transparent);
+}
+
+.app.light .landing-section-desc {
+  color: #475569;
 }
 
 /* Mockup window in landing for light mode */
@@ -8283,7 +8349,7 @@ input[type="time"]::-webkit-calendar-picker-indicator:hover {
 }
 
 .app.light .hero-v2 .landing-hero-title {
-  background: linear-gradient(180deg, #07080d 0%, #222837 62%, #5d6475 100%);
+  background: linear-gradient(180deg, #06101f 0%, #172554 58%, #2563eb 118%);
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;
