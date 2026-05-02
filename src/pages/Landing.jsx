@@ -754,8 +754,23 @@ function PlaygroundDemo() {
           )})}
         </div>
         <div className="landing-qa-aside">
-          <MessageSquare size={18} />
-          <span>Have a workflow question? Hengam is built around manager review, not auto-publishing.</span>
+          <div className="qa-aside-orbit" aria-hidden>
+            <span />
+            <span />
+            <span />
+          </div>
+          <div className="qa-aside-icon">
+            <MessageSquare size={18} />
+          </div>
+          <div className="qa-aside-copy">
+            <strong>Manager stays in control</strong>
+            <span>Draft, review, adjust, then share. Hengam never auto-publishes a week without you.</span>
+          </div>
+          <div className="qa-aside-steps">
+            <span><Check size={13} /> Rules parsed</span>
+            <span><Shield size={13} /> Constraints checked</span>
+            <span><ArrowUpRight size={13} /> Ready to share</span>
+          </div>
         </div>
       </motion.div>
     </section>
