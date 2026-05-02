@@ -236,6 +236,32 @@
   box-shadow: 0 0 28px rgba(226, 232, 240, 0.12);
 }
 
+.navbar-language-button {
+  min-width: 38px;
+  height: 32px;
+  display: inline-grid;
+  place-items: center;
+  padding: 0 10px;
+  border: 1px solid rgba(96, 165, 250, 0.26);
+  border-radius: 999px;
+  background: rgba(96, 165, 250, 0.08);
+  color: rgba(234, 242, 255, 0.94);
+  cursor: pointer;
+  font-family: var(--font-sans);
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1;
+  transition: color 0.2s ease, background 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+}
+
+.navbar-language-button:hover {
+  color: #ffffff;
+  border-color: rgba(96, 165, 250, 0.55);
+  background: rgba(96, 165, 250, 0.16);
+  transform: translateY(-1px);
+  box-shadow: 0 0 28px rgba(96, 165, 250, 0.18);
+}
+
 .navbar-icon-mark {
   font-size: 13px;
   font-weight: 900;
@@ -243,8 +269,14 @@
 }
 
 .app.light .navbar-center a,
-.app.light .navbar-icon-button {
+.app.light .navbar-icon-button,
+.app.light .navbar-language-button {
   color: rgba(15, 23, 42, 0.82);
+}
+
+.app.light .navbar-language-button {
+  border-color: rgba(37, 99, 235, 0.2);
+  background: rgba(37, 99, 235, 0.08);
 }
 
 @media (max-width: 900px) {
@@ -6641,6 +6673,57 @@ select.input {
   color: var(--accent-hover-1);
 }
 
+.app.rtl {
+  direction: rtl;
+  font-family: Tahoma, 'Segoe UI', Arial, sans-serif;
+}
+
+.app.rtl .navbar-right-group,
+.app.rtl .navbar-actions {
+  direction: ltr;
+}
+
+.app.rtl .navbar-center,
+.app.rtl .auth-card,
+.app.rtl .footer-inner,
+.app.rtl .landing-section-header,
+.app.rtl .landing-hero-content,
+.app.rtl .landing-qa-panel {
+  direction: rtl;
+}
+
+.app.rtl .auth-card,
+.app.rtl .landing-section-header,
+.app.rtl .landing-qa-item,
+.app.rtl .landing-qa-aside,
+.app.rtl .footer-brand,
+.app.rtl .footer-col {
+  text-align: right;
+}
+
+.app.rtl .auth-title,
+.app.rtl .auth-subtitle,
+.app.rtl .auth-eyebrow,
+.app.rtl .auth-perk,
+.app.rtl .footer-tagline,
+.app.rtl .footer-made,
+.app.rtl .footer-copyright {
+  letter-spacing: 0;
+}
+
+.app.rtl .auth-field > div,
+.app.rtl .auth-perks,
+.app.rtl .auth-eyebrow,
+.app.rtl .google-auth-btn,
+.app.rtl .auth-submit,
+.app.rtl .footer-trust {
+  flex-direction: row-reverse;
+}
+
+.app.rtl .auth-footer {
+  text-align: center;
+}
+
 /* Onboarding specific */
 .onboarding-card {
   max-width: 500px;
@@ -9803,6 +9886,18 @@ input[type="time"]::-webkit-calendar-picker-indicator:hover {
 
 .landing-qa-item.active .landing-qa-arrow {
   color: var(--accent-1);
+  transform: rotate(90deg);
+}
+
+.app.rtl .landing-qa-item {
+  grid-template-columns: auto minmax(0, 1fr) auto;
+}
+
+.app.rtl .landing-qa-arrow {
+  transform: rotate(180deg);
+}
+
+.app.rtl .landing-qa-item.active .landing-qa-arrow {
   transform: rotate(90deg);
 }
 

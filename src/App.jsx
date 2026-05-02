@@ -26,6 +26,7 @@ import VerifyEmail from './pages/VerifyEmail'
 import VerifyEmailToken from './pages/VerifyEmailToken'
 import ForgotPassword from './pages/ForgotPassword'
 import Profile from './pages/Profile'
+import { I18nProvider, useI18n } from './i18n'
 import './App.css'
 
 function ProtectedRoute({ children }) {
@@ -37,6 +38,15 @@ function ProtectedRoute({ children }) {
 }
 
 function App() {
+  return (
+    <I18nProvider>
+      <AppShell />
+    </I18nProvider>
+  )
+}
+
+function AppShell() {
+  const { language, isRtl, t, toggleLanguage } = useI18n()
   const [darkMode, setDarkMode] = useState(() => {
     const saved = localStorage.getItem('hengam-theme')
     if (saved === 'light') return false
@@ -45,22 +55,22 @@ function App() {
 
   return (
     <BrowserRouter>
-      <div className={darkMode ? 'app dark' : 'app light'}>
+      <div className={`${darkMode ? 'app dark' : 'app light'} ${isRtl ? 'rtl' : 'ltr'}`} dir={isRtl ? 'rtl' : 'ltr'}>
         <nav className="navbar">
           <Link to="/" className="logo-link">
             <h1 className="logo">Hengam</h1>
           </Link>
           <div className="navbar-center" aria-label="Main navigation">
-            <Link to="/about">About</Link>
-            <Link to="/pricing">Pricing</Link>
-            <Link to="/security">Security</Link>
+            <Link to="/about">{t('navAbout')}</Link>
+            <Link to="/pricing">{t('navPricing')}</Link>
+            <Link to="/security">{t('navSecurity')}</Link>
           </div>
           <div className="navbar-right-group">
             <div className="navbar-actions">
               <button
                 type="button"
                 className="navbar-icon-button"
-                aria-label="Toggle theme"
+                aria-label={t('toggleTheme')}
                 onClick={() => {
                   const next = !darkMode
                   setDarkMode(next)
@@ -68,6 +78,14 @@ function App() {
                 }}
               >
                 {darkMode ? <Sun size={18} /> : <Moon size={18} />}
+              </button>
+              <button
+                type="button"
+                className="navbar-language-button"
+                aria-label={t('toggleLanguage')}
+                onClick={toggleLanguage}
+              >
+                {language === 'fa' ? 'EN' : 'فا'}
               </button>
               <a className="navbar-icon-button" href="mailto:hello@hengam.app" aria-label="Email Hengam">
                 <Mail size={18} />
@@ -88,10 +106,7 @@ function App() {
                 </svg>
               </a>
             </div>
-            <ProfileMenu darkMode={darkMode} setDarkMode={(v) => {
-  setDarkMode(v)
-  localStorage.setItem('hengam-theme', v ? 'dark' : 'light')
-}} />
+            <ProfileMenu />
           </div>
         </nav>
 

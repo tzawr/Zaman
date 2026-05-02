@@ -1,15 +1,15 @@
 import { useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
-import { motion } from 'framer-motion'
+import { motion as Motion } from 'framer-motion'
 import { ArrowRight, Sparkles, Check } from 'lucide-react'
 import { sendEmailVerification } from 'firebase/auth'
 import { useAuth } from '../AuthContext'
-import { useToast } from '../components/Toast'
+import { useI18n } from '../i18n'
 
 function SignUp() {
   const navigate = useNavigate()
   const { signUp, signInWithGoogle } = useAuth()
-  const toast = useToast()
+  const { t } = useI18n()
   
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -20,7 +20,7 @@ function SignUp() {
     e.preventDefault()
     setError('')
     if (password.length < 6) {
-      setError('Password must be at least 6 characters.')
+      setError(t('authWeakPassword'))
       return
     }
     setLoading(true)
@@ -29,7 +29,7 @@ function SignUp() {
       await sendEmailVerification(cred.user)
       navigate('/verify-email')
     } catch (err) {
-      setError(prettyError(err.code) || err.message || 'Something went wrong.')
+      setError(prettyError(err.code, t) || err.message || t('authGeneric'))
       setLoading(false)
     }
   }
@@ -41,7 +41,7 @@ function SignUp() {
       await signInWithGoogle()
       navigate('/dashboard')
     } catch (err) {
-      setError(prettyError(err.code))
+      setError(prettyError(err.code, t))
       setLoading(false)
     }
   }
@@ -49,19 +49,19 @@ function SignUp() {
   return (
     <main className="auth-page">
       <div className="auth-bg">
-        <motion.div 
+        <Motion.div 
           className="auth-blob auth-blob-1"
           animate={{ x: [0, 30, -20, 0], y: [0, -20, 20, 0] }}
           transition={{ duration: 18, repeat: Infinity, ease: 'easeInOut' }}
         />
-        <motion.div 
+        <Motion.div 
           className="auth-blob auth-blob-2"
           animate={{ x: [0, -30, 20, 0], y: [0, 20, -20, 0] }}
           transition={{ duration: 22, repeat: Infinity, ease: 'easeInOut' }}
         />
       </div>
 
-      <motion.div
+      <Motion.div
         className="auth-card"
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -69,20 +69,20 @@ function SignUp() {
       >
         <div className="auth-eyebrow">
           <Sparkles size={14} />
-          <span>Get started — free</span>
+          <span>{t('signUpEyebrow')}</span>
         </div>
         
         <h1 className="auth-title">
-          Create your <span className="landing-gradient-text">Hengam</span> account
+          {t('signUpTitle')} <span className="landing-gradient-text">Hengam</span> {t('signUpTitleTail')}
         </h1>
         <p className="auth-subtitle">
-          Build better schedules in minutes.
+          {t('signUpSubtitle')}
         </p>
 
         <div className="auth-perks">
-          <div className="auth-perk"><Check size={14} /> Free forever plan</div>
-          <div className="auth-perk"><Check size={14} /> No credit card</div>
-          <div className="auth-perk"><Check size={14} /> 2-min setup</div>
+          <div className="auth-perk"><Check size={14} /> {t('freePlan')}</div>
+          <div className="auth-perk"><Check size={14} /> {t('noCreditCard')}</div>
+          <div className="auth-perk"><Check size={14} /> {t('twoMinSetup')}</div>
         </div>
 
         <button 
@@ -92,16 +92,16 @@ function SignUp() {
           disabled={loading}
         >
           <GoogleIcon />
-          <span>Continue with Google</span>
+          <span>{t('googleContinue')}</span>
         </button>
 
         <div className="auth-divider">
-          <span>or</span>
+          <span>{t('or')}</span>
         </div>
 
         <form onSubmit={handleSubmit} className="auth-form">
           <div className="auth-field">
-            <label className="form-label">Email</label>
+            <label className="form-label">{t('email')}</label>
             <input
               type="email"
               className="input"
@@ -113,11 +113,11 @@ function SignUp() {
             />
           </div>
           <div className="auth-field">
-            <label className="form-label">Password</label>
+            <label className="form-label">{t('password')}</label>
             <input
               type="password"
               className="input"
-              placeholder="At least 6 characters"
+              placeholder={t('passwordPlaceholder')}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
@@ -133,15 +133,15 @@ function SignUp() {
             className="landing-cta-primary auth-submit"
             disabled={loading}
           >
-            <span>{loading ? 'Creating account...' : 'Create account'}</span>
+            <span>{loading ? t('creatingAccount') : t('createAccount')}</span>
             {!loading && <ArrowRight size={16} />}
           </button>
         </form>
 
         <p className="auth-footer">
-          Already have an account? <Link to="/signin">Sign in</Link>
+          {t('alreadyAccount')} <Link to="/signin">{t('signIn')}</Link>
         </p>
-      </motion.div>
+      </Motion.div>
     </main>
   )
 }
@@ -157,14 +157,14 @@ function GoogleIcon() {
   )
 }
 
-function prettyError(code) {
+function prettyError(code, t) {
   const map = {
-    'auth/email-already-in-use': 'That email already has an account.',
-    'auth/invalid-email': 'That email looks wrong.',
-    'auth/weak-password': 'Password must be at least 6 characters.',
-    'auth/too-many-requests': 'Too many attempts. Try again in a few minutes.',
+    'auth/email-already-in-use': t('authEmailInUse'),
+    'auth/invalid-email': t('authInvalidEmail'),
+    'auth/weak-password': t('authWeakPassword'),
+    'auth/too-many-requests': t('authTooMany'),
   }
-  return map[code] || 'Something went wrong. Try again.'
+  return map[code] || t('authGeneric')
 }
 
 export default SignUp

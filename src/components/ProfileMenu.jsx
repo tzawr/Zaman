@@ -1,33 +1,24 @@
-import { useState, useRef, useEffect } from 'react'
+import { createElement, useState, useRef, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { SlidersHorizontal, LogOut, Calendar, Clock, LayoutDashboard, Users, BookOpen, Link2, UserCircle } from 'lucide-react'
-import { doc, onSnapshot } from 'firebase/firestore'
-import { db } from '../firebase'
 import { useAuth } from '../AuthContext'
+import { useI18n } from '../i18n'
 
 function NavItem({ icon: Icon, label, onClick }) {
   return (
     <button className="dropdown-item" onClick={onClick}>
-      <span className="dropdown-icon"><Icon size={16} /></span>
+      <span className="dropdown-icon">{createElement(Icon, { size: 16 })}</span>
       <span>{label}</span>
     </button>
   )
 }
 
-function ProfileMenu({ darkMode, setDarkMode }) {
-  const { currentUser, logOut } = useAuth()
+function ProfileMenu() {
+  const { currentUser, userData, logOut } = useAuth()
+  const { t } = useI18n()
   const navigate = useNavigate()
   const [open, setOpen] = useState(false)
-  const [userData, setUserData] = useState(null)
   const menuRef = useRef(null)
-
-  useEffect(() => {
-    if (!currentUser) { setUserData(null); return }
-    const unsub = onSnapshot(doc(db, 'users', currentUser.uid), snap => {
-      setUserData(snap.exists() ? snap.data() : null)
-    })
-    return () => unsub()
-  }, [currentUser])
 
   useEffect(() => {
     function handleClickOutside(e) {
@@ -43,20 +34,26 @@ function ProfileMenu({ darkMode, setDarkMode }) {
   }
 
   async function handleLogOut() {
-    try { await logOut(); setOpen(false); navigate('/') } catch {}
+    try {
+      await logOut()
+      setOpen(false)
+      navigate('/')
+    } catch {
+      setOpen(false)
+    }
   }
 
   if (!currentUser) {
     return (
       <div className="navbar-right">
         <button className="signin-nav-button" onClick={() => navigate('/signin')}>
-          Sign In
+          {t('signIn')}
         </button>
       </div>
     )
   }
 
-  const displayName = userData?.displayName || currentUser.displayName || 'Manager'
+  const displayName = userData?.displayName || currentUser.displayName || t('manager')
   const userRole = userData?.userRole || ''
   const isEmployee = userData?.accountType === 'employee'
   const initial = displayName[0]?.toUpperCase() || '?'
@@ -88,31 +85,31 @@ function ProfileMenu({ darkMode, setDarkMode }) {
           {/* Navigation links */}
           {isEmployee ? (
             <>
-              <NavItem icon={Calendar}        label="My Schedule"         onClick={() => go('/my-schedule')} />
-              <NavItem icon={Clock}           label="My availability"     onClick={() => go('/my-availability')} />
-              <NavItem icon={LayoutDashboard} label="Manager Dashboard"   onClick={() => go('/dashboard', { managerMode: true })} />
+              <NavItem icon={Calendar}        label={t('mySchedule')}         onClick={() => go('/my-schedule')} />
+              <NavItem icon={Clock}           label={t('myAvailability')}     onClick={() => go('/my-availability')} />
+              <NavItem icon={LayoutDashboard} label={t('managerDashboard')}   onClick={() => go('/dashboard', { managerMode: true })} />
             </>
           ) : (
             <>
-              <NavItem icon={LayoutDashboard} label="Dashboard"           onClick={() => go('/dashboard')} />
-              <NavItem icon={Users}           label="Your team"           onClick={() => go('/employees')} />
-              <NavItem icon={BookOpen}        label="Schedule history"    onClick={() => go('/schedules')} />
-              <NavItem icon={Link2}           label="Invite team"         onClick={() => go('/invite')} />
+              <NavItem icon={LayoutDashboard} label={t('dashboard')}           onClick={() => go('/dashboard')} />
+              <NavItem icon={Users}           label={t('yourTeam')}           onClick={() => go('/employees')} />
+              <NavItem icon={BookOpen}        label={t('scheduleHistory')}    onClick={() => go('/schedules')} />
+              <NavItem icon={Link2}           label={t('inviteTeam')}         onClick={() => go('/invite')} />
             </>
           )}
 
           <div className="dropdown-divider" />
 
-          <NavItem icon={UserCircle} label="Profile" onClick={() => go('/profile')} />
+          <NavItem icon={UserCircle} label={t('profile')} onClick={() => go('/profile')} />
           {!isEmployee && (
-            <NavItem icon={SlidersHorizontal} label="Workspace" onClick={() => go('/settings')} />
+            <NavItem icon={SlidersHorizontal} label={t('workspace')} onClick={() => go('/settings')} />
           )}
 
           <div className="dropdown-divider" />
 
           <button className="dropdown-item dropdown-logout" onClick={handleLogOut}>
             <span className="dropdown-icon"><LogOut size={16} /></span>
-            <span>Sign Out</span>
+            <span>{t('signOut')}</span>
           </button>
         </div>
       )}

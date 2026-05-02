@@ -19,6 +19,7 @@ import {
   Target
 } from 'lucide-react'
 import { useAuth } from '../AuthContext'
+import { useI18n } from '../i18n'
 
 function Landing() {
   const navigate = useNavigate()
@@ -48,6 +49,7 @@ function Landing() {
 // ========== HERO ==========
 function Hero({ onCTA, isSignedIn }) {
   const containerRef = useRef(null)
+  const { t } = useI18n()
 
   return (
     <section ref={containerRef} className="landing-hero hero-v2">
@@ -64,7 +66,7 @@ function Hero({ onCTA, isSignedIn }) {
         >
           <span className="eyebrow-dot" />
           <Sparkles size={13} />
-          <span>AI rule parsing. Constraint-based scheduling.</span>
+          <span>{t('heroEyebrow')}</span>
         </motion.div>
 
         <motion.h1 
@@ -73,8 +75,8 @@ function Hero({ onCTA, isSignedIn }) {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8, delay: 0.1, ease: [0.16, 1, 0.3, 1] }}
         >
-          <span className="hero-line">Build the week your</span>
-          <span className="hero-line">team can actually work.</span>
+          <span className="hero-line">{t('heroTitle1')}</span>
+          <span className="hero-line">{t('heroTitle2')}</span>
         </motion.h1>
 
         <motion.p 
@@ -83,8 +85,7 @@ function Hero({ onCTA, isSignedIn }) {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.7, delay: 0.3, ease: 'easeOut' }}
         >
-          Hengam turns plain-English coverage rules, availability, time off,
-          and target hours into a checked schedule with clear business tradeoffs.
+          {t('heroSubtitle')}
         </motion.p>
 
         <motion.div 
@@ -94,7 +95,7 @@ function Hero({ onCTA, isSignedIn }) {
           transition={{ duration: 0.7, delay: 0.4, ease: 'easeOut' }}
         >
           <button className="landing-cta-primary cta-glow" onClick={onCTA}>
-            <span>{isSignedIn ? 'Go to dashboard' : 'Get started — free'}</span>
+            <span>{isSignedIn ? t('heroCtaIn') : t('heroCtaOut')}</span>
             <ArrowRight size={18} />
           </button>
           <button 
@@ -102,7 +103,7 @@ function Hero({ onCTA, isSignedIn }) {
             onClick={() => document.getElementById('how-it-works')?.scrollIntoView({ behavior: 'smooth' })}
           >
             <Play size={14} fill="currentColor" />
-            <span>See how it works</span>
+            <span>{t('heroWatch')}</span>
           </button>
         </motion.div>
 
@@ -114,15 +115,15 @@ function Hero({ onCTA, isSignedIn }) {
         >
           <div className="landing-meta-item">
             <Check size={14} />
-            <span>No credit card required</span>
+            <span>{t('heroMeta1')}</span>
           </div>
           <div className="landing-meta-item">
             <Check size={14} />
-            <span>Explains impossible weeks</span>
+            <span>{t('heroMeta2')}</span>
           </div>
           <div className="landing-meta-item">
             <Check size={14} />
-            <span>Exports CSV, PNG, PDF</span>
+            <span>{t('heroMeta3')}</span>
           </div>
         </motion.div>
 
@@ -133,16 +134,16 @@ function Hero({ onCTA, isSignedIn }) {
           transition={{ duration: 0.7, delay: 0.8, ease: 'easeOut' }}
         >
           <div>
-            <strong>Rules</strong>
-            <span>Plain English</span>
+            <strong>{t('heroProofRules')}</strong>
+            <span>{t('heroProofRulesSub')}</span>
           </div>
           <div>
-            <strong>Engine</strong>
-            <span>Deterministic</span>
+            <strong>{t('heroProofEngine')}</strong>
+            <span>{t('heroProofEngineSub')}</span>
           </div>
           <div>
-            <strong>Review</strong>
-            <span>Explained gaps</span>
+            <strong>{t('heroProofReview')}</strong>
+            <span>{t('heroProofReviewSub')}</span>
           </div>
         </motion.div>
       </motion.div>
@@ -695,36 +696,37 @@ function TrustSection() {
 // ========== PLAYGROUND DEMO ==========
 function PlaygroundDemo() {
   const [openQuestion, setOpenQuestion] = useState(0)
+  const { t } = useI18n()
 
   const questions = [
     {
-      question: 'Does Hengam replace the manager’s judgment?',
-      answer: 'No. Hengam drafts the week, checks the constraints, and explains problems. The manager can still edit shifts, override decisions, and publish only when the schedule looks right.',
+      question: t('qaQ1'),
+      answer: t('qaA1'),
     },
     {
-      question: 'Can employees enter their own availability?',
-      answer: 'Yes. Managers can invite employees to a portal where they add availability and time off. Managers can also keep control and enter availability themselves.',
+      question: t('qaQ2'),
+      answer: t('qaA2'),
     },
     {
-      question: 'What happens when the week is impossible?',
-      answer: 'Hengam does not hide it. It shows review items and recommendations, such as missing opening coverage, unavailable people, or target-hour gaps.',
+      question: t('qaQ3'),
+      answer: t('qaA3'),
     },
     {
-      question: 'Can I give instructions in normal language?',
-      answer: 'Yes. You can type rules like “Ali is training Nura, put them together” or “Amir should have shorter 4-hour shifts,” and Hengam turns them into scheduling constraints.',
+      question: t('qaQ4'),
+      answer: t('qaA4'),
     },
     {
-      question: 'Can I still export and share the schedule?',
-      answer: 'Yes. Finished schedules can be saved in history and exported for sharing with the team.',
+      question: t('qaQ5'),
+      answer: t('qaA5'),
     },
   ]
 
   return (
     <section className="landing-section playground-section">
       <SectionHeader 
-        eyebrow="Questions & answers"
-        title="What managers usually ask first"
-        description="Straight answers about control, employee availability, and what happens when a week cannot work."
+        eyebrow={t('qaEyebrow')}
+        title={t('qaTitle')}
+        description={t('qaDescription')}
       />
       
       <motion.div 
@@ -763,13 +765,13 @@ function PlaygroundDemo() {
             <MessageSquare size={18} />
           </div>
           <div className="qa-aside-copy">
-            <strong>Manager stays in control</strong>
-            <span>Draft, review, adjust, then share. Hengam never auto-publishes a week without you.</span>
+            <strong>{t('qaAsideTitle')}</strong>
+            <span>{t('qaAsideCopy')}</span>
           </div>
           <div className="qa-aside-steps">
-            <span><Check size={13} /> Rules parsed</span>
-            <span><Shield size={13} /> Constraints checked</span>
-            <span><ArrowUpRight size={13} /> Ready to share</span>
+            <span><Check size={13} /> {t('qaAsideStep1')}</span>
+            <span><Shield size={13} /> {t('qaAsideStep2')}</span>
+            <span><ArrowUpRight size={13} /> {t('qaAsideStep3')}</span>
           </div>
         </div>
       </motion.div>

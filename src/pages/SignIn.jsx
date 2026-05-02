@@ -1,11 +1,11 @@
 import { useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
-import { motion } from 'framer-motion'
+import { motion as Motion } from 'framer-motion'
 import { ArrowRight, Sparkles } from 'lucide-react'
 import { doc, getDoc } from 'firebase/firestore'
 import { db } from '../firebase'
 import { useAuth } from '../AuthContext'
-import { useToast } from '../components/Toast'
+import { useI18n } from '../i18n'
 
 async function getRedirectPath(uid) {
   const snap = await getDoc(doc(db, 'users', uid))
@@ -16,7 +16,7 @@ async function getRedirectPath(uid) {
 function SignIn() {
   const navigate = useNavigate()
   const { signIn, signInWithGoogle } = useAuth()
-  const toast = useToast()
+  const { t } = useI18n()
   
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -35,7 +35,7 @@ function SignIn() {
       }
       navigate(await getRedirectPath(cred.user.uid))
     } catch (err) {
-      setError(prettyError(err.code))
+      setError(prettyError(err.code, t))
       setLoading(false)
     }
   }
@@ -47,7 +47,7 @@ function SignIn() {
       const cred = await signInWithGoogle()
       navigate(await getRedirectPath(cred.user.uid))
     } catch (err) {
-      setError(prettyError(err.code))
+      setError(prettyError(err.code, t))
       setLoading(false)
     }
   }
@@ -55,19 +55,19 @@ function SignIn() {
   return (
     <main className="auth-page">
       <div className="auth-bg">
-        <motion.div 
+        <Motion.div 
           className="auth-blob auth-blob-1"
           animate={{ x: [0, 30, -20, 0], y: [0, -20, 20, 0] }}
           transition={{ duration: 18, repeat: Infinity, ease: 'easeInOut' }}
         />
-        <motion.div 
+        <Motion.div 
           className="auth-blob auth-blob-2"
           animate={{ x: [0, -30, 20, 0], y: [0, 20, -20, 0] }}
           transition={{ duration: 22, repeat: Infinity, ease: 'easeInOut' }}
         />
       </div>
 
-      <motion.div
+      <Motion.div
         className="auth-card"
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -75,14 +75,14 @@ function SignIn() {
       >
         <div className="auth-eyebrow">
           <Sparkles size={14} />
-          <span>Welcome back</span>
+          <span>{t('signInEyebrow')}</span>
         </div>
         
         <h1 className="auth-title">
-          Sign in to <span className="landing-gradient-text">Hengam</span>
+          {t('signInTitle')} <span className="landing-gradient-text">Hengam</span>
         </h1>
         <p className="auth-subtitle">
-          Continue building better schedules.
+          {t('signInSubtitle')}
         </p>
 
         <button 
@@ -92,16 +92,16 @@ function SignIn() {
           disabled={loading}
         >
           <GoogleIcon />
-          <span>Continue with Google</span>
+          <span>{t('googleContinue')}</span>
         </button>
 
         <div className="auth-divider">
-          <span>or</span>
+          <span>{t('or')}</span>
         </div>
 
         <form onSubmit={handleSubmit} className="auth-form">
           <div className="auth-field">
-            <label className="form-label">Email</label>
+            <label className="form-label">{t('email')}</label>
             <input
               type="email"
               className="input"
@@ -114,8 +114,8 @@ function SignIn() {
           </div>
           <div className="auth-field">
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <label className="form-label">Password</label>
-              <Link to="/forgot-password" className="forgot-password-link">Forgot password?</Link>
+              <label className="form-label">{t('password')}</label>
+              <Link to="/forgot-password" className="forgot-password-link">{t('forgotPassword')}</Link>
             </div>
             <input
               type="password"
@@ -135,15 +135,15 @@ function SignIn() {
             className="landing-cta-primary auth-submit"
             disabled={loading}
           >
-            <span>{loading ? 'Signing in...' : 'Sign in'}</span>
+            <span>{loading ? t('signingIn') : t('signIn')}</span>
             {!loading && <ArrowRight size={16} />}
           </button>
         </form>
 
         <p className="auth-footer">
-          Don't have an account? <Link to="/signup">Sign up</Link>
+          {t('noAccount')} <Link to="/signup">{t('signUp')}</Link>
         </p>
-      </motion.div>
+      </Motion.div>
     </main>
   )
 }
@@ -159,15 +159,15 @@ function GoogleIcon() {
   )
 }
 
-function prettyError(code) {
+function prettyError(code, t) {
   const map = {
-    'auth/invalid-email': 'That email looks wrong.',
-    'auth/user-not-found': 'No account with that email.',
-    'auth/wrong-password': 'Incorrect password.',
-    'auth/invalid-credential': 'Email or password is incorrect.',
-    'auth/too-many-requests': 'Too many attempts. Try again in a few minutes.',
+    'auth/invalid-email': t('authInvalidEmail') || 'That email looks wrong.',
+    'auth/user-not-found': t('authUserNotFound') || 'No account with that email.',
+    'auth/wrong-password': t('authWrongPassword') || 'Incorrect password.',
+    'auth/invalid-credential': t('authInvalidCredential') || 'Email or password is incorrect.',
+    'auth/too-many-requests': t('authTooMany') || 'Too many attempts. Try again in a few minutes.',
   }
-  return map[code] || 'Something went wrong. Try again.'
+  return map[code] || (t('authGeneric') || 'Something went wrong. Try again.')
 }
 
 export default SignIn
