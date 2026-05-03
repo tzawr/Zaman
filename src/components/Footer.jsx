@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom'
 import { CheckCircle2 } from 'lucide-react'
 import { useAuth } from '../AuthContext'
 import { useI18n } from '../i18n'
+import Logo from './Logo'
 
 function Footer() {
   const year = new Date().getFullYear()
@@ -14,7 +15,9 @@ function Footer() {
       <div className="footer-inner">
         <div className="footer-main">
           <div className="footer-brand">
-            <h3 className="footer-logo">Hengam</h3>
+            <Link to="/" className="footer-logo-link" aria-label="Hengam home">
+              <Logo size={34} className="footer-logo" />
+            </Link>
             <p className="footer-tagline">
               {t('footerTagline')}
             </p>

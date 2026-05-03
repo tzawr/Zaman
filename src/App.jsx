@@ -11,6 +11,7 @@ import Availability from './pages/Availability'
 import Settings from './pages/Settings'
 import Schedule from './pages/Schedule'
 import ProfileMenu from './components/ProfileMenu'
+import Logo from './components/Logo'
 import Schedules from './pages/Schedules'
 import Footer from './components/Footer'
 import Dashboard from './pages/Dashboard'
@@ -57,8 +58,8 @@ function AppShell() {
     <BrowserRouter>
       <div className={`${darkMode ? 'app dark' : 'app light'} ${isRtl ? 'rtl' : 'ltr'}`} dir="ltr">
         <nav className="navbar">
-          <Link to="/" className="logo-link">
-            <h1 className="logo">Hengam</h1>
+          <Link to="/" className="logo-link" aria-label="Hengam home">
+            <Logo size={36} />
           </Link>
           <div className="navbar-center" aria-label="Main navigation">
             <Link to="/about">{t('navAbout')}</Link>

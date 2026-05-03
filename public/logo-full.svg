@@ -1,0 +1,7 @@
+<svg viewBox="0 0 320 80" xmlns="http://www.w3.org/2000/svg">
+  <g transform="translate(8, 8)">
+    <path d="M 18 56 L 18 18 Q 18 15 21 15 L 38 15 Q 58 15 58 38 Q 58 58 38 58 Q 28 58 28 48 Q 28 38 38 38" fill="none" stroke="#3b82f6" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+    <circle cx="43" cy="41" r="3.5" fill="#3b82f6"/>
+  </g>
+  <text x="80" y="52" font-family="-apple-system, BlinkMacSystemFont, 'Inter', 'Helvetica Neue', sans-serif" font-size="36" font-weight="500" fill="#ffffff" letter-spacing="-0.5">hengam</text>
+</svg>

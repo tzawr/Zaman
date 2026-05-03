@@ -157,21 +157,14 @@
   }
 }
 
-.logo {
-  font-size: 22px;
-  font-weight: 700;
-  letter-spacing: -0.03em;
-  background: linear-gradient(135deg, var(--text-primary) 0%, var(--text-secondary) 100%);
-  -webkit-background-clip: text;
-  background-clip: text;
-  -webkit-text-fill-color: transparent;
-  transition: opacity var(--transition-fast);
-}
-
 .logo-link {
   position: relative;
   z-index: 2;
   justify-self: start;
+  display: inline-flex;
+  align-items: center;
+  color: var(--accent-1);
+  text-decoration: none;
 }
 
 .navbar-center {
@@ -290,18 +283,11 @@
 
 .logo-link {
   text-decoration: none;
-  color: inherit;
+  color: var(--accent-1);
 }
 
 .logo-link:hover {
   opacity: 0.7;
-}
-
-.app.light .logo {
-  background: linear-gradient(135deg, #0A0A0B 0%, #6A6A72 100%);
-  -webkit-background-clip: text;
-  background-clip: text;
-  -webkit-text-fill-color: transparent;
 }
 
 .theme-toggle {
@@ -3595,15 +3581,48 @@ input:checked + .slider:before {
   max-width: 300px;
 }
 
-.footer-logo {
+.app-logo {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--accent-1);
+  line-height: 1;
+}
+
+.app-logo-icon {
+  flex: 0 0 auto;
+  color: currentColor;
+  filter: drop-shadow(0 0 12px rgba(59, 130, 246, 0.34));
+  transition: transform 0.4s ease, filter var(--transition-base);
+}
+
+.app-logo:hover .app-logo-icon {
+  transform: rotate(360deg);
+  filter: drop-shadow(0 0 16px rgba(59, 130, 246, 0.5));
+}
+
+.app-logo-wordmark {
   font-size: 22px;
-  font-weight: 700;
+  font-weight: 650;
   letter-spacing: -0.03em;
+  color: var(--text-primary);
+  transition: color var(--transition-fast);
+}
+
+.app.rtl .app-logo-wordmark {
+  font-weight: 700;
+  letter-spacing: 0;
+}
+
+.footer-logo-link {
+  display: inline-flex;
   margin-bottom: 10px;
-  background: linear-gradient(135deg, var(--accent-1) 0%, var(--accent-2) 100%);
-  -webkit-background-clip: text;
-  background-clip: text;
-  -webkit-text-fill-color: transparent;
+  color: var(--accent-1);
+  text-decoration: none;
+}
+
+.footer-logo .app-logo-wordmark {
+  font-size: 22px;
 }
 
 .footer-tagline {
