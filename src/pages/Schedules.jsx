@@ -30,11 +30,13 @@ import { useAuth } from '../AuthContext'
 import { useToast } from '../components/Toast'
 import PageHero from '../components/PageHero'
 import { exportToCSV, exportToPNG, exportToPDF } from '../utils/exportSchedule'
+import { useI18n } from '../i18n'
 
 function Schedules() {
   const navigate = useNavigate()
   const { currentUser } = useAuth()
   const toast = useToast()
+  const { t, language } = useI18n()
   
   const [schedules, setSchedules] = useState([])
   const [selectedSchedule, setSelectedSchedule] = useState(null)
@@ -96,17 +98,18 @@ function Schedules() {
       await updateDoc(doc(db, 'schedules', selectedSchedule.id), { data: updatedData })
     } catch (err) {
       console.error('Failed to save:', err)
-      toast.error('Failed to save changes')
+      toast.error(t('failedSaveChanges'))
     }
   }
 
   function formatWeekRange(mondayStr) {
-    if (!mondayStr) return 'Unknown week'
+    if (!mondayStr) return t('unknownWeek')
     const monday = new Date(mondayStr + 'T12:00:00')
     const sunday = new Date(monday)
     sunday.setDate(monday.getDate() + 6)
     
-    const format = (d) => d.toLocaleDateString('en-US', { 
+    const locale = language === 'fa' ? 'fa-IR' : 'en-US'
+    const format = (d) => d.toLocaleDateString(locale, {
       month: 'short', 
       day: 'numeric' 
     })
@@ -117,7 +120,7 @@ function Schedules() {
   function formatCreatedAt(timestamp) {
     if (!timestamp) return ''
     const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp)
-    return date.toLocaleDateString('en-US', { 
+    return date.toLocaleDateString(language === 'fa' ? 'fa-IR' : 'en-US', {
       month: 'short', 
       day: 'numeric',
       year: 'numeric',
@@ -128,8 +131,8 @@ function Schedules() {
 
   function scheduleHealth(sched) {
     const issueCount = sched.data?.issues?.length || 0
-    if (issueCount > 0) return `${issueCount} review ${issueCount === 1 ? 'item' : 'items'}`
-    return 'Ready'
+    if (issueCount > 0) return `${issueCount} ${issueCount === 1 ? t('reviewItem') : t('reviewItems')}`
+    return t('ready')
   }
 
   async function handleExport(type) {
@@ -182,7 +185,7 @@ function Schedules() {
       }
     } catch (err) {
       console.error('Failed to delete:', err)
-      toast.error('Failed to delete. Try again.')
+      toast.error(t('failedDelete'))
     }
   }
 
@@ -190,7 +193,7 @@ function Schedules() {
     return (
       <main className="schedules-page-full">
         <div className="empty-state">
-          <p>Loading schedules... <Loader2 size={16} className="spin" aria-hidden /></p>
+          <p>{t('loadingSchedules')} <Loader2 size={16} className="spin" aria-hidden /></p>
         </div>
       </main>
     )
@@ -204,13 +207,13 @@ function Schedules() {
           onClick={() => navigate('/dashboard')}
         >
           <ArrowLeft size={14} />
-          <span>Back to dashboard</span>
+          <span>{t('backToDashboard')}</span>
         </button>
 
         <PageHero
-          eyebrow="History"
-          title="My schedules"
-          subtitle="Every schedule you've generated, saved automatically."
+          eyebrow={t('historyEyebrow')}
+          title={t('schedulesTitle')}
+          subtitle={t('schedulesSubtitle')}
         >
           <div className="page-hero-actions">
             <button 
@@ -218,7 +221,7 @@ function Schedules() {
               onClick={() => navigate('/schedule')}
             >
               <Sparkles size={16} />
-              <span>Generate new</span>
+              <span>{t('generateNew')}</span>
             </button>
           </div>
         </PageHero>
@@ -227,20 +230,20 @@ function Schedules() {
       {schedules.length === 0 ? (
         <div className="schedules-empty-state">
           <Rocket size={40} />
-          <p>No schedules yet.</p>
+          <p>{t('noSchedulesYet')}</p>
           <button 
             className="landing-cta-primary"
             onClick={() => navigate('/schedule')}
           >
             <Sparkles size={16} />
-            <span>Generate your first</span>
+            <span>{t('generateYourFirst')}</span>
           </button>
         </div>
       ) : (
         <div className="schedules-split">
           <aside className="schedules-sidebar">
             <div className="schedules-sidebar-head">
-              <h3 className="schedules-sidebar-title">All schedules</h3>
+              <h3 className="schedules-sidebar-title">{t('allSchedules')}</h3>
               <span>{schedules.length}</span>
             </div>
             <div className="schedule-list">
@@ -261,17 +264,17 @@ function Schedules() {
                         e.stopPropagation()
                         setConfirmDelete(sched.id)
                       }}
-                      aria-label="Delete schedule"
+                      aria-label={t('deleteSchedule')}
                     >
                       <X size={16} />
                     </button>
                   </div>
                   <p className="schedule-meta">
-                    Generated {formatCreatedAt(sched.createdAt)}
+                    {t('generated')} {formatCreatedAt(sched.createdAt)}
                   </p>
                   <div className="schedule-card-tags">
-                    <span>{sched.employeeCount || '?'} {sched.employeeCount === 1 ? 'person' : 'people'}</span>
-                    {sched.instructions && <span>Notes</span>}
+                    <span>{sched.employeeCount || '?'} {sched.employeeCount === 1 ? t('person') : t('people')}</span>
+                    {sched.instructions && <span>{t('notes')}</span>}
                     <span className={sched.data?.issues?.length ? 'needs-review' : 'ready'}>{scheduleHealth(sched)}</span>
                   </div>
                 </div>
@@ -288,7 +291,7 @@ function Schedules() {
                       {formatWeekRange(selectedSchedule.weekStart)}
                     </h2>
                     <p className="schedule-meta">
-                      Generated {formatCreatedAt(selectedSchedule.createdAt)}
+                      {t('generated')} {formatCreatedAt(selectedSchedule.createdAt)}
                     </p>
                   </div>
                   <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
@@ -300,7 +303,7 @@ function Schedules() {
                           disabled={exporting !== null}
                         >
                           {exporting ? <Loader2 size={16} className="spin" /> : <Download size={16} />}
-                          <span>{exporting ? `Exporting ${exporting}...` : 'Export'}</span>
+                          <span>{exporting ? `${t('exporting')} ${exporting}...` : t('export')}</span>
                         </button>
                         {exportMenuOpen && (
                           <>
@@ -312,22 +315,22 @@ function Schedules() {
                               <button className="export-dropdown-item" onClick={() => handleExport('csv')}>
                                 <FileText size={15} />
                                 <div>
-                                  <div className="export-item-title">CSV (Excel)</div>
-                                  <div className="export-item-desc">Open in spreadsheet apps</div>
+                                  <div className="export-item-title">{t('exportCsvTitle')}</div>
+                                  <div className="export-item-desc">{t('exportCsvDesc')}</div>
                                 </div>
                               </button>
                               <button className="export-dropdown-item" onClick={() => handleExport('png')}>
                                 <Image size={15} />
                                 <div>
-                                  <div className="export-item-title">PNG Image</div>
-                                  <div className="export-item-desc">Share screenshot</div>
+                                  <div className="export-item-title">{t('exportPngTitle')}</div>
+                                  <div className="export-item-desc">{t('exportPngDesc')}</div>
                                 </div>
                               </button>
                               <button className="export-dropdown-item" onClick={() => handleExport('pdf')}>
                                 <FileText size={15} />
                                 <div>
-                                  <div className="export-item-title">PDF Document</div>
-                                  <div className="export-item-desc">Print-ready</div>
+                                  <div className="export-item-title">{t('exportPdfTitle')}</div>
+                                  <div className="export-item-desc">{t('exportPdfDesc')}</div>
                                 </div>
                               </button>
                             </div>
@@ -340,14 +343,14 @@ function Schedules() {
                       onClick={() => copyToClipboard(selectedSchedule.content)}
                     >
                       {copied ? <ClipboardCheck size={16} /> : <Clipboard size={16} />}
-                      <span>{copied ? 'Copied' : 'Copy'}</span>
+                      <span>{copied ? t('copied') : t('copy')}</span>
                     </button>
                   </div>
                 </div>
 
                 {selectedSchedule.instructions && (
                   <div className="schedule-instructions">
-                    <p className="instructions-label">Custom instructions</p>
+                    <p className="instructions-label">{t('customInstructions')}</p>
                     <p className="instructions-text">{selectedSchedule.instructions}</p>
                   </div>
                 )}
@@ -357,7 +360,7 @@ function Schedules() {
                     <div className="schedule-filter-bar">
                       <div className="schedule-filter-label">
                         <Filter size={15} />
-                        <span>Highlight</span>
+                        <span>{t('highlight')}</span>
                       </div>
                       <div className="schedule-filter-controls">
                         <div className="schedule-filter-segment">
@@ -369,7 +372,7 @@ function Schedules() {
                               setFilterValue('')
                             }}
                           >
-                            Role
+                            {t('roleFilter')}
                           </button>
                           <button
                             type="button"
@@ -379,7 +382,7 @@ function Schedules() {
                               setFilterValue('')
                             }}
                           >
-                            Person
+                            {t('personFilter')}
                           </button>
                         </div>
                         <select
@@ -388,7 +391,7 @@ function Schedules() {
                           onChange={(e) => setFilterValue(e.target.value)}
                         >
                           <option value="">
-                            {filterType === 'role' ? 'All roles' : 'All people'}
+                            {filterType === 'role' ? t('allRoles') : t('allPeople')}
                           </option>
                           {(filterType === 'role' ? roleOptions : employeeOptions).map(option => (
                             <option key={option} value={option}>{option}</option>
@@ -400,7 +403,7 @@ function Schedules() {
                             className="schedule-filter-clear"
                             onClick={() => setFilterValue('')}
                           >
-                            Clear
+                            {t('clear')}
                           </button>
                         )}
                       </div>
@@ -422,7 +425,7 @@ function Schedules() {
             ) : (
               <div className="empty-state schedules-empty">
                 <Calendar size={40} />
-                <p>Select a schedule from the list to view it.</p>
+                <p>{t('selectSchedulePrompt')}</p>
               </div>
             )}
           </section>
@@ -438,22 +441,22 @@ function Schedules() {
             className="modal-card"
             onClick={(e) => e.stopPropagation()}
           >
-            <h3 className="modal-title">Delete this schedule?</h3>
+            <h3 className="modal-title">{t('deleteThisSchedule')}</h3>
             <p className="modal-text">
-              This cannot be undone.
+              {t('cannotBeUndone')}
             </p>
             <div className="modal-actions">
               <button 
                 className="secondary-button"
                 onClick={() => setConfirmDelete(null)}
               >
-                Cancel
+                {t('cancel')}
               </button>
               <button 
                 className="danger-button"
                 onClick={() => handleDelete(confirmDelete)}
               >
-                Delete
+                {t('delete')}
               </button>
             </div>
           </div>
