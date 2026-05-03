@@ -228,32 +228,32 @@ function MockupCard() {
     {
       day: t('mockDayMon'),
       shifts: [
-        { name: 'Maya', role: t('roleShiftSupervisor'), time: '4a - 11a', color: 'pink' },
-        { name: 'Eli', role: t('roleBarista'), time: '4a - 12p', color: 'red' },
-        { name: 'Owen', role: t('roleShiftSupervisor'), time: '12:30p - 8:30p', color: 'purple' },
+        { name: t('mockNameMaya'), role: t('roleShiftSupervisor'), time: '4a - 11a', color: 'pink' },
+        { name: t('mockNameEli'), role: t('roleBarista'), time: '4a - 12p', color: 'red' },
+        { name: t('mockNameOwen'), role: t('roleShiftSupervisor'), time: '12:30p - 8:30p', color: 'purple' },
       ],
     },
     {
       day: t('mockDayTue'),
       shifts: [
-        { name: 'Maya', role: t('roleShiftSupervisor'), time: '4a - 11a', color: 'pink' },
-        { name: 'Noah', role: t('roleBarista'), time: '5a - 11:30a', color: 'blue' },
-        { name: 'Riley', role: t('roleBarista'), time: '12:30p - 8p', color: 'red' },
+        { name: t('mockNameMaya'), role: t('roleShiftSupervisor'), time: '4a - 11a', color: 'pink' },
+        { name: t('mockNameNoah'), role: t('roleBarista'), time: '5a - 11:30a', color: 'blue' },
+        { name: t('mockNameRiley'), role: t('roleBarista'), time: '12:30p - 8p', color: 'red' },
       ],
     },
     {
       day: t('mockDayWed'),
       shifts: [
-        { name: 'Owen', role: t('roleShiftSupervisor'), time: '4a - 12p', color: 'purple' },
-        { name: 'Sofia', role: t('roleBarista'), time: '4a - 11a', color: 'pink' },
-        { name: 'Theo', role: t('roleShiftSupervisor'), time: '12p - 8p', color: 'pink' },
+        { name: t('mockNameOwen'), role: t('roleShiftSupervisor'), time: '4a - 12p', color: 'purple' },
+        { name: t('mockNameSofia'), role: t('roleBarista'), time: '4a - 11a', color: 'pink' },
+        { name: t('mockNameTheo'), role: t('roleShiftSupervisor'), time: '12p - 8p', color: 'pink' },
       ],
     },
     {
       day: t('mockDaySun'),
       shifts: [
-        { name: 'Lena', role: t('roleShiftSupervisor'), time: '4a - 12p', color: 'purple' },
-        { name: 'Leo', role: t('roleManager'), time: '10a - 4p', color: 'green' },
+        { name: t('mockNameLena'), role: t('roleShiftSupervisor'), time: '4a - 12p', color: 'purple' },
+        { name: t('mockNameLeo'), role: t('roleManager'), time: '10a - 4p', color: 'green' },
         { name: t('mockOpenShift'), role: t('roleBarista'), time: '12p - 3p', color: 'empty' },
       ],
     },
@@ -330,7 +330,7 @@ function MockupCard() {
             <div className="proof-bottom">
               <div className="proof-hours">
                 <Target size={14} />
-                <span>Leo: 30 / 40h</span>
+                <span>{t('mockHoursSummary')}</span>
               </div>
               <div className="proof-issue">
                 <AlertTriangle size={14} />
@@ -390,9 +390,9 @@ function PremiumPanels() {
   }, [])
 
   const eventRows = [
-    { time: '4 AM', title: t('premiumOpeningShift'), status: 'ready', avatars: ['M', 'E'] },
-    { time: '8 AM', title: t('premiumMorningRush'), status: 'active', avatars: ['N', 'S', 'A'] },
-    { time: '12 PM', title: t('premiumCoverageCheck'), status: 'ready', avatars: ['L', 'R'] },
+    { time: '4 AM', title: t('premiumOpeningShift'), status: 'ready', avatars: [t('premiumAvatar1'), t('premiumAvatar2')] },
+    { time: '8 AM', title: t('premiumMorningRush'), status: 'active', avatars: [t('premiumAvatar3'), t('premiumAvatar4'), t('premiumAvatar5')] },
+    { time: '12 PM', title: t('premiumCoverageCheck'), status: 'ready', avatars: [t('premiumAvatar6'), t('premiumAvatar7')] },
     { time: '3 PM', title: t('premiumCoverageGap'), status: 'gap', avatars: ['+'] },
   ]
 
