@@ -1,78 +1,59 @@
-import { Shield, Database, User, Mail } from 'lucide-react'
+import { Shield, Database, User } from 'lucide-react'
 import PageHero from '../components/PageHero'
 import Section from '../components/Section'
+import { useI18n } from '../i18n'
 
 function Privacy() {
+  const { t } = useI18n()
+
   return (
     <main className="app-page app-page-narrow">
       <PageHero
-        eyebrow="Legal"
-        title="Privacy Policy"
-        subtitle="Last updated April 25, 2025. We keep this short and plain."
+        eyebrow={t('privacyEyebrow')}
+        title={t('privacyTitle')}
+        subtitle={t('privacySubtitle')}
       />
 
-      <Section title="What we collect" icon={Database} delay={0.05}>
+      <Section title={t('privacyCollectTitle')} icon={Database} delay={0.05}>
         <div className="legal-text">
-          <p>We collect only what's needed to run the service:</p>
+          <p>{t('privacyCollectIntro')}</p>
           <ul>
-            <li><strong>Account info</strong> — your name, email address, and hashed password.</li>
-            <li><strong>Workspace data</strong> — employee names, roles, availability, and schedules you create inside Hengam.</li>
-            <li><strong>Usage data</strong> — pages visited and features used, to improve the product.</li>
+            <li><strong>{t('privacyAccountStrong')}</strong> — {t('privacyAccountCopy')}</li>
+            <li><strong>{t('privacyWorkspaceStrong')}</strong> — {t('privacyWorkspaceCopy')}</li>
+            <li><strong>{t('privacyUsageStrong')}</strong> — {t('privacyUsageCopy')}</li>
           </ul>
-          <p>
-            We do not sell your data to anyone. We do not use your scheduling data to train
-            models without your explicit consent.
-          </p>
+          <p>{t('privacyCollectP1')}</p>
         </div>
       </Section>
 
-      <Section title="How we use it" icon={Shield} delay={0.1}>
+      <Section title={t('privacyUseTitle')} icon={Shield} delay={0.1}>
         <div className="legal-text">
-          <p>Your information is used to:</p>
+          <p>{t('privacyUseIntro')}</p>
           <ul>
-            <li>Provide, maintain, and improve Hengam.</li>
-            <li>Send transactional emails — account confirmations, schedule exports, team invites.</li>
-            <li>Respond to support requests.</li>
-            <li>Detect and prevent fraud or abuse.</li>
+            <li>{t('privacyUse1')}</li>
+            <li>{t('privacyUse2')}</li>
+            <li>{t('privacyUse3')}</li>
+            <li>{t('privacyUse4')}</li>
           </ul>
-          <p>
-            Schedule generation uses Hengam's scheduling engine. We send only employee names, roles, and
-            availability — no contact information or passwords — to generate a schedule.
-          </p>
+          <p>{t('privacyUseP1')}</p>
         </div>
       </Section>
 
-      <Section title="Storage, security & retention" icon={Database} delay={0.15}>
+      <Section title={t('privacyStorageTitle')} icon={Database} delay={0.15}>
         <div className="legal-text">
-          <p>
-            Your data lives on Firebase (Google Cloud) infrastructure with encryption at rest and
-            in transit. We apply industry-standard access controls and Firestore security rules
-            so each user can only access their own data.
-          </p>
-          <p>
-            We retain your data for as long as your account is active. If you delete your account,
-            your personal information is removed within 30 days, except where we're legally required
-            to keep it.
-          </p>
-          <p>
-            We use cookies only for essential authentication (keeping you logged in) and preference
-            storage (light/dark mode). No advertising or third-party tracking cookies.
-          </p>
+          <p>{t('privacyStorageP1')}</p>
+          <p>{t('privacyStorageP2')}</p>
+          <p>{t('privacyStorageP3')}</p>
         </div>
       </Section>
 
-      <Section title="Your rights & contact" icon={User} delay={0.2}>
+      <Section title={t('privacyRightsTitle')} icon={User} delay={0.2}>
         <div className="legal-text">
           <p>
-            Depending on your location, you may have the right to access, correct, or delete your
-            personal data. To exercise any of these rights — or if you have any questions about
-            this policy — email us at{' '}
+            {t('privacyRightsP1')}{' '}
             <a href="mailto:aliseyfiazadsa6@gmail.com">aliseyfiazadsa6@gmail.com</a>.
           </p>
-          <p>
-            We may update this policy from time to time. Significant changes will be communicated
-            by email or via an in-app notice.
-          </p>
+          <p>{t('privacyRightsP2')}</p>
         </div>
       </Section>
     </main>

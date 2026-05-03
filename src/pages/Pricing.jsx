@@ -3,58 +3,45 @@ import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../AuthContext'
 import PageHero from '../components/PageHero'
 import Section from '../components/Section'
-
-const PLANS = [
-  {
-    name: 'Free',
-    price: '$0',
-    period: 'forever',
-    description: 'Try Hengam with a small team before you commit.',
-    features: [
-      'Up to 5 employees',
-      '1 schedule generation per week',
-      'Availability and target hours',
-      'CSV export',
-    ],
-    cta: 'Start free',
-    highlighted: false,
-  },
-  {
-    name: 'Pro',
-    price: '$9',
-    period: 'per month',
-    description: 'For small businesses building weekly schedules every week.',
-    features: [
-      'Up to 25 employees',
-      'Unlimited schedule generations',
-      'Custom rules and coverage windows',
-      'Schedule history',
-      'CSV, PNG, and PDF exports',
-      'Priority support',
-    ],
-    cta: 'Choose Pro',
-    highlighted: true,
-  },
-  {
-    name: 'Business',
-    price: '$19',
-    period: 'per month',
-    description: 'For larger teams, multiple managers, and growing operations.',
-    features: [
-      'Unlimited employees',
-      'Unlimited schedules',
-      'Advanced rule support',
-      'Multiple locations coming soon',
-      'Dedicated setup help',
-    ],
-    cta: 'Contact us',
-    highlighted: false,
-  },
-]
+import { useI18n } from '../i18n'
 
 function PricingPage() {
   const navigate = useNavigate()
   const { currentUser } = useAuth()
+  const { t } = useI18n()
+
+  const plans = [
+    {
+      id: 'free',
+      name: t('tierFree'),
+      price: '$0',
+      period: t('priceForever'),
+      description: t('priceFreeDesc'),
+      features: [t('priceUpTo5'), t('priceOneSchedule'), t('pricingIncludeChecksTitle'), t('priceCsvExport')],
+      cta: t('priceFreeCta'),
+      highlighted: false,
+    },
+    {
+      id: 'pro',
+      name: t('tierPro'),
+      price: '$9',
+      period: t('priceMonthly'),
+      description: t('priceProDesc'),
+      features: [t('priceUpTo25'), t('priceUnlimitedSchedules'), t('priceCustomRules'), t('priceHistory'), t('heroMeta3'), t('pricePriority')],
+      cta: t('pricingChoosePro'),
+      highlighted: true,
+    },
+    {
+      id: 'business',
+      name: t('tierBusiness'),
+      price: '$19',
+      period: t('priceMonthly'),
+      description: t('priceBusinessDesc'),
+      features: [t('priceUnlimitedEmployees'), t('priceUnlimitedSchedules'), t('priceAdvanced'), t('priceLocations'), t('priceDedicated')],
+      cta: t('priceBusinessCta'),
+      highlighted: false,
+    },
+  ]
 
   function handlePlan() {
     navigate(currentUser ? '/dashboard' : '/signin')
@@ -63,25 +50,25 @@ function PricingPage() {
   return (
     <main className="app-page pricing-page">
       <PageHero
-        eyebrow="Pricing"
-        title="Simple plans for shift teams"
-        subtitle="Start free, then upgrade when Hengam becomes part of your weekly scheduling rhythm."
+        eyebrow={t('pricingPageEyebrow')}
+        title={t('pricingPageTitle')}
+        subtitle={t('pricingPageSubtitle')}
       >
         <div className="page-hero-actions">
           <button className="settings-button" onClick={() => navigate(currentUser ? '/dashboard' : '/signin')}>
             <Sparkles size={16} />
-            <span>{currentUser ? 'Go to dashboard' : 'Sign in to start'}</span>
+            <span>{currentUser ? t('pricingGoDashboard') : t('pricingSignInStart')}</span>
           </button>
         </div>
       </PageHero>
 
       <section className="pricing-page-grid">
-        {PLANS.map(plan => (
+        {plans.map(plan => (
           <article
             key={plan.name}
             className={`pricing-page-card ${plan.highlighted ? 'pricing-page-card-featured' : ''}`}
           >
-            {plan.highlighted && <div className="pricing-page-badge">Best for most teams</div>}
+            {plan.highlighted && <div className="pricing-page-badge">{t('pricingBest')}</div>}
             <div className="pricing-page-plan">{plan.name}</div>
             <div className="pricing-page-price">
               <span>{plan.price}</span>
@@ -98,7 +85,7 @@ function PricingPage() {
               ))}
             </ul>
 
-            {plan.name === 'Business' ? (
+            {plan.id === 'business' ? (
               <a
                 className="landing-cta-ghost pricing-page-cta"
                 href="mailto:aliseyfiazadsa6@gmail.com?subject=Hengam Business plan"
@@ -119,19 +106,19 @@ function PricingPage() {
         ))}
       </section>
 
-      <Section title="What every plan includes" icon={Shield} delay={0.05}>
+      <Section title={t('pricingIncludesTitle')} icon={Shield} delay={0.05}>
         <div className="pricing-includes">
           <div>
-            <h3>Constraint checks</h3>
-            <p>Availability, roles, target hours, time off, and clopening rules are checked before a schedule is saved.</p>
+            <h3>{t('pricingIncludeChecksTitle')}</h3>
+            <p>{t('pricingIncludeChecksCopy')}</p>
           </div>
           <div>
-            <h3>Plain-English rules</h3>
-            <p>Managers can describe coverage needs and preferences in normal language.</p>
+            <h3>{t('pricingIncludeRulesTitle')}</h3>
+            <p>{t('pricingIncludeRulesCopy')}</p>
           </div>
           <div>
-            <h3>Clear issues</h3>
-            <p>If a week cannot work, Hengam explains what is missing instead of pretending everything is fine.</p>
+            <h3>{t('pricingIncludeIssuesTitle')}</h3>
+            <p>{t('pricingIncludeIssuesCopy')}</p>
           </div>
         </div>
       </Section>

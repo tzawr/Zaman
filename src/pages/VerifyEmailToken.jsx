@@ -1,26 +1,29 @@
 import { useCallback, useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
+import { motion as Motion } from 'framer-motion'
 import { CheckCircle, XCircle, Loader2 } from 'lucide-react'
 import { doc, getDoc, updateDoc, setDoc } from 'firebase/firestore'
 import { db } from '../firebase'
 import { useAuth } from '../AuthContext'
+import { useI18n } from '../i18n'
 
 function VerifyEmailToken() {
   const { token } = useParams()
   const navigate = useNavigate()
   const { currentUser } = useAuth()
+  const { t } = useI18n()
 
   const [status, setStatus] = useState(token ? 'checking' : 'error') // 'checking' | 'success' | 'error'
-  const [error, setError] = useState(token ? '' : 'Invalid link.')
+  const [errorKey, setErrorKey] = useState(token ? '' : 'verifyInvalidLink')
 
   const verify = useCallback(async () => {
     try {
       const snap = await getDoc(doc(db, 'emailVerifications', token))
-      if (!snap.exists()) { setStatus('error'); setError('This link is invalid or has already been used.'); return }
+      if (!snap.exists()) { setStatus('error'); setErrorKey('verifyInvalidUsed'); return }
       const data = snap.data()
-      if (data.used) { setStatus('error'); setError('This link has already been used.'); return }
-      if (data.uid !== currentUser.uid) { setStatus('error'); setError('This link belongs to a different account.'); return }
-      if (new Date(data.expiresAt) < new Date()) { setStatus('error'); setError('This link has expired. Request a new one.'); return }
+      if (data.used) { setStatus('error'); setErrorKey('verifyUsed'); return }
+      if (data.uid !== currentUser.uid) { setStatus('error'); setErrorKey('verifyDifferentAccount'); return }
+      if (new Date(data.expiresAt) < new Date()) { setStatus('error'); setErrorKey('verifyExpired'); return }
 
       // Mark verified in Firestore user doc
       await setDoc(doc(db, 'users', currentUser.uid), { emailVerified: true }, { merge: true })
@@ -42,7 +45,7 @@ function VerifyEmailToken() {
     } catch (err) {
       console.error(err)
       setStatus('error')
-      setError('Something went wrong. Try again.')
+      setErrorKey('authGeneric')
     }
   }, [currentUser, navigate, token])
 
@@ -52,7 +55,7 @@ function VerifyEmailToken() {
       // Not signed in — wait a moment in case auth is still loading
       const t = setTimeout(() => {
         setStatus('error')
-        setError('Please sign in to verify your email.')
+        setErrorKey('verifySignInNeeded')
       }, 3000)
       return () => clearTimeout(t)
     }
@@ -63,10 +66,10 @@ function VerifyEmailToken() {
   return (
     <main className="auth-page">
       <div className="auth-bg">
-        <motion.div className="auth-blob auth-blob-1"
+        <Motion.div className="auth-blob auth-blob-1"
           animate={{ x: [0, 30, -20, 0], y: [0, -20, 20, 0] }}
           transition={{ duration: 18, repeat: Infinity, ease: 'easeInOut' }} />
-        <motion.div className="auth-blob auth-blob-2"
+        <Motion.div className="auth-blob auth-blob-2"
           animate={{ x: [0, -30, 20, 0], y: [0, 20, -20, 0] }}
           transition={{ duration: 22, repeat: Infinity, ease: 'easeInOut' }} />
       </div>
@@ -74,20 +77,20 @@ function VerifyEmailToken() {
       <div className="auth-card">
         {status === 'checking' && (
           <>
-            <div className="auth-eyebrow"><Loader2 size={14} className="spin" /><span>Verifying</span></div>
-            <h1 className="auth-title">Checking your link...</h1>
-            <p className="auth-subtitle">Just a second.</p>
+            <div className="auth-eyebrow"><Loader2 size={14} className="spin" /><span>{t('verifyChecking')}</span></div>
+            <h1 className="auth-title">{t('verifyCheckingTitle')}</h1>
+            <p className="auth-subtitle">{t('verifyJustSecond')}</p>
           </>
         )}
 
         {status === 'success' && (
           <>
             <div className="auth-eyebrow" style={{ color: '#10b981' }}>
-              <CheckCircle size={14} /><span>Verified</span>
+              <CheckCircle size={14} /><span>{t('verifyVerified')}</span>
             </div>
-            <h1 className="auth-title">You're in!</h1>
+            <h1 className="auth-title">{t('verifySuccessTitle')}</h1>
             <p className="auth-subtitle">
-              Your email is verified. Taking you to Hengam now...
+              {t('verifySuccessCopy')}
             </p>
           </>
         )}
@@ -95,13 +98,13 @@ function VerifyEmailToken() {
         {status === 'error' && (
           <>
             <div className="auth-eyebrow" style={{ color: '#ef4444' }}>
-              <XCircle size={14} /><span>Problem</span>
+              <XCircle size={14} /><span>{t('verifyProblem')}</span>
             </div>
-            <h1 className="auth-title">Couldn't verify</h1>
-            <p className="auth-subtitle">{error}</p>
+            <h1 className="auth-title">{t('verifyErrorTitle')}</h1>
+            <p className="auth-subtitle">{t(errorKey)}</p>
             <div className="auth-form" style={{ marginTop: 16 }}>
               <button className="settings-button auth-submit" style={{ justifyContent: 'center' }} onClick={() => navigate('/verify-email')}>
-                Go back
+                {t('verifyGoBack')}
               </button>
             </div>
           </>

@@ -6827,6 +6827,57 @@ select.input {
   transform: scaleX(-1);
 }
 
+.app.rtl .page-hero-content,
+.app.rtl .app-section,
+.app.rtl .legal-text,
+.app.rtl .pricing-page-card,
+.app.rtl .pricing-includes {
+  direction: rtl;
+  text-align: right;
+}
+
+.app.rtl .page-hero-actions {
+  justify-content: flex-end;
+}
+
+.app.rtl .page-hero-eyebrow,
+.app.rtl .page-hero-title,
+.app.rtl .page-hero-subtitle,
+.app.rtl .app-section-title,
+.app.rtl .app-section-subtitle,
+.app.rtl .legal-text,
+.app.rtl .pricing-page-plan,
+.app.rtl .pricing-page-price,
+.app.rtl .pricing-page-desc,
+.app.rtl .pricing-page-features,
+.app.rtl .pricing-includes h3,
+.app.rtl .pricing-includes p {
+  letter-spacing: 0;
+}
+
+.app.rtl .page-hero-title {
+  line-height: 1.22;
+}
+
+.app.rtl .page-hero-subtitle {
+  line-height: 1.85;
+}
+
+.app.rtl .legal-text {
+  line-height: 1.95;
+}
+
+.app.rtl .legal-text ul,
+.app.rtl .legal-text ol {
+  padding-left: 0;
+  padding-right: 20px;
+}
+
+.app.rtl .pricing-page-badge {
+  left: auto;
+  right: 24px;
+}
+
 /* Onboarding specific */
 .onboarding-card {
   max-width: 500px;

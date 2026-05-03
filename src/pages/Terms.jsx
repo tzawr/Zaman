@@ -1,80 +1,59 @@
 import { FileText, Users, AlertTriangle, Scale } from 'lucide-react'
 import PageHero from '../components/PageHero'
 import Section from '../components/Section'
+import { useI18n } from '../i18n'
 
 function Terms() {
+  const { t } = useI18n()
+
   return (
     <main className="app-page app-page-narrow">
       <PageHero
-        eyebrow="Legal"
-        title="Terms of Service"
-        subtitle="Last updated April 25, 2025. By using Hengam you agree to these terms."
+        eyebrow={t('termsEyebrow')}
+        title={t('termsTitle')}
+        subtitle={t('termsSubtitle')}
       />
 
-      <Section title="Using Hengam" icon={FileText} delay={0.05}>
+      <Section title={t('termsUsingTitle')} icon={FileText} delay={0.05}>
         <div className="legal-text">
-          <p>
-            By creating an account you agree to these Terms. If you don't agree, don't use the
-            service.
-          </p>
-          <p>Hengam is an employee scheduling tool for shift managers and their teams.</p>
+          <p>{t('termsUsingP1')}</p>
+          <p>{t('termsUsingP2')}</p>
           <ul>
-            <li>You must be 18 or older to create a manager account.</li>
-            <li>You're responsible for keeping your credentials secure.</li>
-            <li>You're responsible for all activity that happens under your account.</li>
-            <li>Don't share your account with others or create accounts on behalf of others without
-              their knowledge.</li>
+            <li>{t('termsUsing1')}</li>
+            <li>{t('termsUsing2')}</li>
+            <li>{t('termsUsing3')}</li>
+            <li>{t('termsUsing4')}</li>
           </ul>
         </div>
       </Section>
 
-      <Section title="Acceptable use" icon={AlertTriangle} delay={0.1}>
+      <Section title={t('termsAcceptableTitle')} icon={AlertTriangle} delay={0.1}>
         <div className="legal-text">
-          <p>You agree not to:</p>
+          <p>{t('termsAcceptableIntro')}</p>
           <ul>
-            <li>Use Hengam for any unlawful purpose.</li>
-            <li>Upload content that is harmful, offensive, or infringes on others' rights.</li>
-            <li>Attempt to gain unauthorized access to other accounts or our systems.</li>
-            <li>Reverse engineer, decompile, or extract the source code of Hengam.</li>
-            <li>Use automated scripts to access the service without our written permission.</li>
+            <li>{t('termsAcceptable1')}</li>
+            <li>{t('termsAcceptable2')}</li>
+            <li>{t('termsAcceptable3')}</li>
+            <li>{t('termsAcceptable4')}</li>
+            <li>{t('termsAcceptable5')}</li>
           </ul>
         </div>
       </Section>
 
-      <Section title="Employees & schedules" icon={Users} delay={0.15}>
+      <Section title={t('termsEmployeesTitle')} icon={Users} delay={0.15}>
         <div className="legal-text">
-          <p>
-            Manager accounts may invite employees. Employee accounts are free and provide read-only
-            access to that person's own schedule. Managers are responsible for ensuring invitations
-            are sent only to individuals who've agreed to participate.
-          </p>
-          <p>
-            Hengam-generated schedules are a starting point — you remain solely responsible for
-            reviewing, approving, and communicating final schedules to your team. Hengam makes no
-            guarantee that generated schedules comply with labor laws, union agreements, or other
-            regulatory requirements.
-          </p>
+          <p>{t('termsEmployeesP1')}</p>
+          <p>{t('termsEmployeesP2')}</p>
         </div>
       </Section>
 
-      <Section title="Liability & changes" icon={Scale} delay={0.2}>
+      <Section title={t('termsLiabilityTitle')} icon={Scale} delay={0.2}>
         <div className="legal-text">
+          <p>{t('termsLiabilityP1')}</p>
+          <p>{t('termsLiabilityP2')}</p>
+          <p>{t('termsLiabilityP3')}</p>
           <p>
-            Hengam is provided "as is" without warranties of any kind. We don't warrant the service
-            will be uninterrupted or error-free.
-          </p>
-          <p>
-            To the maximum extent permitted by law, Hengam and its founders shall not be liable for
-            any indirect, incidental, special, or consequential damages arising from your use of the
-            service.
-          </p>
-          <p>
-            We may suspend or terminate your account at any time if you violate these Terms. You
-            may delete your account at any time from the Settings page.
-          </p>
-          <p>
-            We may update these Terms from time to time. Material changes will be communicated by
-            email. Questions? Email{' '}
+            {t('termsLiabilityP4')}{' '}
             <a href="mailto:aliseyfiazadsa6@gmail.com">aliseyfiazadsa6@gmail.com</a>.
           </p>
         </div>

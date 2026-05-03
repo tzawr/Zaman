@@ -1,62 +1,50 @@
-import { Lock, Server, ShieldCheck, Mail } from 'lucide-react'
+import { Lock, Server, ShieldCheck } from 'lucide-react'
 import PageHero from '../components/PageHero'
 import Section from '../components/Section'
+import { useI18n } from '../i18n'
 
 function Security() {
+  const { t } = useI18n()
+
   return (
     <main className="app-page app-page-narrow">
       <PageHero
-        eyebrow="Trust & Safety"
-        title="Security"
-        subtitle="How we protect your data and your team's information."
+        eyebrow={t('securityEyebrow')}
+        title={t('securityTitle')}
+        subtitle={t('securitySubtitle')}
       />
 
-      <Section title="Authentication" icon={Lock} delay={0.05}>
+      <Section title={t('securityAuthTitle')} icon={Lock} delay={0.05}>
         <div className="legal-text">
-          <p>
-            All user identity is handled by Firebase Authentication — we never store raw passwords.
-            Passwords are hashed using industry-standard bcrypt via Firebase's managed auth system.
-            All sessions are validated server-side on every authenticated request.
-          </p>
+          <p>{t('securityAuthP1')}</p>
         </div>
       </Section>
 
-      <Section title="Data protection" icon={Server} delay={0.1}>
+      <Section title={t('securityDataTitle')} icon={Server} delay={0.1}>
         <div className="legal-text">
           <ul>
             <li>
-              <strong>Encryption in transit</strong> — all communication between your browser and
-              our servers uses TLS 1.2+.
+              <strong>{t('securityTransitStrong')}</strong> — {t('securityTransitCopy')}
             </li>
             <li>
-              <strong>Encryption at rest</strong> — Firestore and Firebase Storage encrypt all data
-              at rest by default.
+              <strong>{t('securityRestStrong')}</strong> — {t('securityRestCopy')}
             </li>
             <li>
-              <strong>Access rules</strong> — Firestore security rules enforce that users can only
-              read and write their own workspace data. Employee accounts are restricted to read-only
-              access of their own shifts.
+              <strong>{t('securityRulesStrong')}</strong> — {t('securityRulesCopy')}
             </li>
           </ul>
-          <p>
-            Schedule generation uses Hengam's scheduling engine. We send only the minimum necessary data
-            (employee names, roles, availability) — never contact information or credentials.
-          </p>
+          <p>{t('securityDataP1')}</p>
         </div>
       </Section>
 
-      <Section title="Responsible disclosure" icon={ShieldCheck} delay={0.15}>
+      <Section title={t('securityDisclosureTitle')} icon={ShieldCheck} delay={0.15}>
         <div className="legal-text">
           <p>
-            If you discover a security vulnerability in Hengam, please report it responsibly.
-            Email us at{' '}
-            <a href="mailto:aliseyfiazadsa6@gmail.com">aliseyfiazadsa6@gmail.com</a> with a
-            description of the issue and steps to reproduce it.
+            {t('securityDisclosureP1')}{' '}
+            <a href="mailto:aliseyfiazadsa6@gmail.com">aliseyfiazadsa6@gmail.com</a>{' '}
+            {t('securityDisclosureP1Tail')}
           </p>
-          <p>
-            Please do not publicly disclose vulnerabilities until we've had a reasonable opportunity
-            to address them. We'll acknowledge your report within 72 hours.
-          </p>
+          <p>{t('securityDisclosureP2')}</p>
         </div>
       </Section>
     </main>

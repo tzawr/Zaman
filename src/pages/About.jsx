@@ -1,54 +1,38 @@
 import { Zap, Target, Mail } from 'lucide-react'
 import PageHero from '../components/PageHero'
 import Section from '../components/Section'
+import { useI18n } from '../i18n'
 
 function About() {
+  const { t } = useI18n()
+
   return (
     <main className="app-page app-page-narrow">
       <PageHero
-        eyebrow="Company"
-        title="About Hengam"
-        subtitle="Hengam is the Persian word for time. That's what we're giving back to managers."
+        eyebrow={t('aboutEyebrow')}
+        title={t('aboutTitle')}
+        subtitle={t('aboutSubtitle')}
       />
 
-      <Section title="What we're building" icon={Zap} delay={0.05}>
+      <Section title={t('aboutBuildTitle')} icon={Zap} delay={0.05}>
         <div className="legal-text">
-          <p>
-            Hengam is a smart scheduling tool for shift managers who spend too much of their
-            week staring at a spreadsheet, texting employees about availability, and rebuilding the
-            same schedule from scratch every week.
-          </p>
-          <p>
-            Most scheduling software is either too simple (a shared Google Sheet) or too complex
-            (an enterprise HR platform that takes months to set up). Neither is built for the real
-            experience of a shift manager at a restaurant, retail store, or small business.
-          </p>
+          <p>{t('aboutBuildP1')}</p>
+          <p>{t('aboutBuildP2')}</p>
         </div>
       </Section>
 
-      <Section title="How it works" icon={Target} delay={0.1}>
+      <Section title={t('aboutHowTitle')} icon={Target} delay={0.1}>
         <div className="legal-text">
-          <p>
-            Managers add their team, set each employee's availability and roles, then describe what
-            they need for the week. Hengam generates a complete draft schedule in seconds.
-          </p>
-          <p>
-            From there, managers can edit, export as CSV or PDF, and share with their team.
-            Employees log in to see only their own shifts — nothing else.
-          </p>
-          <p>
-            Hengam handles the hard part — balancing availability, minimum coverage, role
-            requirements, and anti-clopening rules — so managers spend minutes on a schedule,
-            not hours.
-          </p>
+          <p>{t('aboutHowP1')}</p>
+          <p>{t('aboutHowP2')}</p>
+          <p>{t('aboutHowP3')}</p>
         </div>
       </Section>
 
-      <Section title="Get in touch" icon={Mail} delay={0.15}>
+      <Section title={t('aboutContactTitle')} icon={Mail} delay={0.15}>
         <div className="legal-text">
           <p>
-            Built in Irvine, CA. We'd love to hear from you — feedback, feature requests, or
-            just a hello. Email us at{' '}
+            {t('aboutContactP1')}{' '}
             <a href="mailto:aliseyfiazadsa6@gmail.com">aliseyfiazadsa6@gmail.com</a>.
           </p>
         </div>

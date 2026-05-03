@@ -1,19 +1,35 @@
-import { useState, useEffect } from 'react'
+import { useCallback, useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { motion } from 'framer-motion'
+import { motion as Motion } from 'framer-motion'
 import { Mail, RefreshCw } from 'lucide-react'
 import { sendEmailVerification } from 'firebase/auth'
 import { doc, getDoc } from 'firebase/firestore'
 import { auth, db } from '../firebase'
 import { useAuth } from '../AuthContext'
+import { useI18n } from '../i18n'
 
 function VerifyEmail() {
   const { currentUser, logOut } = useAuth()
+  const { t } = useI18n()
   const navigate = useNavigate()
   const [resending, setResending] = useState(false)
   const [cooldown, setCooldown] = useState(0)
   const [sent, setSent] = useState(false)
   const [error, setError] = useState('')
+
+  const redirectAfterVerify = useCallback(async () => {
+    try {
+      const snap = await getDoc(doc(db, 'users', auth.currentUser.uid))
+      if (snap.exists()) {
+        const d = snap.data()
+        navigate(d.accountType === 'employee' ? '/my-schedule' : d.onboarded ? '/dashboard' : '/onboarding')
+      } else {
+        navigate('/onboarding')
+      }
+    } catch {
+      navigate('/dashboard')
+    }
+  }, [navigate])
 
   useEffect(() => {
     if (!currentUser) return
@@ -28,24 +44,12 @@ function VerifyEmail() {
           clearInterval(interval)
           redirectAfterVerify()
         }
-      } catch {}
+      } catch {
+        // Keep polling; transient reload failures should not block verification.
+      }
     }, 3000)
     return () => clearInterval(interval)
-  }, [currentUser])
-
-  async function redirectAfterVerify() {
-    try {
-      const snap = await getDoc(doc(db, 'users', auth.currentUser.uid))
-      if (snap.exists()) {
-        const d = snap.data()
-        navigate(d.accountType === 'employee' ? '/my-schedule' : d.onboarded ? '/dashboard' : '/onboarding')
-      } else {
-        navigate('/onboarding')
-      }
-    } catch {
-      navigate('/dashboard')
-    }
-  }
+  }, [currentUser, redirectAfterVerify])
 
   async function handleResend() {
     if (!currentUser) return
@@ -62,7 +66,7 @@ function VerifyEmail() {
         })
       }, 1000)
     } catch {
-      setError('Failed to resend. Try again in a moment.')
+      setError(t('verifyResendError'))
     } finally {
       setResending(false)
     }
@@ -76,32 +80,32 @@ function VerifyEmail() {
   return (
     <main className="auth-page">
       <div className="auth-bg">
-        <motion.div className="auth-blob auth-blob-1"
+        <Motion.div className="auth-blob auth-blob-1"
           animate={{ x: [0, 30, -20, 0], y: [0, -20, 20, 0] }}
           transition={{ duration: 18, repeat: Infinity, ease: 'easeInOut' }} />
-        <motion.div className="auth-blob auth-blob-2"
+        <Motion.div className="auth-blob auth-blob-2"
           animate={{ x: [0, -30, 20, 0], y: [0, 20, -20, 0] }}
           transition={{ duration: 22, repeat: Infinity, ease: 'easeInOut' }} />
       </div>
 
-      <motion.div className="auth-card"
+      <Motion.div className="auth-card"
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5, ease: 'easeOut' }}
       >
         <div className="auth-eyebrow">
           <Mail size={14} />
-          <span>Check your inbox</span>
+          <span>{t('verifyInbox')}</span>
         </div>
 
-        <h1 className="auth-title">Verify your email</h1>
+        <h1 className="auth-title">{t('verifyTitle')}</h1>
         <p className="auth-subtitle">
-          We sent a verification link to{' '}
+          {t('verifySubtitleBefore')}{' '}
           <strong>{currentUser?.email}</strong>.
-          Click the link in that email to activate your account.
+          {' '}{t('verifySubtitleAfter')}
         </p>
 
-        {sent && <div className="auth-success">Email sent — check your inbox (and spam).</div>}
+        {sent && <div className="auth-success">{t('verifySent')}</div>}
         {error && <div className="auth-error">{error}</div>}
 
         <div className="auth-form">
@@ -113,16 +117,16 @@ function VerifyEmail() {
           >
             <RefreshCw size={14} />
             <span>
-              {cooldown > 0 ? `Resend in ${cooldown}s` : resending ? 'Sending...' : 'Resend verification email'}
+              {cooldown > 0 ? `${t('verifyResendIn')} ${cooldown}s` : resending ? t('verifySending') : t('verifyResend')}
             </span>
           </button>
         </div>
 
         <p className="auth-footer">
-          Wrong account?{' '}
-          <button className="link-button" onClick={handleSignOut}>Sign out</button>
+          {t('verifyWrongAccount')}{' '}
+          <button className="link-button" onClick={handleSignOut}>{t('verifySignOut')}</button>
         </p>
-      </motion.div>
+      </Motion.div>
     </main>
   )
 }
