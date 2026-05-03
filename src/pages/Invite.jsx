@@ -1,16 +1,18 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { motion } from 'framer-motion'
+import { motion as Motion } from 'framer-motion'
 import { ArrowLeft, Link2, Copy, Check, X, Users } from 'lucide-react'
 import { collection, query, where, onSnapshot, doc, setDoc, serverTimestamp } from 'firebase/firestore'
 import { db } from '../firebase'
 import { useAuth } from '../AuthContext'
 import PageHero from '../components/PageHero'
 import Section from '../components/Section'
+import { useI18n } from '../i18n'
 
 function Invite() {
   const navigate = useNavigate()
   const { currentUser, userData } = useAuth()
+  const { t } = useI18n()
 
   const [employees, setEmployees] = useState([])
   const [loading, setLoading] = useState(true)
@@ -55,34 +57,34 @@ function Invite() {
     <main className="app-page">
       <button className="app-back-link" onClick={() => navigate('/dashboard')}>
         <ArrowLeft size={14} />
-        <span>Back to dashboard</span>
+        <span>{t('backToDashboard')}</span>
       </button>
 
       <PageHero
-        eyebrow="Team"
-        title="Invite your team"
-        subtitle="Generate a personal invite link for each team member. Each link works once and expires after use."
+        eyebrow={t('employeesEyebrow')}
+        title={t('invitePageTitle')}
+        subtitle={t('invitePageSubtitle')}
       />
 
       <Section
-        title={loading ? 'Loading...' : employees.length === 0 ? 'No team members yet' : `${employees.length} ${employees.length === 1 ? 'person' : 'people'} on your team`}
-        subtitle={employees.length === 0 ? 'Add team members first on the Employees page.' : 'Click Invite to generate a unique link for each person.'}
+        title={loading ? t('loading') : employees.length === 0 ? t('noTeamYet') : `${employees.length} ${employees.length === 1 ? t('person') : t('people')} ${t('teamCountTitle')}`}
+        subtitle={employees.length === 0 ? t('inviteEmptySubtitle') : t('inviteListSubtitle')}
         icon={Users}
       >
         {loading ? (
-          <div className="empty-state"><p>Loading team...</p></div>
+          <div className="empty-state"><p>{t('loadingTeam')}</p></div>
         ) : employees.length === 0 ? (
           <div className="empty-state">
             <Users size={32} style={{ opacity: 0.3, marginBottom: 12 }} />
-            <p>No team members yet.</p>
+            <p>{t('noTeamYet')}</p>
             <button className="add-button" style={{ marginTop: 12 }} onClick={() => navigate('/employees')}>
-              Add team members
+              {t('addTeamMembers')}
             </button>
           </div>
         ) : (
           <div className="dashboard-invite-grid">
             {employees.map((emp, i) => (
-              <motion.div
+              <Motion.div
                 key={emp.id}
                 className="dashboard-invite-card"
                 initial={{ opacity: 0, y: 8 }}
@@ -99,9 +101,9 @@ function Invite() {
                   onClick={() => generateInvite(emp)}
                 >
                   <Link2 size={13} />
-                  <span>Get invite link</span>
+                  <span>{t('getInviteLink')}</span>
                 </button>
-              </motion.div>
+              </Motion.div>
             ))}
           </div>
         )}
@@ -111,22 +113,22 @@ function Invite() {
         <div className="modal-backdrop" onClick={() => setInviteModal(null)}>
           <div className="modal-card" onClick={e => e.stopPropagation()}>
             <div className="shift-modal-header">
-              <h3 className="modal-title">Invite {inviteModal.employeeName}</h3>
+              <h3 className="modal-title">{t('inviteModalTitle')} {inviteModal.employeeName}</h3>
               <button className="modal-close-btn" onClick={() => setInviteModal(null)}>
                 <X size={18} />
               </button>
             </div>
             <p className="shift-modal-day">
-              Share this link with {inviteModal.employeeName}. They'll create a free account for their shifts, availability, and time off.
+              {t('inviteModalCopyBefore')} {inviteModal.employeeName}. {t('inviteModalCopyAfter')}
             </p>
             <div className="invite-link-box">
               <span className="invite-link-text">{inviteModal.link}</span>
               <button className="invite-copy-btn" onClick={copyInviteLink}>
                 {inviteModal.copied ? <Check size={14} /> : <Copy size={14} />}
-                <span>{inviteModal.copied ? 'Copied!' : 'Copy'}</span>
+                <span>{inviteModal.copied ? t('copied') : t('copy')}</span>
               </button>
             </div>
-            <p className="invite-link-note">This link can only be used once. Generate a new one if needed.</p>
+            <p className="invite-link-note">{t('inviteLinkNote')}</p>
           </div>
         </div>
       )}

@@ -25,11 +25,13 @@ import {
 import { db } from '../firebase'
 import { useAuth } from '../AuthContext'
 import PageHero from '../components/PageHero'
+import { useI18n } from '../i18n'
 
 function Dashboard() {
   const navigate = useNavigate()
   const location = useLocation()
   const { currentUser } = useAuth()
+  const { t, language } = useI18n()
   const managerMode = !!location.state?.managerMode
   void motion
   
@@ -97,7 +99,7 @@ function Dashboard() {
     return (
       <main className="dashboard-page">
         <div className="empty-state">
-          <p>Loading dashboard...</p>
+          <p>{t('loadingDashboard')}</p>
         </div>
       </main>
     )
@@ -114,22 +116,22 @@ function Dashboard() {
     const monday = new Date(mondayStr + 'T12:00:00')
     const sunday = new Date(monday)
     sunday.setDate(monday.getDate() + 6)
-    const fmt = (d) => d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+    const fmt = (d) => d.toLocaleDateString(language === 'fa' ? 'fa-IR' : 'en-US', { month: 'short', day: 'numeric' })
     return `${fmt(monday)} — ${fmt(sunday)}`
   }
 
   function formatTime(timestamp) {
     if (!timestamp) return ''
     const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp)
-    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+    return date.toLocaleDateString(language === 'fa' ? 'fa-IR' : 'en-US', { month: 'short', day: 'numeric' })
   }
 
   return (
 <main className="app-page dashboard-layout">
   <PageHero
-  eyebrow={`${getGreeting()}, ${userData?.displayName || 'Manager'}`}
-  title={<>Welcome to <span className="landing-gradient-text">Hengam</span></>}
-  subtitle="Your scheduling command center."
+  eyebrow={`${getGreeting(t)}, ${userData?.displayName || t('manager')}`}
+  title={<>{t('welcomeTo')} <span className="landing-gradient-text">Hengam</span></>}
+  subtitle={t('dashboardSubtitle')}
 >
 </PageHero>
 
@@ -147,7 +149,7 @@ function Dashboard() {
           <div>
             <div className="dashboard-stat-value">{employees.length}</div>
             <div className="dashboard-stat-label">
-              {employees.length === 1 ? 'Team member' : 'Team members'}
+              {employees.length === 1 ? t('teamMember') : t('teamMembers')}
             </div>
           </div>
         </div>
@@ -159,7 +161,7 @@ function Dashboard() {
           <div>
             <div className="dashboard-stat-value">{roleCount}</div>
             <div className="dashboard-stat-label">
-              {roleCount === 1 ? 'Role' : 'Roles'} defined
+              {roleCount === 1 ? t('roleDefined') : t('rolesDefined')}
             </div>
           </div>
         </div>
@@ -170,7 +172,7 @@ function Dashboard() {
           </div>
           <div>
             <div className="dashboard-stat-value">{openDays}</div>
-            <div className="dashboard-stat-label">Open days / week</div>
+            <div className="dashboard-stat-label">{t('openDaysWeek')}</div>
           </div>
         </div>
 
@@ -180,7 +182,7 @@ function Dashboard() {
           </div>
           <div>
             <div className="dashboard-stat-value">{totalTargetHours}</div>
-            <div className="dashboard-stat-label">Total target hrs</div>
+            <div className="dashboard-stat-label">{t('totalTargetHours')}</div>
           </div>
         </div>
       </motion.div>
@@ -199,11 +201,11 @@ function Dashboard() {
           <Sparkles size={34} />
         </div>
         <div className="dashboard-generate-content">
-          <h2 className="dashboard-generate-title">Generate schedule</h2>
-          <p className="dashboard-generate-desc">Build this week's schedule with AI — in seconds</p>
+          <h2 className="dashboard-generate-title">{t('generateSchedule')}</h2>
+          <p className="dashboard-generate-desc">{t('dashboardGenerateDesc')}</p>
         </div>
         <div className="dashboard-generate-cta">
-          <span>Get started</span>
+          <span>{t('getStartedAction')}</span>
           <ArrowRight size={18} />
         </div>
       </motion.div>
@@ -215,37 +217,37 @@ function Dashboard() {
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5, delay: 0.22 }}
       >
-        <h2 className="dashboard-section-title">Quick actions</h2>
+        <h2 className="dashboard-section-title">{t('dashboardQuickActions')}</h2>
         <div className="dashboard-grid">
           <DashCard
             icon={Users}
-            title="Your team"
-            description={`${employees.length} ${employees.length === 1 ? 'person' : 'people'} on the team`}
+            title={t('yourTeam')}
+            description={`${employees.length} ${employees.length === 1 ? t('person') : t('people')} ${t('dashboardTeamDescription')}`}
             onClick={() => navigate('/employees')}
           />
           <DashCard
             icon={BookOpen}
-            title="Schedule history"
-            description={`${recentSchedules.length} recent ${recentSchedules.length === 1 ? 'schedule' : 'schedules'}`}
+            title={t('scheduleHistory')}
+            description={`${recentSchedules.length} ${t('dashboardRecentPrefix')} ${recentSchedules.length === 1 ? t('schedule') : t('schedules')}`}
             onClick={() => navigate('/schedules')}
           />
           <DashCard
             icon={SlidersHorizontal}
-            title="Workspace"
-            description="Hours, roles, coverage & rules"
+            title={t('workspace')}
+            description={t('dashboardWorkspaceDesc')}
             onClick={() => navigate('/settings')}
           />
           <DashCard
             icon={Link2}
-            title="Invite team members"
-            description="Send each person a link to join"
+            title={t('inviteTeam')}
+            description={t('dashboardInviteDesc')}
             onClick={() => navigate('/invite')}
           />
           {userData?.accountType === 'employee' && (
             <DashCard
               icon={CalendarDays}
-              title="My Schedule"
-              description="Go back to your personal shifts"
+              title={t('mySchedule')}
+              description={t('dashboardMyScheduleDesc')}
               onClick={() => navigate('/my-schedule')}
               highlighted
             />
@@ -262,12 +264,12 @@ function Dashboard() {
           transition={{ duration: 0.5, delay: 0.2 }}
         >
           <div className="dashboard-section-header">
-            <h2 className="dashboard-section-title">Recent schedules</h2>
+            <h2 className="dashboard-section-title">{t('recentSchedules')}</h2>
             <button 
               className="dashboard-see-all"
               onClick={() => navigate('/schedules')}
             >
-              See all <ArrowRight size={14} />
+              {t('seeAll')} <ArrowRight size={14} />
             </button>
           </div>
           <div className="dashboard-schedules">
@@ -285,7 +287,7 @@ function Dashboard() {
                     {formatWeekRange(sched.weekStart)}
                   </div>
                   <div className="dashboard-schedule-meta">
-                    Generated {formatTime(sched.createdAt)}
+                    {t('generated')} {formatTime(sched.createdAt)}
                   </div>
                 </div>
                 <ArrowRight size={16} className="dashboard-schedule-arrow" />
@@ -304,12 +306,12 @@ function Dashboard() {
           transition={{ duration: 0.5, delay: 0.25 }}
         >
           <div className="dashboard-section-header">
-            <h2 className="dashboard-section-title">Your team</h2>
+            <h2 className="dashboard-section-title">{t('yourTeam')}</h2>
             <button 
               className="dashboard-see-all"
               onClick={() => navigate('/employees')}
             >
-              Manage <ArrowRight size={14} />
+              {t('manage')} <ArrowRight size={14} />
             </button>
           </div>
           <div className="dashboard-team-grid">
@@ -344,15 +346,15 @@ function Dashboard() {
           <div className="dashboard-empty-icon">
             <Users size={32} />
           </div>
-          <h3 className="dashboard-empty-title">Add your first team member</h3>
+          <h3 className="dashboard-empty-title">{t('addFirstTeamMember')}</h3>
           <p className="dashboard-empty-desc">
-            Start by adding the people you schedule. It takes 2 minutes.
+            {t('addFirstTeamDesc')}
           </p>
           <button 
             className="landing-cta-primary"
             onClick={() => navigate('/employees')}
           >
-            <span>Add team members</span>
+            <span>{t('addTeamMembers')}</span>
             <ArrowRight size={16} />
           </button>
         </motion.div>
@@ -380,11 +382,11 @@ function DashCard({ icon: Icon, title, description, onClick, highlighted }) {
   )
 }
 
-function getGreeting() {
+function getGreeting(t) {
   const hour = new Date().getHours()
-  if (hour < 12) return 'Good morning'
-  if (hour < 18) return 'Good afternoon'
-  return 'Good evening'
+  if (hour < 12) return t('goodMorning')
+  if (hour < 18) return t('goodAfternoon')
+  return t('goodEvening')
 }
 
 export default Dashboard

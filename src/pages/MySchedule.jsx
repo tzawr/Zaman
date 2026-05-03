@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { motion } from 'framer-motion'
+import { motion as Motion } from 'framer-motion'
 import { ChevronLeft, ChevronRight, Clock, Calendar, Users, LayoutDashboard, Palmtree } from 'lucide-react'
 import { doc, getDoc, collection, query, where, orderBy, onSnapshot } from 'firebase/firestore'
 import { db } from '../firebase'
@@ -8,15 +8,16 @@ import { useAuth } from '../AuthContext'
 import PageHero from '../components/PageHero'
 import Section from '../components/Section'
 import ScheduleTable from '../components/ScheduleTable'
+import { useI18n } from '../i18n'
 
 const DAYS = [
-  { key: 'monday', label: 'Mon' },
-  { key: 'tuesday', label: 'Tue' },
-  { key: 'wednesday', label: 'Wed' },
-  { key: 'thursday', label: 'Thu' },
-  { key: 'friday', label: 'Fri' },
-  { key: 'saturday', label: 'Sat' },
-  { key: 'sunday', label: 'Sun' },
+  { key: 'monday', labelKey: 'dayMonShort' },
+  { key: 'tuesday', labelKey: 'dayTueShort' },
+  { key: 'wednesday', labelKey: 'dayWedShort' },
+  { key: 'thursday', labelKey: 'dayThuShort' },
+  { key: 'friday', labelKey: 'dayFriShort' },
+  { key: 'saturday', labelKey: 'daySatShort' },
+  { key: 'sunday', labelKey: 'daySunShort' },
 ]
 
 function formatTime(time24) {
@@ -27,24 +28,26 @@ function formatTime(time24) {
   return m === 0 ? `${displayH}${period.toLowerCase()}` : `${displayH}:${String(m).padStart(2, '0')}${period.toLowerCase()}`
 }
 
-function formatWeekRange(weekStart) {
+function formatWeekRange(weekStart, language) {
   if (!weekStart) return ''
   const start = new Date(weekStart + 'T12:00:00')
   const end = new Date(start)
   end.setDate(end.getDate() + 6)
   const opts = { month: 'short', day: 'numeric' }
-  return `${start.toLocaleDateString('en-US', opts)} – ${end.toLocaleDateString('en-US', { ...opts, year: 'numeric' })}`
+  const locale = language === 'fa' ? 'fa-IR' : 'en-US'
+  return `${start.toLocaleDateString(locale, opts)} – ${end.toLocaleDateString(locale, { ...opts, year: 'numeric' })}`
 }
 
-function formatDayDate(dateStr) {
+function formatDayDate(dateStr, language) {
   if (!dateStr) return ''
   const d = new Date(dateStr + 'T12:00:00')
-  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+  return d.toLocaleDateString(language === 'fa' ? 'fa-IR' : 'en-US', { month: 'short', day: 'numeric' })
 }
 
 function MySchedule() {
   const navigate = useNavigate()
   const { currentUser } = useAuth()
+  const { t, language } = useI18n()
 
   const [userDoc, setUserDoc] = useState(null)
   const [schedules, setSchedules] = useState([])
@@ -57,7 +60,7 @@ function MySchedule() {
     if (!currentUser) { navigate('/signin'); return }
     getDoc(doc(db, 'users', currentUser.uid)).then(snap => {
       if (!snap.exists()) {
-        setError('Account not set up correctly. Contact your manager.')
+        setError(t('myScheduleLoadErrorSetup'))
         setLoading(false)
         return
       }
@@ -65,10 +68,10 @@ function MySchedule() {
       if (data.accountType !== 'employee') { navigate('/dashboard'); return }
       setUserDoc(data)
     }).catch(() => {
-      setError('Failed to load your account. Try refreshing.')
+      setError(t('myScheduleLoadErrorAccount'))
       setLoading(false)
     })
-  }, [currentUser, navigate])
+  }, [currentUser, navigate, t])
 
   // Load schedules
   useEffect(() => {
@@ -82,16 +85,16 @@ function MySchedule() {
       setSchedules(snap.docs.map(d => ({ id: d.id, ...d.data() })))
       setLoading(false)
     }, () => {
-      setError('Failed to load schedules.')
+      setError(t('myScheduleLoadErrorSchedules'))
       setLoading(false)
     })
     return () => unsub()
-  }, [userDoc])
+  }, [userDoc, t])
 
   if (loading) {
     return (
       <main className="app-page app-page-narrow">
-        <div className="empty-state"><p>Loading your schedule...</p></div>
+        <div className="empty-state"><p>{t('loadingYourSchedule')}</p></div>
       </main>
     )
   }
@@ -124,18 +127,18 @@ function MySchedule() {
         className="my-schedule-week-btn"
         onClick={() => setWeekIndex(i => i + 1)}
         disabled={weekIndex >= totalWeeks - 1}
-        aria-label="Previous week"
+        aria-label={t('previousWeek')}
       >
         <ChevronLeft size={16} />
       </button>
       <span className="my-schedule-week-label">
-        {formatWeekRange(currentSchedule?.weekStart)}
+        {formatWeekRange(currentSchedule?.weekStart, language)}
       </span>
       <button
         className="my-schedule-week-btn"
         onClick={() => setWeekIndex(i => i - 1)}
         disabled={weekIndex <= 0}
-        aria-label="Next week"
+        aria-label={t('nextWeek')}
       >
         <ChevronRight size={16} />
       </button>
@@ -145,9 +148,9 @@ function MySchedule() {
   return (
     <main className="app-page">
       <PageHero
-        eyebrow="My Schedule"
-        title={`Hi, ${employeeName}`}
-        subtitle="Your shifts, updated in real time by your manager."
+        eyebrow={t('myScheduleEyebrow')}
+        title={`${t('hiPrefix')}, ${employeeName}`}
+        subtitle={t('myScheduleSubtitle')}
       >
         <div className="page-hero-actions">
           <button
@@ -155,14 +158,14 @@ function MySchedule() {
             onClick={() => navigate('/my-availability')}
           >
             <Palmtree size={15} />
-            <span>My availability</span>
+            <span>{t('myAvailability')}</span>
           </button>
           <button
             className="settings-button"
             onClick={() => navigate('/dashboard', { state: { managerMode: true } })}
           >
             <LayoutDashboard size={15} />
-            <span>Manager Dashboard</span>
+            <span>{t('managerDashboard')}</span>
           </button>
         </div>
         {canSeeFullSchedule && (
@@ -172,61 +175,61 @@ function MySchedule() {
               onClick={() => setViewMode('mine')}
             >
               <Clock size={14} />
-              <span>My shifts</span>
+              <span>{t('myShifts')}</span>
             </button>
             <button
               className={`my-schedule-toggle-btn ${viewMode === 'full' ? 'active' : ''}`}
               onClick={() => setViewMode('full')}
             >
               <Users size={14} />
-              <span>Full schedule</span>
+              <span>{t('fullSchedule')}</span>
             </button>
           </div>
         )}
       </PageHero>
 
       {totalWeeks === 0 ? (
-        <Section title="This week" icon={Calendar} delay={0.05}>
+        <Section title={t('thisWeek')} icon={Calendar} delay={0.05}>
           <div className="my-schedule-no-schedules">
             <Calendar size={32} style={{ opacity: 0.3, marginBottom: 12 }} />
-            <p>No schedule published yet. Check back soon.</p>
+            <p>{t('noSchedulePublished')}</p>
           </div>
         </Section>
       ) : viewMode === 'full' && canSeeFullSchedule ? (
-        <Section title="Full team schedule" icon={Users} delay={0.05}>
+        <Section title={t('fullTeamSchedule')} icon={Users} delay={0.05}>
           {weekNav}
           {currentSchedule?.data && (
             <ScheduleTable data={currentSchedule.data} />
           )}
         </Section>
       ) : (
-        <Section title="Your shifts this week" icon={Calendar} delay={0.05}>
+        <Section title={t('yourShiftsThisWeek')} icon={Calendar} delay={0.05}>
           {weekNav}
 
           {workingDays > 0 && (
             <div className="my-schedule-stats">
               <span className="my-schedule-stat">
                 <Clock size={13} />
-                {Math.round(totalHours * 10) / 10}h this week
+                {Math.round(totalHours * 10) / 10}{t('hoursThisWeek')}
               </span>
               <span className="my-schedule-stat">
-                {workingDays} {workingDays === 1 ? 'shift' : 'shifts'}
+                {workingDays} {workingDays === 1 ? t('shift') : t('shifts')}
               </span>
             </div>
           )}
 
           <div className="my-schedule-grid">
             {myDays.map((day, i) => (
-              <motion.div
+              <Motion.div
                 key={day.key}
                 className={`my-schedule-day ${day.shifts.length > 0 ? 'has-shift' : ''}`}
                 initial={{ opacity: 0, y: 8 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.3, delay: i * 0.04 }}
               >
-                <div className="my-schedule-day-label">{day.label}</div>
+                <div className="my-schedule-day-label">{t(day.labelKey)}</div>
                 {day.date && (
-                  <div className="my-schedule-day-date">{formatDayDate(day.date)}</div>
+                  <div className="my-schedule-day-date">{formatDayDate(day.date, language)}</div>
                 )}
                 {day.shifts.length > 0 ? (
                   day.shifts.map((shift, j) => (
@@ -242,9 +245,9 @@ function MySchedule() {
                     </div>
                   ))
                 ) : (
-                  <div className="my-schedule-day-off">Day off</div>
+                  <div className="my-schedule-day-off">{t('dayOff')}</div>
                 )}
-              </motion.div>
+              </Motion.div>
             ))}
           </div>
         </Section>

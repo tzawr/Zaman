@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { motion } from 'framer-motion'
+import { motion as Motion } from 'framer-motion'
 import { ArrowLeft, SlidersHorizontal, Plus, Users, Sparkles, BookOpen, Settings as SettingsIcon, ArrowRight, Link2, Copy, Check, X } from 'lucide-react'
 import { collection, query, where, onSnapshot, addDoc, deleteDoc, doc, setDoc, serverTimestamp } from 'firebase/firestore'
 import { db } from '../firebase'
@@ -8,11 +8,13 @@ import { useAuth } from '../AuthContext'
 import { useToast } from '../components/Toast'
 import PageHero from '../components/PageHero'
 import Section from '../components/Section'
+import { useI18n } from '../i18n'
 
 function Employees() {
   const navigate = useNavigate()
   const { currentUser } = useAuth()
   const toast = useToast()
+  const { t } = useI18n()
 
   const [employees, setEmployees] = useState([])
   const [userData, setUserData] = useState(null)
@@ -58,16 +60,16 @@ function Employees() {
   async function addEmployee() {
     const trimmed = name.trim()
     if (!trimmed) {
-      toast.info('Please enter a name')
+      toast.info(t('toastEnterName'))
       return
     }
     if (!role) {
-      toast.info('Please select a role')
+      toast.info(t('toastSelectRole'))
       return
     }
     const hrs = Number(targetHours)
     if (isNaN(hrs) || hrs < 0 || hrs > 80) {
-      toast.info('Target hours must be between 0 and 80')
+      toast.info(t('toastTargetHoursRange'))
       return
     }
     try {
@@ -82,10 +84,10 @@ function Employees() {
         createdAt: serverTimestamp()
       })
       setName('')
-      toast.success(`Added ${trimmed}`)
+      toast.success(`${t('addedPrefix')} ${trimmed}`)
     } catch (err) {
       console.error(err)
-      toast.error('Failed to add. Try again.')
+      toast.error(t('toastFailedAdd'))
     } finally {
       setAdding(false)
     }
@@ -114,13 +116,13 @@ function Employees() {
   }
 
   async function removeEmployee(id, empName) {
-    if (!window.confirm(`Remove ${empName}?`)) return
+    if (!window.confirm(`${t('confirmRemovePrefix')} ${empName}?`)) return
     try {
       await deleteDoc(doc(db, 'employees', id))
-      toast.success(`Removed ${empName}`)
+      toast.success(`${t('removedPrefix')} ${empName}`)
     } catch (err) {
       console.error(err)
-      toast.error('Failed to remove.')
+      toast.error(t('toastFailedRemove'))
     }
   }
 
@@ -133,13 +135,13 @@ function Employees() {
         onClick={() => navigate('/dashboard')}
       >
         <ArrowLeft size={14} />
-        <span>Back to dashboard</span>
+        <span>{t('backToDashboard')}</span>
       </button>
 
       <PageHero
-        eyebrow="Team"
-        title="Your team"
-        subtitle="The people you schedule. Click anyone to set their availability and time off."
+        eyebrow={t('employeesEyebrow')}
+        title={t('employeesTitle')}
+        subtitle={t('employeesSubtitle')}
       >
         <div className="page-hero-actions">
           <button 
@@ -147,57 +149,57 @@ function Employees() {
             onClick={() => navigate('/schedule')}
           >
             <Sparkles size={16} />
-            <span>Generate schedule</span>
+            <span>{t('generateSchedule')}</span>
           </button>
           <button 
             className="settings-button"
             onClick={() => navigate('/schedules')}
           >
             <BookOpen size={16} />
-            <span>My schedules</span>
+            <span>{t('mySchedules')}</span>
           </button>
           <button 
             className="settings-button"
             onClick={() => navigate('/settings')}
           >
             <SlidersHorizontal size={16} />
-            <span>Workspace</span>
+            <span>{t('workspace')}</span>
           </button>
         </div>
       </PageHero>
 
       <Section 
-        title="Add a team member" 
-        subtitle="Use nicknames to keep things private."
+        title={t('employeeAddTitle')}
+        subtitle={t('employeeAddSubtitle')}
         icon={Plus}
       >
         {rolesList.length === 0 ? (
           <div className="empty-inline">
-            <p>You need to set up roles first.</p>
+            <p>{t('employeeNeedRoles')}</p>
             <button 
               className="add-button"
               onClick={() => navigate('/settings')}
             >
               <SettingsIcon size={14} />
-              <span>Go to settings</span>
+              <span>{t('goToSettings')}</span>
             </button>
           </div>
         ) : (
           <div className="employee-form">
             <div className="employee-form-row">
               <div className="employee-form-field">
-                <label className="form-label">Name</label>
+                <label className="form-label">{t('name')}</label>
                 <input
                   type="text"
                   className="input"
-                  placeholder="e.g. Sam"
+                  placeholder={t('employeeNamePlaceholder')}
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && addEmployee()}
                 />
               </div>
               <div className="employee-form-field">
-                <label className="form-label">Role</label>
+                <label className="form-label">{t('role')}</label>
                 <select 
                   className="input"
                   value={role}
@@ -209,7 +211,7 @@ function Employees() {
                 </select>
               </div>
               <div className="employee-form-field employee-form-field-small">
-                <label className="form-label">Target hrs/week</label>
+                <label className="form-label">{t('targetHoursWeek')}</label>
                 <input
                   type="number"
                   min="0"
@@ -226,30 +228,30 @@ function Employees() {
               disabled={adding}
             >
               <Plus size={16} />
-              <span>{adding ? 'Adding...' : 'Add to team'}</span>
+              <span>{adding ? t('adding') : t('addToTeam')}</span>
             </button>
           </div>
         )}
       </Section>
 
       <Section 
-        title={employees.length === 0 ? 'No team members yet' : `${employees.length} ${employees.length === 1 ? 'person' : 'people'} on your team`}
-        subtitle={employees.length === 0 ? 'Add your first person above to get started.' : 'Click a card to manage their availability and time off.'}
+        title={employees.length === 0 ? t('noTeamYet') : `${employees.length} ${employees.length === 1 ? t('person') : t('people')} ${t('teamCountTitle')}`}
+        subtitle={employees.length === 0 ? t('employeesEmptySubtitle') : t('employeesListSubtitle')}
         icon={Users}
       >
         {loading ? (
           <div className="empty-state">
-            <p>Loading team...</p>
+            <p>{t('loadingTeam')}</p>
           </div>
         ) : employees.length === 0 ? (
           <div className="empty-state app-empty">
             <Users size={36} />
-            <p>Nobody here yet. Add your first team member above.</p>
+            <p>{t('employeesNobody')}</p>
           </div>
         ) : (
           <div className="team-grid">
             {employees.map((emp, i) => (
-              <motion.div
+              <Motion.div
                 key={emp.id}
                 className="team-card"
                 initial={{ opacity: 0, y: 10 }}
@@ -275,7 +277,7 @@ function Employees() {
                   </button>
                 </div>
                 <div className="team-card-bottom">
-                  <span className="team-card-meta">Target: {emp.targetHours ?? 0}h/wk</span>
+                  <span className="team-card-meta">{t('targetShort')}: {emp.targetHours ?? 0}{t('hoursPerWeekShort')}</span>
                   <div className="team-card-bottom-right">
                     <button
                       className="employee-invite-btn"
@@ -283,17 +285,17 @@ function Employees() {
                         e.stopPropagation()
                         generateInvite(emp)
                       }}
-                      title="Generate invite link"
+                      title={t('generateInviteLink')}
                     >
                       <Link2 size={12} />
-                      <span>Invite</span>
+                      <span>{t('invite')}</span>
                     </button>
                     <span className="team-card-arrow">
-                      Availability <ArrowRight size={12} />
+                      {t('availability')} <ArrowRight size={12} />
                     </span>
                   </div>
                 </div>
-              </motion.div>
+              </Motion.div>
             ))}
           </div>
         )}
@@ -302,23 +304,23 @@ function Employees() {
         <div className="modal-backdrop" onClick={() => setInviteModal(null)}>
           <div className="modal-card" onClick={e => e.stopPropagation()}>
             <div className="shift-modal-header">
-              <h3 className="modal-title">Invite {inviteModal.employeeName}</h3>
+              <h3 className="modal-title">{t('inviteModalTitle')} {inviteModal.employeeName}</h3>
               <button className="modal-close-btn" onClick={() => setInviteModal(null)}>
                 <X size={18} />
               </button>
             </div>
             <p className="shift-modal-day">
-              Share this link with {inviteModal.employeeName}. They'll create a free account for their shifts, availability, and time off.
+              {t('inviteModalCopyBefore')} {inviteModal.employeeName}. {t('inviteModalCopyAfter')}
             </p>
             <div className="invite-link-box">
               <span className="invite-link-text">{inviteModal.link}</span>
               <button className="invite-copy-btn" onClick={copyInviteLink}>
                 {inviteModal.copied ? <Check size={14} /> : <Copy size={14} />}
-                <span>{inviteModal.copied ? 'Copied!' : 'Copy'}</span>
+                <span>{inviteModal.copied ? t('copied') : t('copy')}</span>
               </button>
             </div>
             <p className="invite-link-note">
-              This link can only be used once. Generate a new one if needed.
+              {t('inviteLinkNote')}
             </p>
           </div>
         </div>
