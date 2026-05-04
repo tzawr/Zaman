@@ -1,16 +1,18 @@
-import { useState, useEffect } from 'react'
+import { useCallback, useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { motion } from 'framer-motion'
+import { motion as Motion } from 'framer-motion'
 import { ArrowRight, UserCheck } from 'lucide-react'
 import { doc, getDoc, setDoc, updateDoc, serverTimestamp } from 'firebase/firestore'
 import { db } from '../firebase'
 import { sendEmailVerification } from 'firebase/auth'
 import { useAuth } from '../AuthContext'
+import { useI18n } from '../i18n'
 
 function InviteAccept() {
   const { token } = useParams()
   const navigate = useNavigate()
   const { currentUser, signUp, signIn } = useAuth()
+  const { t } = useI18n()
 
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -18,35 +20,12 @@ function InviteAccept() {
   const [error, setError] = useState('')
   const [mode, setMode] = useState('signup')
 
-  // If already signed in, accept the invite immediately
-  useEffect(() => {
-    if (!currentUser) return
-    if (loading) return
-    if (!currentUser.emailVerified) {
-      setLoading(true)
-      acceptInvite(currentUser.uid, currentUser.email).then(() => {
-        navigate('/verify-email')
-      }).catch(err => {
-        setError(err.message || 'Failed to accept invite.')
-        setLoading(false)
-      })
-      return
-    }
-    setLoading(true)
-    acceptInvite(currentUser.uid, currentUser.email).then(() => {
-      navigate('/my-schedule')
-    }).catch(err => {
-      setError(err.message || 'Failed to accept invite.')
-      setLoading(false)
-    })
-  }, [currentUser, loading])
-
-  async function acceptInvite(uid, userEmail) {
+  const acceptInvite = useCallback(async (uid, userEmail) => {
     const inviteRef = doc(db, 'invites', token)
     const inviteSnap = await getDoc(inviteRef)
 
     if (!inviteSnap.exists()) {
-      throw new Error('This invite link is invalid.')
+      throw new Error(t('invalidInvite'))
     }
     const invite = inviteSnap.data()
     if (invite.used) {
@@ -55,7 +34,7 @@ function InviteAccept() {
       if (invite.usedBy === uid || existingUser?.linkedEmployeeId === invite.employeeId) {
         return
       }
-      throw new Error('This invite link has already been used.')
+      throw new Error(t('inviteAlreadyUsed'))
     }
 
     await setDoc(doc(db, 'users', uid), {
@@ -65,7 +44,7 @@ function InviteAccept() {
       managerId: invite.managerId,
       linkedEmployeeId: invite.employeeId,
       employeeName: invite.employeeName,
-      employeeRole: invite.employeeRole || 'Employee',
+      employeeRole: invite.employeeRole || t('employee'),
       allowEmployeeFullView: invite.allowEmployeeFullView === true,
       allowEmployeeAvailabilityUpdates: invite.allowEmployeeAvailabilityUpdates !== false,
       onboarded: true,
@@ -94,13 +73,38 @@ function InviteAccept() {
       // Some rules only let managers update invite docs. Do not leave the employee
       // stuck after their Auth account and user doc were created successfully.
     }
-  }
+  }, [token, t])
+
+  // If already signed in, accept the invite immediately
+  useEffect(() => {
+    if (!currentUser) return
+    if (loading) return
+    let cancelled = false
+
+    async function run() {
+      setLoading(true)
+      try {
+        await acceptInvite(currentUser.uid, currentUser.email)
+        if (cancelled) return
+        navigate(currentUser.emailVerified ? '/my-schedule' : '/verify-email')
+      } catch (err) {
+        if (cancelled) return
+        setError(err.message || t('failedAcceptInvite'))
+        setLoading(false)
+      }
+    }
+
+    run()
+    return () => {
+      cancelled = true
+    }
+  }, [acceptInvite, currentUser, loading, navigate, t])
 
   async function handleSubmit(e) {
     e.preventDefault()
     setError('')
     if (mode === 'signup' && password.length < 6) {
-      setError('Password must be at least 6 characters.')
+      setError(t('authWeakPassword'))
       return
     }
     setLoading(true)
@@ -124,9 +128,9 @@ function InviteAccept() {
     } catch (err) {
       if (err.code === 'auth/email-already-in-use') {
         setMode('signin')
-        setError('That account was already created. Sign in here to finish joining this team.')
+        setError(t('accountAlreadyCreatedJoin'))
       } else {
-        setError(prettyError(err.code) || err.message || 'Something went wrong.')
+        setError(prettyError(err.code, t) || err.message || t('authGeneric'))
       }
       setLoading(false)
     }
@@ -135,7 +139,7 @@ function InviteAccept() {
   if (loading && currentUser) {
     return (
       <main className="auth-page">
-        <div className="empty-state"><p>Accepting invite...</p></div>
+        <div className="empty-state"><p>{t('acceptingInvite')}</p></div>
       </main>
     )
   }
@@ -143,19 +147,19 @@ function InviteAccept() {
   return (
     <main className="auth-page">
       <div className="auth-bg">
-        <motion.div
+        <Motion.div
           className="auth-blob auth-blob-1"
           animate={{ x: [0, 30, -20, 0], y: [0, -20, 20, 0] }}
           transition={{ duration: 18, repeat: Infinity, ease: 'easeInOut' }}
         />
-        <motion.div
+        <Motion.div
           className="auth-blob auth-blob-2"
           animate={{ x: [0, -30, 20, 0], y: [0, 20, -20, 0] }}
           transition={{ duration: 22, repeat: Infinity, ease: 'easeInOut' }}
         />
       </div>
 
-      <motion.div
+      <Motion.div
         className="auth-card"
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -163,22 +167,22 @@ function InviteAccept() {
       >
         <div className="auth-eyebrow">
           <UserCheck size={14} />
-          <span>Team invite</span>
+          <span>{t('teamInvite')}</span>
         </div>
 
         <h1 className="auth-title">
-          Join your team on{' '}
+          {t('joinTeamTitleBefore')}{' '}
           <span className="landing-gradient-text">Hengam</span>
         </h1>
         <p className="auth-subtitle">
           {mode === 'signup'
-            ? 'Create a free account to see your shifts and manage availability when your manager enables it.'
-            : 'Sign in to your existing account to accept this invite.'}
+            ? t('inviteSignupSubtitle')
+            : t('inviteSigninSubtitle')}
         </p>
 
         <form onSubmit={handleSubmit} className="auth-form">
           <div className="auth-field">
-            <label className="form-label">Email</label>
+            <label className="form-label">{t('email')}</label>
             <input
               type="email"
               className="input"
@@ -190,11 +194,11 @@ function InviteAccept() {
             />
           </div>
           <div className="auth-field">
-            <label className="form-label">Password</label>
+            <label className="form-label">{t('password')}</label>
             <input
               type="password"
               className="input"
-              placeholder={mode === 'signup' ? 'At least 6 characters' : 'Your password'}
+              placeholder={mode === 'signup' ? t('passwordPlaceholder') : t('yourPassword')}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
@@ -211,10 +215,10 @@ function InviteAccept() {
           >
             <span>
               {loading
-                ? 'Joining...'
+                ? t('joining')
                 : mode === 'signup'
-                  ? 'Create account & join'
-                  : 'Sign in & join'}
+                  ? t('createAccountJoin')
+                  : t('signInJoin')}
             </span>
             {!loading && <ArrowRight size={16} />}
           </button>
@@ -223,34 +227,34 @@ function InviteAccept() {
         <p className="auth-footer">
           {mode === 'signup' ? (
             <>
-              Already have an account?{' '}
+              {t('alreadyHaveAccount')}{' '}
               <button className="link-button" onClick={() => setMode('signin')}>
-                Sign in instead
+                {t('signInInstead')}
               </button>
             </>
           ) : (
             <>
-              New to Hengam?{' '}
+              {t('newToHengam')}{' '}
               <button className="link-button" onClick={() => setMode('signup')}>
-                Create account
+                {t('createAccount')}
               </button>
             </>
           )}
         </p>
-      </motion.div>
+      </Motion.div>
     </main>
   )
 }
 
-function prettyError(code) {
+function prettyError(code, t) {
   const map = {
-    'auth/email-already-in-use': 'That email already has an account. Try signing in instead.',
-    'auth/invalid-email': 'That email looks wrong.',
-    'auth/weak-password': 'Password must be at least 6 characters.',
-    'auth/too-many-requests': 'Too many attempts. Try again in a few minutes.',
-    'auth/wrong-password': 'Wrong email or password.',
-    'auth/user-not-found': 'No account with that email.',
-    'auth/invalid-credential': 'Wrong email or password.',
+    'auth/email-already-in-use': t('authEmailInUse'),
+    'auth/invalid-email': t('authInvalidEmail'),
+    'auth/weak-password': t('authWeakPassword'),
+    'auth/too-many-requests': t('authTooMany'),
+    'auth/wrong-password': t('wrongEmailPassword'),
+    'auth/user-not-found': t('authUserNotFound'),
+    'auth/invalid-credential': t('wrongEmailPassword'),
   }
   return map[code]
 }

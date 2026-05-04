@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { useNavigate, Link } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
 import { Loader2, ArrowLeft, Check, X, ArrowRight, Pencil, Trash2, Plus, Clock, Shield, Target, Users, Eye, KeyRound, Lock, AlignLeft, Mic, MicOff } from 'lucide-react'
 import { doc, onSnapshot, setDoc, serverTimestamp } from 'firebase/firestore'
 import {
@@ -14,15 +14,16 @@ import { useToast } from '../components/Toast'
 import PageHero from '../components/PageHero'
 import Section from '../components/Section'
 import { useSpeechInput } from '../utils/useSpeechInput'
+import { useI18n } from '../i18n'
 
 const DAYS = [
-  { key: 'monday', label: 'Monday' },
-  { key: 'tuesday', label: 'Tuesday' },
-  { key: 'wednesday', label: 'Wednesday' },
-  { key: 'thursday', label: 'Thursday' },
-  { key: 'friday', label: 'Friday' },
-  { key: 'saturday', label: 'Saturday' },
-  { key: 'sunday', label: 'Sunday' }
+  { key: 'monday', labelKey: 'dayMonday' },
+  { key: 'tuesday', labelKey: 'dayTuesday' },
+  { key: 'wednesday', labelKey: 'dayWednesday' },
+  { key: 'thursday', labelKey: 'dayThursday' },
+  { key: 'friday', labelKey: 'dayFriday' },
+  { key: 'saturday', labelKey: 'daySaturday' },
+  { key: 'sunday', labelKey: 'daySunday' }
 ]
 
 const DEFAULT_HOURS = DAYS.reduce((acc, d) => {
@@ -39,6 +40,7 @@ function Settings() {
   const navigate = useNavigate()
   const { currentUser } = useAuth()
   const toast = useToast()
+  const { t } = useI18n()
 
   const [operatingHours, setOperatingHours] = useState(DEFAULT_HOURS)
   const [coverage, setCoverage] = useState(DEFAULT_COVERAGE)
@@ -103,7 +105,7 @@ function Settings() {
         { merge: true }
       )
     } catch {
-      toast.error('Failed to save.')
+      toast.error(t('failedToSave'))
     } finally {
       setSaving(false)
     }
@@ -137,42 +139,42 @@ function Settings() {
 
   // Roles
   async function addRole() {
-    const t = newRoleName.trim()
-    if (!t) { toast.info('Please enter a role name'); return }
-    if (roles.some(r => r.name.toLowerCase() === t.toLowerCase())) {
-      toast.info('That role already exists'); return
+    const roleName = newRoleName.trim()
+    if (!roleName) { toast.info(t('toastEnterRoleName')); return }
+    if (roles.some(r => r.name.toLowerCase() === roleName.toLowerCase())) {
+      toast.info(t('toastRoleExists')); return
     }
-    const next = [...roles, { id: Date.now().toString(), name: t }]
+    const next = [...roles, { id: Date.now().toString(), name: roleName }]
     await saveToFirebase({ roles: next })
     setNewRoleName('')
-    toast.success(`Added "${t}"`)
+    toast.success(`${t('addedPrefix')} "${roleName}"`)
   }
   function startEditRole(r) { setEditingRoleId(r.id); setEditingRoleName(r.name) }
   async function saveEditRole() {
-    const t = editingRoleName.trim()
-    if (!t) { toast.info('Role name cannot be empty'); return }
-    if (roles.some(r => r.id !== editingRoleId && r.name.toLowerCase() === t.toLowerCase())) {
-      toast.info('Another role has that name'); return
+    const roleName = editingRoleName.trim()
+    if (!roleName) { toast.info(t('toastRoleEmpty')); return }
+    if (roles.some(r => r.id !== editingRoleId && r.name.toLowerCase() === roleName.toLowerCase())) {
+      toast.info(t('toastRoleDuplicate')); return
     }
-    const next = roles.map(r => r.id === editingRoleId ? { ...r, name: t } : r)
+    const next = roles.map(r => r.id === editingRoleId ? { ...r, name: roleName } : r)
     await saveToFirebase({ roles: next })
     setEditingRoleId(null); setEditingRoleName('')
-    toast.success('Role updated')
+    toast.success(t('toastRoleUpdated'))
   }
   function cancelEditRole() { setEditingRoleId(null); setEditingRoleName('') }
   async function deleteRole(id, name) {
-    if (!window.confirm(`Delete the "${name}" role?`)) return
+    if (!window.confirm(`${t('confirmDeleteRoleBefore')} "${name}" ${t('confirmDeleteRoleAfter')}`)) return
     const next = roles.filter(r => r.id !== id)
     await saveToFirebase({ roles: next })
-    toast.success(`Deleted "${name}"`)
+    toast.success(`${t('deletedPrefix')} "${name}"`)
   }
 
   const hasPasswordProvider = currentUser?.providerData?.some(p => p.providerId === 'password')
 
   async function handlePasswordChange() {
-    if (newPassword.length < 6) { setPasswordChangeMsg('New password must be at least 6 characters.'); return }
-    if (newPassword !== confirmPassword) { setPasswordChangeMsg('Passwords do not match.'); return }
-    if (!currentPassword) { setPasswordChangeMsg('Enter your current password.'); return }
+    if (newPassword.length < 6) { setPasswordChangeMsg(t('passwordTooShort')); return }
+    if (newPassword !== confirmPassword) { setPasswordChangeMsg(t('passwordsDoNotMatch')); return }
+    if (!currentPassword) { setPasswordChangeMsg(t('enterCurrentPassword')); return }
     setPasswordChangeLoading(true)
     setPasswordChangeMsg('')
     try {
@@ -181,12 +183,12 @@ function Settings() {
       await updatePassword(currentUser, newPassword)
       setCurrentPassword(''); setNewPassword(''); setConfirmPassword('')
       setShowPasswordChange(false)
-      toast.success('Password changed!')
+      toast.success(t('passwordChanged'))
     } catch (err) {
       if (err.code === 'auth/wrong-password' || err.code === 'auth/invalid-credential') {
-        setPasswordChangeMsg('Current password is incorrect.')
+        setPasswordChangeMsg(t('currentPasswordIncorrect'))
       } else {
-        setPasswordChangeMsg(err.message || 'Failed to change password.')
+        setPasswordChangeMsg(err.message || t('failedChangePassword'))
       }
     } finally {
       setPasswordChangeLoading(false)
@@ -197,9 +199,9 @@ function Settings() {
     try {
       await sendPasswordResetEmail(auth, currentUser.email)
       setPasswordResetSent(true)
-      toast.success('Reset email sent!')
+      toast.success(t('resetEmailSent'))
     } catch {
-      toast.error('Failed to send reset email.')
+      toast.error(t('failedSendResetEmail'))
     }
   }
 
@@ -207,7 +209,7 @@ function Settings() {
     return (
       <main className="app-page">
         <div className="empty-state">
-          <p>Loading... <Loader2 size={16} className="spin" /></p>
+          <p>{t('loading')} <Loader2 size={16} className="spin" /></p>
         </div>
       </main>
     )
@@ -217,25 +219,25 @@ function Settings() {
     <main className="app-page">
       <button className="app-back-link" onClick={() => navigate('/dashboard')}>
         <ArrowLeft size={14} />
-        <span>Back to dashboard</span>
+        <span>{t('backToDashboard')}</span>
       </button>
 
       <PageHero
-        eyebrow="Your workspace"
-        title="Workspace"
-        subtitle="Configure how your business operates. Hengam uses these rules every time it builds a schedule."
+        eyebrow={t('workspaceEyebrow')}
+        title={t('workspace')}
+        subtitle={t('workspaceSubtitle')}
       >
         {saving && (
           <span className="saving-pill">
             <Clock size={12} />
-            Saving...
+            {t('saving')}
           </span>
         )}
       </PageHero>
 
       <Section
-        title="Roles"
-        subtitle="The roles you can assign to your team."
+        title={t('rolesTitle')}
+        subtitle={t('rolesSubtitle')}
         icon={Users}
       >
         <div className="roles-list">
@@ -267,10 +269,10 @@ function Settings() {
                 <>
                   <div className="role-name">{r.name}</div>
                   <div className="role-actions">
-                    <button className="role-edit-btn" onClick={() => startEditRole(r)} aria-label="Edit">
+                    <button className="role-edit-btn" onClick={() => startEditRole(r)} aria-label={t('edit')}>
                       <Pencil size={14} />
                     </button>
-                    <button className="role-delete-btn" onClick={() => deleteRole(r.id, r.name)} aria-label="Delete">
+                    <button className="role-delete-btn" onClick={() => deleteRole(r.id, r.name)} aria-label={t('delete')}>
                       <Trash2 size={14} />
                     </button>
                   </div>
@@ -279,28 +281,28 @@ function Settings() {
             </div>
           ))}
           {roles.length === 0 && (
-            <p className="role-empty">No roles yet. Add your first one below.</p>
+            <p className="role-empty">{t('noRolesYet')}</p>
           )}
         </div>
         <div className="role-add-row">
           <input
             type="text"
             className="input"
-            placeholder="e.g. Cashier, Barista, Manager"
+            placeholder={t('rolePlaceholder')}
             value={newRoleName}
             onChange={(e) => setNewRoleName(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && addRole()}
           />
           <button className="add-button" onClick={addRole}>
             <Plus size={16} />
-            <span>Add role</span>
+            <span>{t('addRole')}</span>
           </button>
         </div>
       </Section>
 
       <Section
-        title="Operating hours"
-        subtitle="When your business is open for service."
+        title={t('operatingHours')}
+        subtitle={t('operatingHoursSubtitle')}
         icon={Clock}
       >
         <div className="day-list">
@@ -309,9 +311,9 @@ function Settings() {
             return (
               <div key={day.key} className={`day-row ${d.open ? 'available' : 'unavailable'}`}>
                 <button className="day-toggle" onClick={() => toggleDay(day.key)}>
-                  <span className="day-name">{day.label}</span>
+                  <span className="day-name">{t(day.labelKey)}</span>
                   <span className="day-status" style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-                    {d.open ? <><Check size={16} /><span>Open</span></> : <><X size={16} /><span>Closed</span></>}
+                    {d.open ? <><Check size={16} /><span>{t('open')}</span></> : <><X size={16} /><span>{t('closed')}</span></>}
                   </span>
                 </button>
                 {d.open && (
@@ -338,8 +340,8 @@ function Settings() {
       </Section>
 
       <Section
-        title="Coverage minimums"
-        subtitle="How many people need to be working at any given time."
+        title={t('coverageMinimums')}
+        subtitle={t('coverageMinimumsSubtitle')}
         icon={Target}
       >
         <div className="day-list">
@@ -349,8 +351,8 @@ function Settings() {
             return (
               <div key={day.key} className={`day-row ${d.open ? 'available' : 'unavailable'}`}>
                 <div className="day-toggle">
-                  <span className="day-name">{day.label}</span>
-                  <span className="day-status">{d.open ? 'Open' : 'Closed'}</span>
+                  <span className="day-name">{t(day.labelKey)}</span>
+                  <span className="day-status">{d.open ? t('open') : t('closed')}</span>
                 </div>
                 {d.open && (
                   <div className="coverage-input-wrapper">
@@ -362,7 +364,7 @@ function Settings() {
                       value={c}
                       onChange={(e) => updateCoverage(day.key, e.target.value)}
                     />
-                    <span className="coverage-label">{c === 1 ? 'person' : 'people'} min</span>
+                    <span className="coverage-label">{c === 1 ? t('person') : t('people')} {t('min')}</span>
                   </div>
                 )}
               </div>
@@ -372,35 +374,35 @@ function Settings() {
       </Section>
 
       <Section
-        title="Coverage rules"
-        subtitle="Describe your coverage needs in plain English. Hengam AI reads this every time it builds a schedule."
+        title={t('coverageRules')}
+        subtitle={t('coverageRulesSubtitle')}
         icon={AlignLeft}
       >
         <div className="instruction-editor coverage-rule-editor">
           <div className="instruction-toolbar">
             <div className="instruction-toolbar-copy">
               <Mic size={15} />
-              <span>Speak or type coverage rules</span>
+              <span>{t('speakCoverageRules')}</span>
             </div>
             {coverageSpeech.supported ? (
               <button
                 type="button"
                 className={`voice-button voice-button-premium ${coverageSpeech.listening ? 'listening' : ''}`}
                 onClick={coverageSpeech.toggleListening}
-                title={coverageSpeech.listening ? 'Stop dictation' : 'Dictate coverage rules'}
+                title={coverageSpeech.listening ? t('stopDictation') : t('dictateCoverageRules')}
               >
                 <span className="voice-dot" aria-hidden />
                 {coverageSpeech.listening ? <MicOff size={16} /> : <Mic size={16} />}
-                <span>{coverageSpeech.listening ? 'Listening...' : 'Start dictation'}</span>
+                <span>{coverageSpeech.listening ? t('listening') : t('startDictation')}</span>
               </button>
             ) : (
-              <span className="voice-unavailable">Voice unavailable in this browser</span>
+              <span className="voice-unavailable">{t('voiceUnavailable')}</span>
             )}
           </div>
           <textarea
             className="input ai-instr-textarea"
             rows={5}
-            placeholder={`e.g. "Always have at least one senior barista on shift. Weekend mornings need 3 people minimum. Never leave the floor with only one person during lunch hours."`}
+            placeholder={t('coverageRulesPlaceholder')}
             value={coverageRules}
             onChange={(e) => setCoverageRules(e.target.value)}
             onBlur={() => saveToFirebase({ coverageRules })}
@@ -408,19 +410,19 @@ function Settings() {
           />
         </div>
         <p style={{ fontSize: 12, color: 'var(--text-tertiary)', margin: '6px 0 0' }}>
-          Changes save automatically when you click away.
+          {t('autoSaveOnBlur')}
         </p>
       </Section>
 
       <Section
-        title="Scheduling rules"
-        subtitle="Constraints Hengam will always respect when building schedules."
+        title={t('schedulingRules')}
+        subtitle={t('schedulingRulesSubtitle')}
         icon={Shield}
       >
         <div className="rule-card">
           <div className="rule-info">
-            <p className="rule-title">Prevent clopening</p>
-            <p className="rule-description">Don't schedule someone to close one day and open the next.</p>
+            <p className="rule-title">{t('preventClopening')}</p>
+            <p className="rule-description">{t('preventClopeningDesc')}</p>
           </div>
           <label className="switch">
             <input
@@ -434,8 +436,8 @@ function Settings() {
         {preventClopening && (
           <div className="rule-card">
             <div className="rule-info">
-              <p className="rule-title">Minimum hours between shifts</p>
-              <p className="rule-description">How many hours off required between shift end and next shift start.</p>
+              <p className="rule-title">{t('minimumHoursBetweenShifts')}</p>
+              <p className="rule-description">{t('minimumHoursBetweenShiftsDesc')}</p>
             </div>
             <div className="coverage-input-wrapper">
               <input
@@ -446,21 +448,21 @@ function Settings() {
                 value={minHoursBetweenShifts}
                 onChange={(e) => updateMinHours(e.target.value)}
               />
-              <span className="coverage-label">hours</span>
+              <span className="coverage-label">{t('hours')}</span>
             </div>
           </div>
         )}
       </Section>
 
       <Section
-        title="Team access"
-        subtitle="Control what employees can see and update when they log in."
+        title={t('teamAccess')}
+        subtitle={t('teamAccessSubtitle')}
         icon={Eye}
       >
         <div className="rule-card">
           <div className="rule-info">
-            <p className="rule-title">Let employees see the full schedule</p>
-            <p className="rule-description">When on, employees can toggle between their own shifts and the full team schedule.</p>
+            <p className="rule-title">{t('allowFullScheduleTitle')}</p>
+            <p className="rule-description">{t('allowFullScheduleDesc')}</p>
           </div>
           <label className="switch">
             <input
@@ -473,8 +475,8 @@ function Settings() {
         </div>
         <div className="rule-card">
           <div className="rule-info">
-            <p className="rule-title">Let employees update availability</p>
-            <p className="rule-description">When on, employees can submit their own weekly availability and time off. Managers can still edit everything from the team page.</p>
+            <p className="rule-title">{t('allowAvailabilityTitle')}</p>
+            <p className="rule-description">{t('allowAvailabilityDesc')}</p>
           </div>
           <label className="switch">
             <input
@@ -489,20 +491,20 @@ function Settings() {
 
       {hasPasswordProvider && (
         <Section
-          title="Account security"
-          subtitle="Change your password or send a reset link."
+          title={t('accountSecurity')}
+          subtitle={t('accountSecuritySubtitle')}
           icon={Lock}
         >
           <div className="rule-card">
             <div className="rule-info">
-              <p className="rule-title">Password</p>
-              <p className="rule-description">Change your account password.</p>
+              <p className="rule-title">{t('password')}</p>
+              <p className="rule-description">{t('passwordSecurityDesc')}</p>
             </div>
             <button
               className="settings-button"
               onClick={() => { setShowPasswordChange(v => !v); setPasswordChangeMsg('') }}
             >
-              {showPasswordChange ? 'Cancel' : 'Change'}
+              {showPasswordChange ? t('cancel') : t('change')}
             </button>
           </div>
           {showPasswordChange && (
@@ -510,7 +512,7 @@ function Settings() {
               <input
                 type="password"
                 className="input"
-                placeholder="Current password"
+                placeholder={t('currentPassword')}
                 value={currentPassword}
                 onChange={(e) => setCurrentPassword(e.target.value)}
                 autoComplete="current-password"
@@ -518,7 +520,7 @@ function Settings() {
               <input
                 type="password"
                 className="input"
-                placeholder="New password (min. 6 characters)"
+                placeholder={t('newPasswordPlaceholder')}
                 value={newPassword}
                 onChange={(e) => setNewPassword(e.target.value)}
                 autoComplete="new-password"
@@ -526,7 +528,7 @@ function Settings() {
               <input
                 type="password"
                 className="input"
-                placeholder="Confirm new password"
+                placeholder={t('confirmNewPassword')}
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 autoComplete="new-password"
@@ -539,7 +541,7 @@ function Settings() {
                 style={{ justifyContent: 'center' }}
               >
                 <KeyRound size={14} />
-                <span>{passwordChangeLoading ? 'Changing...' : 'Change password'}</span>
+                <span>{passwordChangeLoading ? t('changing') : t('changePassword')}</span>
               </button>
               <button
                 className="link-button"
@@ -547,7 +549,7 @@ function Settings() {
                 onClick={handlePasswordResetEmail}
                 disabled={passwordResetSent}
               >
-                {passwordResetSent ? 'Reset email sent!' : 'Forgot current password? Send a reset link instead'}
+                {passwordResetSent ? t('resetEmailSent') : t('forgotPasswordReset')}
               </button>
             </div>
           )}

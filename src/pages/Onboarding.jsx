@@ -1,16 +1,18 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { motion, AnimatePresence } from 'framer-motion'
+import { motion as Motion, AnimatePresence } from 'framer-motion'
 import { ArrowRight, Plus, X, Sparkles, Users } from 'lucide-react'
 import { doc, setDoc, getDoc, serverTimestamp } from 'firebase/firestore'
 import { db } from '../firebase'
 import { useAuth } from '../AuthContext'
 import { useToast } from '../components/Toast'
+import { useI18n } from '../i18n'
 
 function Onboarding() {
   const navigate = useNavigate()
   const { currentUser } = useAuth()
   const toast = useToast()
+  const { t } = useI18n()
 
   const [step, setStep] = useState(1)
   const [displayName, setDisplayName] = useState('')
@@ -46,7 +48,7 @@ function Onboarding() {
     const t = newRole.trim()
     if (!t) return
     if (roles.some(r => r.name.toLowerCase() === t.toLowerCase())) {
-      toast.info('You already added that role')
+      toast.info(t('toastRoleAlreadyAdded'))
       return
     }
     setRoles([...roles, { id: Date.now().toString(), name: t }])
@@ -59,11 +61,11 @@ function Onboarding() {
 
   async function handleStep1Next() {
     if (!displayName.trim()) {
-      toast.info('Please enter your name')
+      toast.info(t('toastEnterYourName'))
       return
     }
     if (!userRole.trim()) {
-      toast.info('Please enter what you do')
+      toast.info(t('toastEnterYourRole'))
       return
     }
     setStep(2)
@@ -71,7 +73,7 @@ function Onboarding() {
 
   async function finishOnboarding() {
     if (roles.length === 0) {
-      toast.info('Add at least one role')
+      toast.info(t('toastAddAtLeastOneRole'))
       return
     }
     try {
@@ -87,7 +89,7 @@ function Onboarding() {
       navigate('/dashboard')
     } catch (err) {
       console.error(err)
-      toast.error('Failed to save. Try again.')
+      toast.error(t('toastFailedAdd'))
       setSaving(false)
     }
   }
@@ -95,7 +97,7 @@ function Onboarding() {
   if (loading) {
     return (
       <main className="auth-page">
-        <div className="empty-state"><p>Loading...</p></div>
+        <div className="empty-state"><p>{t('loading')}</p></div>
       </main>
     )
   }
@@ -103,19 +105,19 @@ function Onboarding() {
   return (
     <main className="auth-page">
       <div className="auth-bg">
-        <motion.div 
+        <Motion.div 
           className="auth-blob auth-blob-1"
           animate={{ x: [0, 30, -20, 0], y: [0, -20, 20, 0] }}
           transition={{ duration: 18, repeat: Infinity, ease: 'easeInOut' }}
         />
-        <motion.div 
+        <Motion.div 
           className="auth-blob auth-blob-2"
           animate={{ x: [0, -30, 20, 0], y: [0, 20, -20, 0] }}
           transition={{ duration: 22, repeat: Infinity, ease: 'easeInOut' }}
         />
       </div>
 
-      <motion.div
+      <Motion.div
         className="auth-card onboarding-card"
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -129,7 +131,7 @@ function Onboarding() {
 
         <AnimatePresence mode="wait">
           {step === 1 && (
-            <motion.div
+            <Motion.div
               key="step1"
               initial={{ opacity: 0, x: 20 }}
               animate={{ opacity: 1, x: 0 }}
@@ -138,31 +140,31 @@ function Onboarding() {
             >
               <div className="auth-eyebrow">
                 <Sparkles size={14} />
-                <span>Step 1 of 2</span>
+                <span>{t('onboardingStep1')}</span>
               </div>
-              <h1 className="auth-title">Let's get to know you</h1>
+              <h1 className="auth-title">{t('onboardingTitle1')}</h1>
               <p className="auth-subtitle">
-                Tell us who you are so we can personalize Hengam.
+                {t('onboardingSubtitle1')}
               </p>
 
               <div className="auth-form">
                 <div className="auth-field">
-                  <label className="form-label">Your name</label>
+                  <label className="form-label">{t('yourName')}</label>
                   <input
                     type="text"
                     className="input"
-                    placeholder="e.g. Sam"
+                    placeholder={t('employeeNamePlaceholder')}
                     value={displayName}
                     onChange={(e) => setDisplayName(e.target.value)}
                     autoFocus
                   />
                 </div>
                 <div className="auth-field">
-                  <label className="form-label">What do you do?</label>
+                  <label className="form-label">{t('yourRoleQuestion')}</label>
                   <input
                     type="text"
                     className="input"
-                    placeholder="e.g. Shift Manager at a coffee shop"
+                    placeholder={t('roleExamplePlaceholder')}
                     value={userRole}
                     onChange={(e) => setUserRole(e.target.value)}
                     onKeyDown={(e) => e.key === 'Enter' && handleStep1Next()}
@@ -173,15 +175,15 @@ function Onboarding() {
                   className="landing-cta-primary auth-submit"
                   onClick={handleStep1Next}
                 >
-                  <span>Continue</span>
+                  <span>{t('continue')}</span>
                   <ArrowRight size={16} />
                 </button>
               </div>
-            </motion.div>
+            </Motion.div>
           )}
 
           {step === 2 && (
-            <motion.div
+            <Motion.div
               key="step2"
               initial={{ opacity: 0, x: 20 }}
               animate={{ opacity: 1, x: 0 }}
@@ -190,11 +192,11 @@ function Onboarding() {
             >
               <div className="auth-eyebrow">
                 <Users size={14} />
-                <span>Step 2 of 2</span>
+                <span>{t('onboardingStep2')}</span>
               </div>
-              <h1 className="auth-title">What roles does your team have?</h1>
+              <h1 className="auth-title">{t('onboardingTitle2')}</h1>
               <p className="auth-subtitle">
-                Add each role on your team. You can edit these later.
+                {t('onboardingSubtitle2')}
               </p>
 
               <div className="auth-form">
@@ -202,7 +204,7 @@ function Onboarding() {
                   <input
                     type="text"
                     className="input"
-                    placeholder="e.g. Barista"
+                    placeholder={t('baristaPlaceholder')}
                     value={newRole}
                     onChange={(e) => setNewRole(e.target.value)}
                     onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), addRole())}
@@ -210,7 +212,7 @@ function Onboarding() {
                   />
                   <button className="add-button" onClick={addRole}>
                     <Plus size={14} />
-                    <span>Add</span>
+                    <span>{t('add')}</span>
                   </button>
                 </div>
 
@@ -236,22 +238,22 @@ function Onboarding() {
                     onClick={() => setStep(1)}
                     disabled={saving}
                   >
-                    Back
+                    {t('back')}
                   </button>
                   <button 
                     className="landing-cta-primary"
                     onClick={finishOnboarding}
                     disabled={saving || roles.length === 0}
                   >
-                    <span>{saving ? 'Setting up...' : 'Finish setup'}</span>
+                    <span>{saving ? t('settingUp') : t('finishSetup')}</span>
                     {!saving && <ArrowRight size={16} />}
                   </button>
                 </div>
               </div>
-            </motion.div>
+            </Motion.div>
           )}
         </AnimatePresence>
-      </motion.div>
+      </Motion.div>
     </main>
   )
 }
