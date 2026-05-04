@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   Loader2,
@@ -39,28 +39,12 @@ import { runScheduler } from '../utils/scheduler'
 import { useSpeechInput } from '../utils/useSpeechInput'
 import PageHero from '../components/PageHero'
 import Section from '../components/Section'
-
-
-const AI_EXAMPLES = [
-  'Put Sam and Alex on the same shift every day this week',
-  'Keep all shifts under 8 hours — everyone needs rest',
-  'Alice is training a new hire — pair them on every shift',
-  'Prioritize full-time staff for Friday and Saturday nights',
-  'No one should work more than 5 days in a row',
-]
-
-const AI_UNDERSTANDS = [
-  { icon: Users, text: 'Names & team relationships' },
-  { icon: MessageSquare, text: 'Natural language rules' },
-  { icon: Calendar, text: 'Dates & time-off exceptions' },
-  { icon: Target, text: 'Hours, coverage & fairness' },
-  { icon: GraduationCap, text: 'Training & mentoring situations' },
-  { icon: Zap, text: 'Complex multi-step constraints' },
-]
+import { useI18n } from '../i18n'
 
 function Schedule() {
   const navigate = useNavigate()
   const { currentUser } = useAuth()
+  const { t, language } = useI18n()
   const generationSeedRef = useRef(0)
   
   const [employees, setEmployees] = useState([])
@@ -83,24 +67,7 @@ function Schedule() {
     if (!currentUser) navigate('/signin')
   }, [currentUser, navigate])
 
-  // Load employees
-  useEffect(() => {
-    if (!currentUser) return
-    
-    const q = query(
-      collection(db, 'employees'),
-      where('userId', '==', currentUser.uid)
-    )
-    
-    const unsubscribe = onSnapshot(q, async (snapshot) => {
-      const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))
-      setEmployees(await mergeEmployeePortalAvailability(data))
-    })
-    
-    return () => unsubscribe()
-  }, [currentUser])
-
-  async function mergeEmployeePortalAvailability(team) {
+  const mergeEmployeePortalAvailability = useCallback(async (team) => {
     if (!currentUser || team.length === 0) return team
     try {
       const portalQuery = query(
@@ -128,7 +95,24 @@ function Schedule() {
     } catch {
       return team
     }
-  }
+  }, [currentUser])
+
+  // Load employees
+  useEffect(() => {
+    if (!currentUser) return
+
+    const q = query(
+      collection(db, 'employees'),
+      where('userId', '==', currentUser.uid)
+    )
+
+    const unsubscribe = onSnapshot(q, async (snapshot) => {
+      const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))
+      setEmployees(await mergeEmployeePortalAvailability(data))
+    })
+
+    return () => unsubscribe()
+  }, [currentUser, mergeEmployeePortalAvailability])
 
   // Load user settings
   useEffect(() => {
@@ -151,12 +135,12 @@ function Schedule() {
     setCopied(false)
 
     if (employees.length === 0) {
-      setError('Add at least one employee before generating a schedule.')
+      setError(t('scheduleNeedEmployee'))
       return
     }
 
     if (!userSettings?.operatingHours) {
-      setError('Please set your operating hours in Settings first.')
+      setError(t('scheduleNeedHours'))
       return
     }
 
@@ -207,7 +191,7 @@ function Schedule() {
 
     } catch (err) {
       console.error(err)
-      setError(err.message || 'Failed to generate schedule. Try again.')
+      setError(err.message || t('scheduleFailedGenerate'))
     } finally {
       setGenerating(false)
     }
@@ -258,7 +242,7 @@ function Schedule() {
       }
     } catch (err) {
       console.error('Export failed:', err)
-      setError('Export failed. Try again.')
+      setError(t('exportFailed'))
     } finally {
       setExporting(null)
     }
@@ -268,7 +252,7 @@ function Schedule() {
     return (
       <main className="app-page">
         <div className="empty-state">
-          <p>Loading... <Loader2 size={16} className="spin" aria-hidden /></p>
+          <p>{t('loading')} <Loader2 size={16} className="spin" aria-hidden /></p>
         </div>
       </main>
     )
@@ -286,13 +270,13 @@ function Schedule() {
           onClick={() => navigate('/dashboard')}
         >
           <ArrowLeft size={14} />
-          <span>Back to dashboard</span>
+          <span>{t('backToDashboard')}</span>
         </button>
   
         <PageHero
-          eyebrow="AI Scheduling"
-          title="Generate schedule"
-          subtitle="Pick a week, add any special rules, and let Hengam build your schedule in seconds."
+          eyebrow={t('aiScheduling')}
+          title={t('generateSchedule')}
+          subtitle={t('scheduleBuilderSubtitle')}
         >
           <div className="page-hero-actions">
             <button 
@@ -300,7 +284,7 @@ function Schedule() {
               onClick={() => navigate('/schedules')}
             >
               <BookOpen size={16} />
-              <span>My schedules</span>
+              <span>{t('mySchedules')}</span>
             </button>
           </div>
         </PageHero>
@@ -311,29 +295,29 @@ function Schedule() {
     <Users size={18} />
     <div>
       <div className="gen-stat-value">{employees.length}</div>
-      <div className="gen-stat-label">{employees.length === 1 ? 'person' : 'people'}</div>
+      <div className="gen-stat-label">{employees.length === 1 ? t('person') : t('people')}</div>
     </div>
   </div>
   <div className="gen-stat">
     <Calendar size={18} />
     <div>
       <div className="gen-stat-value">{openDaysCount}</div>
-      <div className="gen-stat-label">open days</div>
+      <div className="gen-stat-label">{t('openDays')}</div>
     </div>
   </div>
   <div className="gen-stat">
     <Target size={18} />
     <div>
       <div className="gen-stat-value">{userSettings?.roles?.length || 0}</div>
-      <div className="gen-stat-label">roles</div>
+      <div className="gen-stat-label">{t('roles')}</div>
     </div>
   </div>
 </div>
 
 {/* Week picker */}
 <Section
-  title="Which week?"
-  subtitle="Pick the Monday of the week to schedule."
+  title={t('whichWeek')}
+  subtitle={t('whichWeekSubtitle')}
   icon={Calendar}
 >
   <div style={{ display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
@@ -344,7 +328,7 @@ function Schedule() {
       onChange={(e) => setWeekStart(e.target.value)}
     />
     <div className="gen-week-preview">
-      {formatWeekRange(weekStart)}
+      {formatWeekRange(weekStart, language)}
     </div>
   </div>
 </Section>
@@ -357,12 +341,11 @@ function Schedule() {
     <div className="ai-instr-heading">
       <div className="ai-instr-badge">
         <Sparkles size={11} />
-        <span>Hengam AI</span>
+        <span>{t('hengamAi')}</span>
       </div>
-      <h2 className="ai-instr-title">Special instructions</h2>
+      <h2 className="ai-instr-title">{t('specialInstructions')}</h2>
       <p className="ai-instr-subtitle">
-        Describe anything in plain English — names, exceptions, relationships, preferences.
-        Hengam reads it all and builds around it. No other scheduler can do this.
+        {t('specialInstructionsSubtitle')}
       </p>
     </div>
   </div>
@@ -371,26 +354,26 @@ function Schedule() {
     <div className="instruction-toolbar">
       <div className="instruction-toolbar-copy">
         <Mic size={15} />
-        <span>Speak or type manager notes</span>
+        <span>{t('speakManagerNotes')}</span>
       </div>
       {specialSpeech.supported ? (
         <button
           type="button"
           className={`voice-button voice-button-premium ${specialSpeech.listening ? 'listening' : ''}`}
           onClick={specialSpeech.toggleListening}
-          title={specialSpeech.listening ? 'Stop dictation' : 'Dictate instructions'}
+          title={specialSpeech.listening ? t('stopDictation') : t('dictateInstructions')}
         >
           <span className="voice-dot" aria-hidden />
           {specialSpeech.listening ? <MicOff size={16} /> : <Mic size={16} />}
-          <span>{specialSpeech.listening ? 'Listening...' : 'Start dictation'}</span>
+          <span>{specialSpeech.listening ? t('listening') : t('startDictation')}</span>
         </button>
       ) : (
-        <span className="voice-unavailable">Voice unavailable in this browser</span>
+        <span className="voice-unavailable">{t('voiceUnavailable')}</span>
       )}
     </div>
     <textarea
       className="ai-instr-textarea"
-      placeholder={`Try: "Alex is training a new hire this week — keep them together on every shift"\n\nOr: "Sam and Jordan can't work together. Give extra hours to full-time staff Friday."`}
+      placeholder={t('specialInstructionsPlaceholder')}
       value={prompt}
       onChange={(e) => setPrompt(e.target.value)}
       rows={4}
@@ -398,8 +381,10 @@ function Schedule() {
   </div>
 
   <div className="ai-chip-row">
-    <span className="ai-chip-label">Try an example:</span>
-    {AI_EXAMPLES.map(ex => (
+    <span className="ai-chip-label">{t('tryExample')}</span>
+    {['aiExample1', 'aiExample2', 'aiExample3', 'aiExample4', 'aiExample5'].map(key => {
+      const ex = t(key)
+      return (
       <button
         key={ex}
         className="ai-chip"
@@ -408,18 +393,29 @@ function Schedule() {
       >
         {ex}
       </button>
-    ))}
+      )
+    })}
   </div>
 
   <div className="ai-understands">
-    <div className="ai-understands-label">What Hengam reads</div>
+    <div className="ai-understands-label">{t('whatHengamReads')}</div>
     <div className="ai-understands-grid">
-      {AI_UNDERSTANDS.map(item => (
-        <div key={item.text} className="ai-understands-item">
-          <item.icon size={14} />
-          <span>{item.text}</span>
+      {[
+        { icon: Users, key: 'aiReadsNames' },
+        { icon: MessageSquare, key: 'aiReadsRules' },
+        { icon: Calendar, key: 'aiReadsDates' },
+        { icon: Target, key: 'aiReadsHours' },
+        { icon: GraduationCap, key: 'aiReadsTraining' },
+        { icon: Zap, key: 'aiReadsComplex' },
+      ].map(item => {
+        const Icon = item.icon
+        return (
+        <div key={item.key} className="ai-understands-item">
+          <Icon size={14} />
+          <span>{t(item.key)}</span>
         </div>
-      ))}
+        )
+      })}
     </div>
   </div>
 </div>
@@ -435,18 +431,18 @@ function Schedule() {
     {generating ? (
       <>
         <Loader2 size={18} className="spin" />
-        <span>Generating schedule...</span>
+        <span>{t('generatingSchedule')}</span>
       </>
     ) : (
       <>
         <Sparkles size={18} />
-        <span>Generate schedule</span>
+        <span>{t('generateSchedule')}</span>
       </>
     )}
   </button>
   {employees.length === 0 && (
     <p className="hint-text">
-      <a onClick={() => navigate('/employees')}>Add team members</a> first.
+      <a onClick={() => navigate('/employees')}>{t('addTeamMembers')}</a> {t('addTeamFirstSuffix')}
     </p>
   )}
   {error && <p className="hint-text">{error}</p>}
@@ -458,9 +454,9 @@ function Schedule() {
       <div className="schedule-result-bar-left">
         <span className="schedule-result-ready">
           <Check size={13} />
-          {saved ? 'Saved' : 'Ready'}
+          {saved ? t('saved') : t('ready')}
         </span>
-        <span className="schedule-result-week">{formatWeekRange(weekStart)}</span>
+        <span className="schedule-result-week">{formatWeekRange(weekStart, language)}</span>
       </div>
 
       <div className="schedule-result-actions">
@@ -473,7 +469,7 @@ function Schedule() {
           }}
         >
           {copied ? <ClipboardCheck size={15} /> : <Clipboard size={15} />}
-          <span>{copied ? 'Copied!' : 'Copy'}</span>
+          <span>{copied ? t('copied') : t('copy')}</span>
         </button>
 
         <button
@@ -482,7 +478,7 @@ function Schedule() {
           disabled={generating}
         >
           <RotateCw size={15} />
-          <span>Regenerate</span>
+          <span>{t('regenerate')}</span>
         </button>
 
         <div className="export-dropdown-wrap">
@@ -492,7 +488,7 @@ function Schedule() {
             disabled={exporting !== null}
           >
             {exporting ? <Loader2 size={15} className="spin" /> : <Download size={15} />}
-            <span>{exporting ? 'Exporting…' : 'Export'}</span>
+            <span>{exporting ? `${t('exporting')}...` : t('export')}</span>
           </button>
           {exportMenuOpen && (
             <>
@@ -501,22 +497,22 @@ function Schedule() {
                 <button className="export-dropdown-item" onClick={() => handleExport('csv')}>
                   <FileText size={15} />
                   <div>
-                    <div className="export-item-title">CSV (Excel)</div>
-                    <div className="export-item-desc">Open in spreadsheet apps</div>
+                    <div className="export-item-title">{t('exportCsvTitle')}</div>
+                    <div className="export-item-desc">{t('exportCsvDesc')}</div>
                   </div>
                 </button>
                 <button className="export-dropdown-item" onClick={() => handleExport('png')}>
                   <Image size={15} />
                   <div>
-                    <div className="export-item-title">PNG Image</div>
-                    <div className="export-item-desc">Share as screenshot</div>
+                    <div className="export-item-title">{t('exportPngTitle')}</div>
+                    <div className="export-item-desc">{t('exportPngDesc')}</div>
                   </div>
                 </button>
                 <button className="export-dropdown-item" onClick={() => handleExport('pdf')}>
                   <FileText size={15} />
                   <div>
-                    <div className="export-item-title">PDF Document</div>
-                    <div className="export-item-desc">Print-ready</div>
+                    <div className="export-item-title">{t('exportPdfTitle')}</div>
+                    <div className="export-item-desc">{t('exportPdfDesc')}</div>
                   </div>
                 </button>
               </div>
@@ -593,13 +589,14 @@ function getNextMonday() {
 }
 
 // Helper: format week range for display
-function formatWeekRange(mondayStr) {
+function formatWeekRange(mondayStr, language = 'en') {
   if (!mondayStr) return ''
   const monday = new Date(mondayStr + 'T12:00:00')
   const sunday = new Date(monday)
   sunday.setDate(monday.getDate() + 6)
   
-  const format = (d) => d.toLocaleDateString('en-US', { 
+  const locale = language === 'fa' ? 'fa-IR' : 'en-US'
+  const format = (d) => d.toLocaleDateString(locale, {
     month: 'short', 
     day: 'numeric' 
   })

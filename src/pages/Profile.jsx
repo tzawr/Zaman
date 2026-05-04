@@ -19,6 +19,7 @@ import { useAuth } from '../AuthContext'
 import { useToast } from '../components/Toast'
 import PageHero from '../components/PageHero'
 import Section from '../components/Section'
+import { useI18n } from '../i18n'
 
 const COUNTRY_CODES = [
   { code: '+1',   name: 'United States / Canada' },
@@ -81,6 +82,7 @@ function Profile() {
   const navigate = useNavigate()
   const { currentUser } = useAuth()
   const toast = useToast()
+  const { t, direction } = useI18n()
 
   const [userData, setUserData] = useState(null)
   const [displayName, setDisplayName] = useState('')
@@ -153,7 +155,7 @@ function Profile() {
       }
       return
     }
-    const t = setTimeout(() => {
+    const timer = setTimeout(() => {
       if (recaptchaRef.current) {
         recaptchaRef.current.clear()
         recaptchaRef.current = null
@@ -163,14 +165,14 @@ function Profile() {
           size: 'invisible',
         })
         recaptchaRef.current.render().catch(() => {
-          setPhoneError('Could not load reCAPTCHA. Refresh the page and try again.')
+          setPhoneError(t('recaptchaLoadFailed'))
         })
       } catch {
-        setPhoneError('Could not load reCAPTCHA. Refresh the page and try again.')
+        setPhoneError(t('recaptchaLoadFailed'))
       }
     }, 150)
-    return () => clearTimeout(t)
-  }, [phoneStep])
+    return () => clearTimeout(timer)
+  }, [phoneStep, t])
 
   async function handleSave() {
     setSaving(true)
@@ -181,9 +183,9 @@ function Profile() {
         businessName: businessName.trim(),
         profileUpdatedAt: serverTimestamp(),
       }, { merge: true })
-      toast.success('Profile saved!')
+      toast.success(t('profileSaved'))
     } catch {
-      toast.error('Failed to save profile.')
+      toast.error(t('failedSaveProfile'))
     } finally {
       setSaving(false)
     }
@@ -193,7 +195,7 @@ function Profile() {
   const linkedPhone = currentUser?.phoneNumber
 
   async function handleEmailChange() {
-    if (!newEmail.trim()) { setEmailChangeMsg('Enter a new email address.'); return }
+    if (!newEmail.trim()) { setEmailChangeMsg(t('enterNewEmail')); return }
     setEmailChangeLoading(true)
     setEmailChangeMsg('')
     try {
@@ -203,16 +205,16 @@ function Profile() {
       }
       await verifyBeforeUpdateEmail(currentUser, newEmail.trim())
       setNewEmail(''); setEmailReauthPassword(''); setShowEmailChange(false)
-      toast.success('Verification email sent to ' + newEmail.trim())
+      toast.success(`${t('verificationEmailSentTo')} ${newEmail.trim()}`)
     } catch (err) {
       if (err.code === 'auth/requires-recent-login') {
-        setEmailChangeMsg('Enter your current password to confirm.')
+        setEmailChangeMsg(t('confirmCurrentPassword'))
       } else if (err.code === 'auth/wrong-password' || err.code === 'auth/invalid-credential') {
-        setEmailChangeMsg('Incorrect password.')
+        setEmailChangeMsg(t('authWrongPassword'))
       } else if (err.code === 'auth/email-already-in-use') {
-        setEmailChangeMsg('That email is already in use.')
+        setEmailChangeMsg(t('emailAlreadyInUse'))
       } else {
-        setEmailChangeMsg(err.message || 'Failed to update email.')
+        setEmailChangeMsg(err.message || t('failedUpdateEmail'))
       }
     } finally {
       setEmailChangeLoading(false)
@@ -221,8 +223,8 @@ function Profile() {
 
   async function handleSendPhoneCode() {
     const localNumber = phoneNumber.trim().replace(/[\s\-()]/g, '')
-    if (!localNumber) { setPhoneError('Enter your phone number.'); return }
-    if (!recaptchaRef.current) { setPhoneError('reCAPTCHA not ready yet — wait a moment and try again.'); return }
+    if (!localNumber) { setPhoneError(t('enterPhoneNumber')); return }
+    if (!recaptchaRef.current) { setPhoneError(t('recaptchaNotReady')); return }
     const fullPhone = countryCode + localNumber
     setPhoneLoading(true)
     setPhoneError('')
@@ -232,7 +234,7 @@ function Profile() {
       const vid = await provider.verifyPhoneNumber(fullPhone, recaptchaRef.current)
       setVerificationId(vid)
       setPhoneStep('enter-code')
-      setPhoneInfo('SMS request sent. It can take a minute. If nothing arrives, use Resend code.')
+      setPhoneInfo(t('smsRequestSent'))
     } catch (err) {
       // Tear down and rebuild the verifier so the next attempt starts clean
       if (recaptchaRef.current) { recaptchaRef.current.clear(); recaptchaRef.current = null }
@@ -241,12 +243,12 @@ function Profile() {
           size: 'invisible',
         })
         recaptchaRef.current.render().catch(() => {
-          setPhoneError('Could not reload reCAPTCHA. Refresh the page and try again.')
+          setPhoneError(t('recaptchaReloadFailed'))
         })
       } catch {
-        setPhoneError('Could not reload reCAPTCHA. Refresh the page and try again.')
+        setPhoneError(t('recaptchaReloadFailed'))
       }
-      setPhoneError(formatPhoneAuthError(err))
+      setPhoneError(formatPhoneAuthError(err, t))
     } finally {
       setPhoneLoading(false)
     }
@@ -257,11 +259,11 @@ function Profile() {
     setPhoneCode('')
     setVerificationId('')
     setPhoneError('')
-    setPhoneInfo('Complete reCAPTCHA again, then send a new code.')
+    setPhoneInfo(t('completeRecaptchaAgain'))
   }
 
   async function handleVerifyPhoneCode() {
-    if (!phoneCode.trim()) { setPhoneError('Enter the 6-digit code.'); return }
+    if (!phoneCode.trim()) { setPhoneError(t('enterSixDigitCode')); return }
     setPhoneLoading(true)
     setPhoneError('')
     try {
@@ -272,14 +274,14 @@ function Profile() {
         await linkWithCredential(currentUser, credential)
       }
       setPhoneStep('idle'); setPhoneNumber(''); setPhoneCode(''); setVerificationId('')
-      toast.success('Phone number verified!')
+      toast.success(t('phoneVerified'))
     } catch (err) {
       if (err.code === 'auth/invalid-verification-code') {
-        setPhoneError('Invalid code. Check and try again.')
+        setPhoneError(t('invalidCode'))
       } else if (err.code === 'auth/credential-already-in-use') {
-        setPhoneError('That phone number is linked to another account.')
+        setPhoneError(t('phoneLinkedElsewhere'))
       } else {
-        setPhoneError(formatPhoneAuthError(err))
+        setPhoneError(formatPhoneAuthError(err, t))
       }
     } finally {
       setPhoneLoading(false)
@@ -287,9 +289,9 @@ function Profile() {
   }
 
   async function handlePasswordChange() {
-    if (newPassword.length < 6) { setPasswordChangeMsg('New password must be at least 6 characters.'); return }
-    if (newPassword !== confirmPassword) { setPasswordChangeMsg('Passwords do not match.'); return }
-    if (!currentPassword) { setPasswordChangeMsg('Enter your current password.'); return }
+    if (newPassword.length < 6) { setPasswordChangeMsg(t('passwordTooShort')); return }
+    if (newPassword !== confirmPassword) { setPasswordChangeMsg(t('passwordsDoNotMatch')); return }
+    if (!currentPassword) { setPasswordChangeMsg(t('enterCurrentPassword')); return }
     setPasswordChangeLoading(true)
     setPasswordChangeMsg('')
     try {
@@ -298,12 +300,12 @@ function Profile() {
       await updatePassword(currentUser, newPassword)
       setCurrentPassword(''); setNewPassword(''); setConfirmPassword('')
       setShowPasswordChange(false)
-      toast.success('Password changed!')
+      toast.success(t('passwordChanged'))
     } catch (err) {
       if (err.code === 'auth/wrong-password' || err.code === 'auth/invalid-credential') {
-        setPasswordChangeMsg('Current password is incorrect.')
+        setPasswordChangeMsg(t('currentPasswordIncorrect'))
       } else {
-        setPasswordChangeMsg(err.message || 'Failed to change password.')
+        setPasswordChangeMsg(err.message || t('failedChangePassword'))
       }
     } finally {
       setPasswordChangeLoading(false)
@@ -314,9 +316,9 @@ function Profile() {
     try {
       await sendPasswordResetEmail(auth, currentUser.email)
       setPasswordResetSent(true)
-      toast.success('Reset email sent!')
+      toast.success(t('resetEmailSent'))
     } catch {
-      toast.error('Failed to send reset email.')
+      toast.error(t('failedSendResetEmail'))
     }
   }
 
@@ -324,7 +326,7 @@ function Profile() {
     return (
       <main className="app-page">
         <div className="empty-state">
-          <p>Loading... <Loader2 size={16} className="spin" /></p>
+          <p>{t('loading')} <Loader2 size={16} className="spin" /></p>
         </div>
       </main>
     )
@@ -338,35 +340,35 @@ function Profile() {
     <main className="app-page">
       <button className="app-back-link" onClick={() => navigate(isEmployee ? '/my-schedule' : '/dashboard')}>
         <ArrowLeft size={14} />
-        <span>Back</span>
+        <span>{t('back')}</span>
       </button>
 
       <PageHero
-        eyebrow="Account"
-        title="Your profile"
-        subtitle="Manage your personal details and account security."
+        eyebrow={t('account')}
+        title={t('profileTitle')}
+        subtitle={t('profileSubtitle')}
       />
 
       <div className="profile-page-hero-row">
         <div className="profile-page-avatar">{initial}</div>
         <div className="profile-page-hero-info">
-          <div className="profile-page-name">{displayName || 'No name set'}</div>
+          <div className="profile-page-name">{displayName || t('noNameSet')}</div>
           <div className="profile-page-role">
-            {isEmployee ? 'Employee' : 'Manager'}
+            {isEmployee ? t('employee') : t('manager')}
             {userData?.userRole ? ` · ${userData.userRole}` : ''}
           </div>
         </div>
       </div>
 
       {/* Personal info */}
-      <Section title="Personal info" subtitle="Your name as shown across Hengam." icon={User}>
+      <Section title={t('personalInfo')} subtitle={t('personalInfoSubtitle')} icon={User}>
         <div className="profile-edit-grid">
           <div className="auth-field">
-            <label className="form-label">Display name</label>
+            <label className="form-label">{t('displayName')}</label>
             <input
               type="text"
               className="input"
-              placeholder="Your name"
+              placeholder={t('yourName')}
               value={displayName}
               onChange={(e) => setDisplayName(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && handleSave()}
@@ -374,11 +376,11 @@ function Profile() {
           </div>
           {!isEmployee && (
             <div className="auth-field">
-              <label className="form-label">Business name</label>
+              <label className="form-label">{t('businessName')}</label>
               <input
                 type="text"
                 className="input"
-                placeholder="e.g. Blue Door Café"
+                placeholder={t('businessNamePlaceholder')}
                 value={businessName}
                 onChange={(e) => setBusinessName(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && handleSave()}
@@ -393,16 +395,16 @@ function Profile() {
           style={{ marginTop: 4 }}
         >
           {saving
-            ? <><Loader2 size={14} className="spin" /> Saving...</>
-            : <><Check size={14} /> Save changes</>}
+            ? <><Loader2 size={14} className="spin" /> {t('saving')}</>
+            : <><Check size={14} /> {t('saveChanges')}</>}
         </button>
       </Section>
 
       {/* Account info */}
-      <Section title="Account info" subtitle="Your sign-in email and account type." icon={Mail}>
+      <Section title={t('accountInfo')} subtitle={t('accountInfoSubtitle')} icon={Mail}>
         <div className="rule-card">
           <div className="rule-info">
-            <p className="rule-title">Email address</p>
+            <p className="rule-title">{t('emailAddress')}</p>
             <p className="rule-description">{currentUser?.email}</p>
           </div>
           {isGoogleUser && (
@@ -414,29 +416,29 @@ function Profile() {
         </div>
         <div className="rule-card">
           <div className="rule-info">
-            <p className="rule-title">Account type</p>
-            <p className="rule-description">{isEmployee ? 'Employee' : 'Manager'}</p>
+            <p className="rule-title">{t('accountType')}</p>
+            <p className="rule-description">{isEmployee ? t('employee') : t('manager')}</p>
           </div>
         </div>
       </Section>
 
       {/* Account security */}
       <Section
-        title="Account security"
-        subtitle="Change your email, phone, and password."
+        title={t('accountSecurity')}
+        subtitle={t('accountSecurityFullSubtitle')}
         icon={Lock}
       >
         {/* Email change */}
         <div className="rule-card">
           <div className="rule-info">
-            <p className="rule-title">Email address</p>
+            <p className="rule-title">{t('emailAddress')}</p>
             <p className="rule-description">{currentUser?.email}</p>
           </div>
           <button
             className="settings-button"
             onClick={() => { setShowEmailChange(v => !v); setEmailChangeMsg('') }}
           >
-            {showEmailChange ? 'Cancel' : 'Change'}
+            {showEmailChange ? t('cancel') : t('change')}
           </button>
         </div>
         {showEmailChange && (
@@ -444,7 +446,7 @@ function Profile() {
             <input
               type="email"
               className="input"
-              placeholder="New email address"
+              placeholder={t('newEmailAddress')}
               value={newEmail}
               onChange={(e) => setNewEmail(e.target.value)}
             />
@@ -452,7 +454,7 @@ function Profile() {
               <input
                 type="password"
                 className="input"
-                placeholder="Current password (to confirm)"
+                placeholder={t('currentPasswordConfirm')}
                 value={emailReauthPassword}
                 onChange={(e) => setEmailReauthPassword(e.target.value)}
               />
@@ -464,7 +466,7 @@ function Profile() {
               disabled={emailChangeLoading}
               style={{ justifyContent: 'center' }}
             >
-              <span>{emailChangeLoading ? 'Sending...' : 'Send verification'}</span>
+              <span>{emailChangeLoading ? t('sending') : t('sendVerification')}</span>
             </button>
           </div>
         )}
@@ -472,15 +474,15 @@ function Profile() {
         {/* Phone number */}
         <div className="rule-card">
           <div className="rule-info">
-            <p className="rule-title">Phone number</p>
-            <p className="rule-description">{linkedPhone || 'No phone number added'}</p>
+            <p className="rule-title">{t('phoneNumber')}</p>
+            <p className="rule-description">{linkedPhone || t('noPhoneAdded')}</p>
           </div>
           {phoneStep === 'idle' && (
             <button
               className="settings-button"
               onClick={() => { setPhoneStep('enter-phone'); setPhoneError('') }}
             >
-              {linkedPhone ? 'Change' : 'Add'}
+              {linkedPhone ? t('change') : t('add')}
             </button>
           )}
         </div>
@@ -508,13 +510,13 @@ function Profile() {
               />
             </div>
             <p style={{ fontSize: 12, color: 'var(--text-tertiary)', margin: 0 }}>
-              Full number: {countryCode}{phoneNumber.trim().replace(/[\s\-()]/g, '') || '…'}
+              {t('fullNumber')}: {countryCode}{phoneNumber.trim().replace(/[\s\-()]/g, '') || '...'}
             </p>
             {phoneInfo && <div className="auth-success">{phoneInfo}</div>}
             {phoneError && <div className="auth-error">{phoneError}</div>}
             <div style={{ display: 'flex', gap: 8 }}>
               <button className="settings-button" onClick={() => { setPhoneStep('idle'); setPhoneError(''); setPhoneNumber('') }}>
-                Cancel
+                {t('cancel')}
               </button>
               <button
                 id="phone-send-code-button"
@@ -524,7 +526,7 @@ function Profile() {
                 style={{ flex: 1, justifyContent: 'center' }}
               >
                 <Smartphone size={14} />
-                <span>{phoneLoading ? 'Sending...' : 'Send code'}</span>
+                <span>{phoneLoading ? t('sending') : t('sendCode')}</span>
               </button>
             </div>
           </div>
@@ -532,7 +534,7 @@ function Profile() {
         {phoneStep === 'enter-code' && (
           <div className="security-form">
             <p style={{ fontSize: 13, opacity: 0.65, margin: 0 }}>
-              Enter the 6-digit code sent to {countryCode}{phoneNumber.trim().replace(/[\s\-()]/g, '')}
+              {t('codeSentTo')} {countryCode}{phoneNumber.trim().replace(/[\s\-()]/g, '')}
             </p>
             {phoneInfo && <div className="auth-success">{phoneInfo}</div>}
             <input
@@ -547,10 +549,10 @@ function Profile() {
             {phoneError && <div className="auth-error">{phoneError}</div>}
             <div style={{ display: 'flex', gap: 8 }}>
               <button className="settings-button" onClick={() => { setPhoneStep('idle'); setPhoneError(''); setPhoneInfo(''); setPhoneCode('') }}>
-                Cancel
+                {t('cancel')}
               </button>
               <button className="settings-button" onClick={handleResendPhoneCode} disabled={phoneLoading}>
-                Resend code
+                {t('resendCode')}
               </button>
               <button
                 className="landing-cta-primary auth-submit"
@@ -558,7 +560,7 @@ function Profile() {
                 disabled={phoneLoading}
                 style={{ flex: 1, justifyContent: 'center' }}
               >
-                <span>{phoneLoading ? 'Verifying...' : 'Verify code'}</span>
+                <span>{phoneLoading ? t('verifying') : t('verifyCode')}</span>
               </button>
             </div>
           </div>
@@ -568,14 +570,14 @@ function Profile() {
           <>
             <div className="rule-card">
               <div className="rule-info">
-                <p className="rule-title">Password</p>
-                <p className="rule-description">Change your account password.</p>
+                <p className="rule-title">{t('password')}</p>
+                <p className="rule-description">{t('passwordSecurityDesc')}</p>
               </div>
               <button
                 className="settings-button"
                 onClick={() => { setShowPasswordChange(v => !v); setPasswordChangeMsg('') }}
               >
-                {showPasswordChange ? 'Cancel' : 'Change'}
+                {showPasswordChange ? t('cancel') : t('change')}
               </button>
             </div>
             {showPasswordChange && (
@@ -583,7 +585,7 @@ function Profile() {
                 <input
                   type="password"
                   className="input"
-                  placeholder="Current password"
+                  placeholder={t('currentPassword')}
                   value={currentPassword}
                   onChange={(e) => setCurrentPassword(e.target.value)}
                   autoComplete="current-password"
@@ -591,7 +593,7 @@ function Profile() {
                 <input
                   type="password"
                   className="input"
-                  placeholder="New password (min. 6 characters)"
+                  placeholder={t('newPasswordPlaceholder')}
                   value={newPassword}
                   onChange={(e) => setNewPassword(e.target.value)}
                   autoComplete="new-password"
@@ -599,7 +601,7 @@ function Profile() {
                 <input
                   type="password"
                   className="input"
-                  placeholder="Confirm new password"
+                  placeholder={t('confirmNewPassword')}
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
                   autoComplete="new-password"
@@ -614,15 +616,15 @@ function Profile() {
                   style={{ justifyContent: 'center' }}
                 >
                   <KeyRound size={14} />
-                  <span>{passwordChangeLoading ? 'Changing...' : 'Change password'}</span>
+                  <span>{passwordChangeLoading ? t('changing') : t('changePassword')}</span>
                 </button>
                 <button
                   className="link-button"
-                  style={{ fontSize: 12, marginTop: 2, textAlign: 'left' }}
+                  style={{ fontSize: 12, marginTop: 2, textAlign: direction === 'rtl' ? 'right' : 'left' }}
                   onClick={handlePasswordResetEmail}
                   disabled={passwordResetSent}
                 >
-                  {passwordResetSent ? 'Reset email sent!' : 'Forgot your current password? Send a reset link instead'}
+                  {passwordResetSent ? t('resetEmailSent') : t('forgotPasswordReset')}
                 </button>
               </div>
             )}
@@ -633,20 +635,20 @@ function Profile() {
   )
 }
 
-function formatPhoneAuthError(err) {
+function formatPhoneAuthError(err, t) {
   const code = err?.code
   const map = {
-    'auth/invalid-phone-number': 'That phone number does not look valid. Check the country code and number.',
-    'auth/missing-phone-number': 'Enter your phone number first.',
-    'auth/captcha-check-failed': 'reCAPTCHA failed. Refresh the page, complete it again, and retry.',
-    'auth/missing-app-credential': 'reCAPTCHA did not finish correctly. Refresh the page and try again.',
-    'auth/too-many-requests': 'Too many SMS attempts. Wait a few minutes before trying again.',
-    'auth/quota-exceeded': 'Firebase SMS quota was exceeded. Check Firebase billing or SMS quota for this project.',
-    'auth/operation-not-allowed': 'Phone sign-in is not enabled in Firebase Authentication.',
-    'auth/unauthorized-domain': 'This domain is not authorized in Firebase Authentication settings.',
-    'auth/internal-error': 'Firebase could not send the SMS. Check Firebase Phone Auth SMS region, billing, and quota settings.',
+    'auth/invalid-phone-number': t('phoneInvalid'),
+    'auth/missing-phone-number': t('phoneMissing'),
+    'auth/captcha-check-failed': t('captchaFailed'),
+    'auth/missing-app-credential': t('captchaMissingCredential'),
+    'auth/too-many-requests': t('smsTooManyAttempts'),
+    'auth/quota-exceeded': t('smsQuotaExceeded'),
+    'auth/operation-not-allowed': t('phoneAuthDisabled'),
+    'auth/unauthorized-domain': t('unauthorizedDomain'),
+    'auth/internal-error': t('firebaseSmsFailed'),
   }
-  return map[code] || err?.message || 'Failed to send or verify the SMS code.'
+  return map[code] || err?.message || t('smsFailed')
 }
 
 export default Profile

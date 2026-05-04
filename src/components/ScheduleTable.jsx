@@ -1,15 +1,18 @@
 import { useRef, useState } from 'react'
 import { Clock, AlertTriangle, TrendingUp, TrendingDown, Minus, Sparkles, X, Plus, Trash2 } from 'lucide-react'
+import { useI18n } from '../i18n'
 
 const DAYS = [
-  { key: 'monday', label: 'Mon' },
-  { key: 'tuesday', label: 'Tue' },
-  { key: 'wednesday', label: 'Wed' },
-  { key: 'thursday', label: 'Thu' },
-  { key: 'friday', label: 'Fri' },
-  { key: 'saturday', label: 'Sat' },
-  { key: 'sunday', label: 'Sun' },
+  { key: 'monday', labelKey: 'dayMonShort', fullLabelKey: 'dayMonday' },
+  { key: 'tuesday', labelKey: 'dayTueShort', fullLabelKey: 'dayTuesday' },
+  { key: 'wednesday', labelKey: 'dayWedShort', fullLabelKey: 'dayWednesday' },
+  { key: 'thursday', labelKey: 'dayThuShort', fullLabelKey: 'dayThursday' },
+  { key: 'friday', labelKey: 'dayFriShort', fullLabelKey: 'dayFriday' },
+  { key: 'saturday', labelKey: 'daySatShort', fullLabelKey: 'daySaturday' },
+  { key: 'sunday', labelKey: 'daySunShort', fullLabelKey: 'daySunday' },
 ]
+
+const DAY_KEY_BY_NAME = Object.fromEntries(DAYS.map(day => [day.key, day]))
 
 function colorForEmployee(name) {
   const colors = [
@@ -29,71 +32,72 @@ function colorForEmployee(name) {
   return colors[Math.abs(hash) % colors.length]
 }
 
-function formatIssue(issue) {
+function formatIssue(issue, t) {
   const text = String(issue || '')
   const dayMatch = text.match(/^(Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday):\s*(.*)$/i)
-  const scope = dayMatch ? dayMatch[1] : null
+  const scopeKey = dayMatch ? dayMatch[1].toLowerCase() : null
+  const scope = scopeKey && DAY_KEY_BY_NAME[scopeKey] ? t(DAY_KEY_BY_NAME[scopeKey].fullLabelKey) : null
   const detail = dayMatch ? dayMatch[2] : text
 
   if (/opening/i.test(detail)) {
     return {
-      title: scope ? `${scope} opening coverage` : 'Opening coverage',
+      title: scope ? `${scope} ${t('openingCoverage')}` : t('openingCoverage'),
       body: detail
         .replace(/needs at least/i, 'requires at least')
         .replace(/only (\d+) found/i, 'only $1 eligible shift is currently scheduled'),
-      action: 'Review early-morning availability for shift supervisors and baristas.',
+      action: t('reviewOpeningAction'),
     }
   }
 
   if (/closing/i.test(detail)) {
     return {
-      title: scope ? `${scope} closing coverage` : 'Closing coverage',
+      title: scope ? `${scope} ${t('closingCoverage')}` : t('closingCoverage'),
       body: detail
         .replace(/needs at least/i, 'requires at least')
         .replace(/only (\d+) found/i, 'only $1 eligible shift is currently scheduled'),
-      action: 'Check who can work through close or adjust closing coverage requirements.',
+      action: t('reviewClosingAction'),
     }
   }
 
   if (/staff from/i.test(detail)) {
     return {
-      title: scope ? `${scope} staffing level` : 'Staffing level',
+      title: scope ? `${scope} ${t('staffingLevel')}` : t('staffingLevel'),
       body: detail
         .replace(/^needs/i, 'Requires')
         .replace(/only (\d+) on shift/i, 'only $1 people are currently on shift'),
-      action: 'Add one more eligible employee or lower the staffing requirement for that window.',
+      action: t('reviewStaffingAction'),
     }
   }
 
   if (/scheduled twice/i.test(detail)) {
     return {
-      title: scope ? `${scope} duplicate shift` : 'Duplicate shift',
+      title: scope ? `${scope} ${t('duplicateShift')}` : t('duplicateShift'),
       body: detail.replace(/is scheduled twice on the same day/i, 'has more than one shift on the same day'),
-      action: 'Keep one shift for this employee or move the second shift to another person.',
+      action: t('reviewDuplicateAction'),
     }
   }
 
   if (/outside availability/i.test(detail)) {
     return {
-      title: scope ? `${scope} availability conflict` : 'Availability conflict',
+      title: scope ? `${scope} ${t('availabilityConflict')}` : t('availabilityConflict'),
       body: detail,
-      action: 'Adjust the shift time or update the employee availability if it is outdated.',
+      action: t('reviewAvailabilityAction'),
     }
   }
 
   if (/only .* scheduled but target/i.test(text) || /no unused available days remain/i.test(text)) {
     const person = text.split(':')[0]
     return {
-      title: `${person} target hours`,
+      title: `${person} ${t('targetHours')}`,
       body: text.replace(/add shifts on:/i, 'available unused days:'),
-      action: 'Increase this employee’s availability, lower their weekly target, or assign shorter open shifts manually.',
+      action: t('reviewTargetAction'),
     }
   }
 
   return {
-    title: scope ? `${scope} schedule review` : 'Schedule review',
+    title: scope ? `${scope} ${t('scheduleReview')}` : t('scheduleReview'),
     body: detail,
-    action: 'Review this item before publishing the schedule.',
+    action: t('reviewDefaultAction'),
   }
 }
 
@@ -105,10 +109,10 @@ function formatTime(time24) {
   return m === 0 ? `${displayH}${period.toLowerCase()}` : `${displayH}:${String(m).padStart(2, '0')}${period.toLowerCase()}`
 }
 
-function formatDayDate(dateStr) {
+function formatDayDate(dateStr, language = 'en') {
   if (!dateStr) return ''
   const d = new Date(dateStr + 'T12:00:00')
-  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+  return d.toLocaleDateString(language === 'fa' ? 'fa-IR' : 'en-US', { month: 'short', day: 'numeric' })
 }
 
 function calcHours(start, end) {
@@ -121,6 +125,7 @@ function calcHours(start, end) {
 }
 
 function ScheduleTable({ data, employees = [], roles = [], onUpdate, highlightFilter = null }) {
+  const { t, language } = useI18n()
   const [editing, setEditing] = useState(null) // { dayKey, shift } or { dayKey, shift: null } for new
   const newShiftCounter = useRef(0)
   
@@ -208,8 +213,8 @@ function ScheduleTable({ data, employees = [], roles = [], onUpdate, highlightFi
           return (
             <div key={day.key} className="schedule-day-column">
               <div className="schedule-day-header">
-                <div className="schedule-day-name">{day.label}</div>
-                <div className="schedule-day-date">{formatDayDate(dayData.date)}</div>
+                <div className="schedule-day-name">{t(day.labelKey)}</div>
+                <div className="schedule-day-date">{formatDayDate(dayData.date, language)}</div>
                 {hasGaps && (
                   <div className="schedule-day-warning">
                     <AlertTriangle size={12} />
@@ -245,7 +250,7 @@ function ScheduleTable({ data, employees = [], roles = [], onUpdate, highlightFi
                     )
                   })
                 ) : emptySlots.length === 0 && (
-                  <div className="schedule-shift-empty">No shifts</div>
+                  <div className="schedule-shift-empty">{t('noShifts')}</div>
                 )}
 
                 {emptySlots.map((slot, i) => (
@@ -255,14 +260,14 @@ function ScheduleTable({ data, employees = [], roles = [], onUpdate, highlightFi
                     onClick={() => onUpdate && handleAddShift(day.key)}
                   >
                     <div className="schedule-shift-empty-slot-role">
-                      {slot.role || 'Open shift'}
+                      {slot.role || t('openShift')}
                     </div>
                     <div className="schedule-shift-time">
                       <Clock size={11} />
                       <span>{formatTime(slot.start)} — {formatTime(slot.end)}</span>
                     </div>
                     {onUpdate && (
-                      <div className="schedule-shift-empty-slot-cta">Assign +</div>
+                      <div className="schedule-shift-empty-slot-cta">{t('assign')}</div>
                     )}
                   </div>
                 ))}
@@ -271,10 +276,10 @@ function ScheduleTable({ data, employees = [], roles = [], onUpdate, highlightFi
                   <button
                     className="schedule-add-shift"
                     onClick={() => handleAddShift(day.key)}
-                    aria-label={`Add shift on ${day.label}`}
+                    aria-label={`${t('addShift')} ${t(day.labelKey)}`}
                   >
                     <Plus size={14} />
-                    <span>Add shift</span>
+                    <span>{t('addShift')}</span>
                   </button>
                 )}
               </div>
@@ -288,7 +293,7 @@ function ScheduleTable({ data, employees = [], roles = [], onUpdate, highlightFi
         <div className="schedule-summary">
           <h4 className="schedule-summary-title">
             <Sparkles size={16} />
-            <span>Hours Summary</span>
+            <span>{t('hoursSummary')}</span>
           </h4>
           <div className="schedule-summary-grid">
             {data.summary.map(s => {
@@ -325,7 +330,7 @@ function ScheduleTable({ data, employees = [], roles = [], onUpdate, highlightFi
                     <div className={`schedule-summary-trend ${trendClass}`}>
                       <TrendIcon size={12} />
                       <span>
-                        {isOnTarget ? 'On target' : `${s.difference > 0 ? '+' : ''}${s.difference}h`}
+                        {isOnTarget ? t('onTarget') : `${s.difference > 0 ? '+' : ''}${s.difference}h`}
                       </span>
                     </div>
                   </div>
@@ -341,11 +346,11 @@ function ScheduleTable({ data, employees = [], roles = [], onUpdate, highlightFi
         <div className="schedule-issues">
           <h4 className="schedule-issues-title">
             <AlertTriangle size={16} />
-            <span>Schedule Review</span>
+            <span>{t('scheduleReview')}</span>
           </h4>
           <div className="schedule-issues-list">
             {data.issues.map((issue, i) => {
-              const formatted = formatIssue(issue)
+              const formatted = formatIssue(issue, t)
               return (
                 <div className="schedule-issue-card" key={i}>
                   <div className="schedule-issue-heading">{formatted.title}</div>
@@ -363,7 +368,7 @@ function ScheduleTable({ data, employees = [], roles = [], onUpdate, highlightFi
         <div className="schedule-recommendations">
           <h4 className="schedule-recommendations-title">
             <Sparkles size={16} />
-            <span>Hengam Recommendations</span>
+            <span>{t('hengamRecommendations')}</span>
           </h4>
           <div className="schedule-recommendations-list">
             {data.recommendations.map((rec, i) => (
@@ -382,6 +387,7 @@ function ScheduleTable({ data, employees = [], roles = [], onUpdate, highlightFi
           onSave={saveShift}
           onDelete={editing.isNew ? null : deleteShift}
           onClose={closeModal}
+          t={t}
         />
       )}
     </div>
@@ -389,7 +395,7 @@ function ScheduleTable({ data, employees = [], roles = [], onUpdate, highlightFi
 }
 
 // ===== EDIT MODAL =====
-function EditShiftModal({ editing, employees, roles, onSave, onDelete, onClose }) {
+function EditShiftModal({ editing, employees, roles, onSave, onDelete, onClose, t }) {
   const [shift, setShift] = useState({ ...editing.shift })
 
   function handleSave() {
@@ -399,14 +405,16 @@ function EditShiftModal({ editing, employees, roles, onSave, onDelete, onClose }
     onSave(shift)
   }
 
-  const dayLabel = editing.dayKey.charAt(0).toUpperCase() + editing.dayKey.slice(1)
+  const dayLabel = DAY_KEY_BY_NAME[editing.dayKey]?.fullLabelKey
+    ? t(DAY_KEY_BY_NAME[editing.dayKey].fullLabelKey)
+    : editing.dayKey
 
   return (
     <div className="modal-backdrop" onClick={onClose}>
       <div className="modal-card shift-modal" onClick={(e) => e.stopPropagation()}>
         <div className="shift-modal-header">
           <h3 className="modal-title">
-            {editing.isNew ? 'Add shift' : 'Edit shift'}
+            {editing.isNew ? t('addShift') : t('editShift')}
           </h3>
           <button className="modal-close-btn" onClick={onClose}>
             <X size={18} />
@@ -416,7 +424,7 @@ function EditShiftModal({ editing, employees, roles, onSave, onDelete, onClose }
         <p className="shift-modal-day">{dayLabel}</p>
 
         <div className="shift-modal-field">
-          <label className="shift-modal-label">Employee</label>
+          <label className="shift-modal-label">{t('employee')}</label>
           <select
             className="input"
             value={shift.employee}
@@ -429,7 +437,7 @@ function EditShiftModal({ editing, employees, roles, onSave, onDelete, onClose }
               })
             }}
           >
-            <option value="">Select employee...</option>
+            <option value="">{t('selectEmployee')}</option>
             {employees.map(emp => (
               <option key={emp.id} value={emp.name}>{emp.name}</option>
             ))}
@@ -437,13 +445,13 @@ function EditShiftModal({ editing, employees, roles, onSave, onDelete, onClose }
         </div>
 
         <div className="shift-modal-field">
-          <label className="shift-modal-label">Role</label>
+          <label className="shift-modal-label">{t('role')}</label>
           <select
             className="input"
             value={shift.role}
             onChange={(e) => setShift({ ...shift, role: e.target.value })}
           >
-            <option value="">Select role...</option>
+            <option value="">{t('selectRole')}</option>
             {roles.map(r => (
               <option key={r.id} value={r.name}>{r.name}</option>
             ))}
@@ -452,7 +460,7 @@ function EditShiftModal({ editing, employees, roles, onSave, onDelete, onClose }
 
         <div className="shift-modal-row">
           <div className="shift-modal-field">
-            <label className="shift-modal-label">Start</label>
+            <label className="shift-modal-label">{t('start')}</label>
             <input
               type="time"
               className="input"
@@ -461,7 +469,7 @@ function EditShiftModal({ editing, employees, roles, onSave, onDelete, onClose }
             />
           </div>
           <div className="shift-modal-field">
-            <label className="shift-modal-label">End</label>
+            <label className="shift-modal-label">{t('end')}</label>
             <input
               type="time"
               className="input"
@@ -473,7 +481,7 @@ function EditShiftModal({ editing, employees, roles, onSave, onDelete, onClose }
 
         <div className="shift-modal-preview">
           <Clock size={14} />
-          <span>Total: {calcHours(shift.start, shift.end)}h</span>
+          <span>{t('total')}: {calcHours(shift.start, shift.end)}h</span>
         </div>
 
         <div className="shift-modal-actions">
@@ -483,19 +491,19 @@ function EditShiftModal({ editing, employees, roles, onSave, onDelete, onClose }
               onClick={onDelete}
             >
               <Trash2 size={14} />
-              <span>Delete</span>
+              <span>{t('delete')}</span>
             </button>
           )}
           <div className="shift-modal-right">
             <button className="secondary-button" onClick={onClose}>
-              Cancel
+              {t('cancel')}
             </button>
             <button 
               className="add-button"
               onClick={handleSave}
               disabled={!shift.employee || !shift.start || !shift.end}
             >
-              {editing.isNew ? 'Add shift' : 'Save'}
+              {editing.isNew ? t('addShift') : t('save')}
             </button>
           </div>
         </div>
