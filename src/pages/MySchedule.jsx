@@ -20,9 +20,12 @@ const DAYS = [
   { key: 'sunday', labelKey: 'daySunShort' },
 ]
 
-function formatTime(time24) {
+function formatTime(time24, language = 'en') {
   if (!time24) return ''
   const [h, m] = time24.split(':').map(Number)
+  if (language === 'fa') {
+    return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`.replace(/\d/g, d => Number(d).toLocaleString('fa-IR'))
+  }
   const period = h >= 12 ? 'PM' : 'AM'
   const displayH = h === 0 ? 12 : h > 12 ? h - 12 : h
   return m === 0 ? `${displayH}${period.toLowerCase()}` : `${displayH}:${String(m).padStart(2, '0')}${period.toLowerCase()}`
@@ -236,7 +239,7 @@ function MySchedule() {
                     <div key={j}>
                       <div className="my-schedule-shift">
                         <Clock size={11} style={{ marginRight: 4, flexShrink: 0 }} />
-                        {formatTime(shift.start)} – {formatTime(shift.end)}
+                        {formatTime(shift.start, language)} – {formatTime(shift.end, language)}
                       </div>
                       {shift.role && (
                         <div className="my-schedule-shift-role">{shift.role}</div>

@@ -152,7 +152,7 @@
 
 @media (max-width: 600px) {
   .navbar {
-    padding: 14px 20px;
+    padding: 12px 14px;
     grid-template-columns: 1fr auto;
   }
 }
@@ -275,8 +275,16 @@
 }
 
 @media (max-width: 900px) {
-  .navbar-center,
+  .navbar-center {
+    display: none;
+  }
+
   .navbar-actions {
+    display: flex;
+    gap: 8px;
+  }
+
+  .navbar-actions a {
     display: none;
   }
 }
@@ -969,6 +977,22 @@
   background: #3A7BC8;
   transform: translateY(-1px);
   box-shadow: 0 4px 12px rgba(74, 144, 226, 0.25);
+}
+
+@media (max-width: 420px) {
+  .app-logo-wordmark {
+    display: none;
+  }
+
+  .signin-nav-button {
+    padding: 9px 12px;
+    font-size: 13px;
+    white-space: nowrap;
+  }
+
+  .navbar-right-group {
+    gap: 10px;
+  }
 }
 
 /* Profile Menu */
@@ -6853,6 +6877,169 @@ select.input {
 .app.rtl .pricing-includes {
   direction: rtl;
   text-align: right;
+}
+
+.app.rtl .dashboard-generate-content,
+.app.rtl .dashboard-stat,
+.app.rtl .dashboard-card-content,
+.app.rtl .dashboard-schedule-info,
+.app.rtl .dashboard-team-info,
+.app.rtl .dashboard-empty,
+.app.rtl .employee-info,
+.app.rtl .rule-info,
+.app.rtl .auth-field,
+.app.rtl .form-label,
+.app.rtl .profile-page-hero-info,
+.app.rtl .security-form,
+.app.rtl .gen-stat,
+.app.rtl .gen-week-preview,
+.app.rtl .ai-instr-wrap,
+.app.rtl .instruction-toolbar-copy,
+.app.rtl .ai-chip-row,
+.app.rtl .ai-understands,
+.app.rtl .schedule-summary-info,
+.app.rtl .schedule-summary-hours,
+.app.rtl .schedule-issue-card,
+.app.rtl .schedule-recommendation-card,
+.app.rtl .my-schedule-week-label,
+.app.rtl .my-schedule-stats,
+.app.rtl .my-schedule-day,
+.app.rtl .my-schedule-no-schedules,
+.app.rtl .profile-dropdown {
+  direction: rtl;
+  text-align: right;
+}
+
+.app.rtl .dashboard-generate-title,
+.app.rtl .dashboard-generate-desc,
+.app.rtl .dashboard-card-title,
+.app.rtl .dashboard-card-desc,
+.app.rtl .dashboard-schedule-week,
+.app.rtl .dashboard-schedule-meta,
+.app.rtl .dashboard-team-name,
+.app.rtl .dashboard-team-role,
+.app.rtl .employee-name,
+.app.rtl .employee-role,
+.app.rtl .rule-title,
+.app.rtl .rule-description,
+.app.rtl .profile-page-name,
+.app.rtl .profile-page-role,
+.app.rtl .ai-instr-title,
+.app.rtl .ai-instr-subtitle,
+.app.rtl .ai-chip-label,
+.app.rtl .ai-understands-label,
+.app.rtl .schedule-summary-title,
+.app.rtl .schedule-issues-title,
+.app.rtl .schedule-recommendations-title,
+.app.rtl .schedule-issue-heading,
+.app.rtl .schedule-issue-card p,
+.app.rtl .schedule-issue-card span,
+.app.rtl .schedule-recommendation-card,
+.app.rtl .my-schedule-day-label,
+.app.rtl .my-schedule-day-date,
+.app.rtl .my-schedule-shift-role,
+.app.rtl .my-schedule-day-off {
+  letter-spacing: 0;
+}
+
+.app.rtl .dashboard-section-header,
+.app.rtl .schedule-result-bar,
+.app.rtl .shift-modal-header,
+.app.rtl .shift-modal-actions,
+.app.rtl .my-schedule-week-nav,
+.app.rtl .my-schedule-view-toggle {
+  direction: ltr;
+}
+
+.app.rtl .dashboard-stat {
+  grid-template-columns: auto minmax(0, 1fr);
+}
+
+.app.rtl .dashboard-stat > div:last-child {
+  direction: rtl;
+  text-align: right;
+}
+
+.app.rtl .dashboard-generate-cta,
+.app.rtl .dashboard-see-all {
+  direction: rtl;
+}
+
+.app.rtl .dashboard-generate-cta svg,
+.app.rtl .dashboard-see-all svg,
+.app.rtl .dashboard-card-arrow,
+.app.rtl .dashboard-schedule-arrow {
+  transform: scaleX(-1);
+}
+
+.app.rtl .schedules-page-full .page-hero-content,
+.app.rtl .schedules-sidebar,
+.app.rtl .schedules-main,
+.app.rtl .schedules-empty-state,
+.app.rtl .schedules-empty,
+.app.rtl .schedule-filter-bar,
+.app.rtl .schedule-instructions,
+.app.rtl .schedule-card-tags,
+.app.rtl .schedule-week,
+.app.rtl .schedule-meta,
+.app.rtl .schedules-main-title {
+  direction: rtl;
+  text-align: right;
+}
+
+.app.rtl .schedules-page-full .schedules-split,
+.app.rtl .schedules-main-header,
+.app.rtl .schedule-card-header,
+.app.rtl .schedule-filter-controls {
+  direction: ltr;
+}
+
+.app.rtl .schedules-sidebar-title,
+.app.rtl .schedules-main-title,
+.app.rtl .schedule-week,
+.app.rtl .schedule-meta,
+.app.rtl .instructions-label,
+.app.rtl .instructions-text,
+.app.rtl .schedule-filter-label {
+  letter-spacing: 0;
+}
+
+.app.rtl .schedules-sidebar .schedule-card {
+  min-width: 0;
+}
+
+.app.rtl .schedule-card-header {
+  align-items: flex-start;
+}
+
+.app.rtl .schedule-week {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.schedule-week-icon {
+  flex: 0 0 auto;
+  vertical-align: -2px;
+}
+
+.app.rtl .schedule-card-tags {
+  justify-content: flex-start;
+}
+
+.app.rtl .schedule-filter-bar {
+  flex-wrap: wrap;
+}
+
+.app.rtl .schedule-filter-label {
+  margin-inline-end: auto;
+}
+
+.app.rtl .schedule-filter-controls {
+  justify-content: flex-start;
 }
 
 .app.rtl .page-hero-actions {

@@ -73,7 +73,7 @@ function SignUp() {
         </div>
         
         <h1 className="auth-title">
-          {t('signUpTitle')} <span className="landing-gradient-text">Hengam</span> {t('signUpTitleTail')}
+          {t('signUpTitle')} <span className="landing-gradient-text">{t('brandName')}</span> {t('signUpTitleTail')}
         </h1>
         <p className="auth-subtitle">
           {t('signUpSubtitle')}

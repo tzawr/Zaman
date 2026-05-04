@@ -223,38 +223,39 @@ function FloatingShapes() {
 }
 
 function MockupCard() {
-  const { t, isRtl } = useI18n()
+  const { t, isRtl, language } = useI18n()
+  const time = (range) => formatMockTime(range, language)
   const days = [
     {
       day: t('mockDayMon'),
       shifts: [
-        { name: t('mockNameMaya'), role: t('roleShiftSupervisor'), time: '4a - 11a', color: 'pink' },
-        { name: t('mockNameEli'), role: t('roleBarista'), time: '4a - 12p', color: 'red' },
-        { name: t('mockNameOwen'), role: t('roleShiftSupervisor'), time: '12:30p - 8:30p', color: 'purple' },
+        { name: t('mockNameMaya'), role: t('roleShiftSupervisor'), time: time('4a - 11a'), color: 'pink' },
+        { name: t('mockNameEli'), role: t('roleBarista'), time: time('4a - 12p'), color: 'red' },
+        { name: t('mockNameOwen'), role: t('roleShiftSupervisor'), time: time('12:30p - 8:30p'), color: 'purple' },
       ],
     },
     {
       day: t('mockDayTue'),
       shifts: [
-        { name: t('mockNameMaya'), role: t('roleShiftSupervisor'), time: '4a - 11a', color: 'pink' },
-        { name: t('mockNameNoah'), role: t('roleBarista'), time: '5a - 11:30a', color: 'blue' },
-        { name: t('mockNameRiley'), role: t('roleBarista'), time: '12:30p - 8p', color: 'red' },
+        { name: t('mockNameMaya'), role: t('roleShiftSupervisor'), time: time('4a - 11a'), color: 'pink' },
+        { name: t('mockNameNoah'), role: t('roleBarista'), time: time('5a - 11:30a'), color: 'blue' },
+        { name: t('mockNameRiley'), role: t('roleBarista'), time: time('12:30p - 8p'), color: 'red' },
       ],
     },
     {
       day: t('mockDayWed'),
       shifts: [
-        { name: t('mockNameOwen'), role: t('roleShiftSupervisor'), time: '4a - 12p', color: 'purple' },
-        { name: t('mockNameSofia'), role: t('roleBarista'), time: '4a - 11a', color: 'pink' },
-        { name: t('mockNameTheo'), role: t('roleShiftSupervisor'), time: '12p - 8p', color: 'pink' },
+        { name: t('mockNameOwen'), role: t('roleShiftSupervisor'), time: time('4a - 12p'), color: 'purple' },
+        { name: t('mockNameSofia'), role: t('roleBarista'), time: time('4a - 11a'), color: 'pink' },
+        { name: t('mockNameTheo'), role: t('roleShiftSupervisor'), time: time('12p - 8p'), color: 'pink' },
       ],
     },
     {
       day: t('mockDaySun'),
       shifts: [
-        { name: t('mockNameLena'), role: t('roleShiftSupervisor'), time: '4a - 12p', color: 'purple' },
-        { name: t('mockNameLeo'), role: t('roleManager'), time: '10a - 4p', color: 'green' },
-        { name: t('mockOpenShift'), role: t('roleBarista'), time: '12p - 3p', color: 'empty' },
+        { name: t('mockNameLena'), role: t('roleShiftSupervisor'), time: time('4a - 12p'), color: 'purple' },
+        { name: t('mockNameLeo'), role: t('roleManager'), time: time('10a - 4p'), color: 'green' },
+        { name: t('mockOpenShift'), role: t('roleBarista'), time: time('12p - 3p'), color: 'empty' },
       ],
     },
   ]
@@ -342,6 +343,18 @@ function MockupCard() {
       </div>
     </div>
   )
+}
+
+function formatMockTime(range, language) {
+  if (language !== 'fa') return range
+  return range.split(' - ').map(part => {
+    const match = part.match(/^(\d{1,2})(?::(\d{2}))?([ap])$/)
+    if (!match) return part
+    const rawHour = Number(match[1])
+    const hour = match[3] === 'p' && rawHour !== 12 ? rawHour + 12 : match[3] === 'a' && rawHour === 12 ? 0 : rawHour
+    const minute = match[2] || '00'
+    return `${String(hour).padStart(2, '0')}:${minute}`.replace(/\d/g, d => Number(d).toLocaleString('fa-IR'))
+  }).join(' - ')
 }
 
 // ========== MARQUEE STRIP ==========

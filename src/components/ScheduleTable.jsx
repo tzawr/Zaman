@@ -101,9 +101,12 @@ function formatIssue(issue, t) {
   }
 }
 
-function formatTime(time24) {
+function formatTime(time24, language = 'en') {
   if (!time24) return ''
   const [h, m] = time24.split(':').map(Number)
+  if (language === 'fa') {
+    return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`.replace(/\d/g, d => Number(d).toLocaleString('fa-IR'))
+  }
   const period = h >= 12 ? 'PM' : 'AM'
   const displayH = h === 0 ? 12 : h > 12 ? h - 12 : h
   return m === 0 ? `${displayH}${period.toLowerCase()}` : `${displayH}:${String(m).padStart(2, '0')}${period.toLowerCase()}`
@@ -243,7 +246,7 @@ function ScheduleTable({ data, employees = [], roles = [], onUpdate, highlightFi
                         <div className="schedule-shift-role">{shift.role}</div>
                         <div className="schedule-shift-time">
                           <Clock size={11} />
-                          <span>{formatTime(shift.start)} — {formatTime(shift.end)}</span>
+                          <span>{formatTime(shift.start, language)} — {formatTime(shift.end, language)}</span>
                         </div>
                         <div className="schedule-shift-hours">{shift.hours}h</div>
                       </div>
@@ -264,7 +267,7 @@ function ScheduleTable({ data, employees = [], roles = [], onUpdate, highlightFi
                     </div>
                     <div className="schedule-shift-time">
                       <Clock size={11} />
-                      <span>{formatTime(slot.start)} — {formatTime(slot.end)}</span>
+                      <span>{formatTime(slot.start, language)} — {formatTime(slot.end, language)}</span>
                     </div>
                     {onUpdate && (
                       <div className="schedule-shift-empty-slot-cta">{t('assign')}</div>

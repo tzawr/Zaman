@@ -109,12 +109,13 @@ function Schedules() {
     sunday.setDate(monday.getDate() + 6)
     
     const locale = language === 'fa' ? 'fa-IR' : 'en-US'
-    const format = (d) => d.toLocaleDateString(locale, {
+    const format = (d, withYear = false) => d.toLocaleDateString(locale, {
       month: 'short', 
-      day: 'numeric' 
+      day: 'numeric',
+      ...(withYear ? { year: 'numeric' } : {})
     })
-    
-    return `${format(monday)} — ${format(sunday)}, ${monday.getFullYear()}`
+
+    return `${format(monday)} — ${format(sunday, true)}`
   }
 
   function formatCreatedAt(timestamp) {
@@ -125,7 +126,8 @@ function Schedules() {
       day: 'numeric',
       year: 'numeric',
       hour: 'numeric',
-      minute: '2-digit'
+      minute: '2-digit',
+      ...(language === 'fa' ? { hour12: false } : {})
     })
   }
 
@@ -255,7 +257,7 @@ function Schedules() {
                 >
                   <div className="schedule-card-header">
                     <p className="schedule-week">
-                      <Calendar size={14} style={{ display: 'inline', marginRight: 6, verticalAlign: '-2px' }} />
+                      <Calendar size={14} className="schedule-week-icon" />
                       {formatWeekRange(sched.weekStart)}
                     </p>
                     <button 

@@ -130,7 +130,7 @@ function Dashboard() {
 <main className="app-page dashboard-layout">
   <PageHero
   eyebrow={`${getGreeting(t)}, ${userData?.displayName || t('manager')}`}
-  title={<>{t('welcomeTo')} <span className="landing-gradient-text">Hengam</span></>}
+  title={<>{t('welcomeTo')} <span className="landing-gradient-text">{t('brandName')}</span></>}
   subtitle={t('dashboardSubtitle')}
 >
 </PageHero>

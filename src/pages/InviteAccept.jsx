@@ -172,7 +172,7 @@ function InviteAccept() {
 
         <h1 className="auth-title">
           {t('joinTeamTitleBefore')}{' '}
-          <span className="landing-gradient-text">Hengam</span>
+          <span className="landing-gradient-text">{t('brandName')}</span>
         </h1>
         <p className="auth-subtitle">
           {mode === 'signup'

@@ -4,6 +4,7 @@ import { createContext, useContext, useEffect, useMemo, useState } from 'react'
 const translations = {
   en: {
     navAbout: 'About',
+    brandName: 'Hengam',
     navPricing: 'Pricing',
     navSecurity: 'Security',
     toggleTheme: 'Toggle theme',
@@ -814,6 +815,7 @@ const translations = {
   },
   fa: {
     navAbout: 'درباره',
+    brandName: 'هنگام',
     navPricing: 'تعرفه‌ها',
     navSecurity: 'امنیت',
     toggleTheme: 'تغییر حالت نمایش',
@@ -1638,6 +1640,7 @@ export function I18nProvider({ children }) {
   const value = useMemo(() => ({
     language,
     isRtl: language === 'fa',
+    direction: language === 'fa' ? 'rtl' : 'ltr',
     setLanguage,
     toggleLanguage: () => setLanguage(prev => prev === 'fa' ? 'en' : 'fa'),
     t: (key) => translations[language]?.[key] || translations.en[key] || key,
