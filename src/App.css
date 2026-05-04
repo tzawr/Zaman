@@ -1552,6 +1552,99 @@
   font-weight: 600;
 }
 
+.time-select {
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid #333;
+  border-radius: 8px;
+  background: #0d0d0d;
+  overflow: hidden;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.time-select:focus-within {
+  border-color: #4A90E2;
+  box-shadow: 0 0 0 3px rgba(74, 144, 226, 0.15);
+}
+
+.time-select.disabled {
+  opacity: 0.45;
+  pointer-events: none;
+}
+
+.time-select-hour,
+.time-select-min {
+  border: none;
+  background: transparent;
+  color: white;
+  font-size: 14px;
+  font-weight: 500;
+  font-family: inherit;
+  appearance: none;
+  -webkit-appearance: none;
+  text-align: center;
+  padding: 9px 6px;
+  cursor: pointer;
+}
+
+.time-select-hour { width: 38px; }
+.time-select-min  { width: 34px; }
+
+.time-select-hour:focus,
+.time-select-min:focus {
+  outline: none;
+  background: rgba(74, 144, 226, 0.08);
+}
+
+.time-select-colon {
+  color: #555;
+  font-size: 14px;
+  font-weight: 600;
+  user-select: none;
+}
+
+.time-select-ampm {
+  border: none;
+  border-left: 1px solid #2a2a2a;
+  background: transparent;
+  color: #888;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.6px;
+  padding: 9px 10px;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+
+.time-select-ampm:hover {
+  background: #1a1a1a;
+  color: white;
+}
+
+.app.light .time-select {
+  border-color: rgba(0, 0, 0, 0.12);
+  background: white;
+}
+
+.app.light .time-select-hour,
+.app.light .time-select-min {
+  color: #0A0A0B;
+}
+
+.app.light .time-select-colon {
+  color: #aaa;
+}
+
+.app.light .time-select-ampm {
+  border-left-color: rgba(0, 0, 0, 0.08);
+  color: #777;
+}
+
+.app.light .time-select-ampm:hover {
+  background: #f3f4f6;
+  color: #111;
+}
+
 /* Time Off Form */
 .timeoff-form {
   margin-bottom: 20px;
