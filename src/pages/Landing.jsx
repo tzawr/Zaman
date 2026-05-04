@@ -38,6 +38,7 @@ function Landing() {
       <PremiumPanels />
       <HowItWorks />
       <TrustSection />
+      <ReviewsSection />
       <PlaygroundDemo />
       <Features />
       <Pricing onCTA={handleCTA} />
@@ -706,6 +707,65 @@ function TrustSection() {
             </div>
           ))}
         </div>
+      </div>
+    </section>
+  )
+}
+
+// ========== REVIEWS SECTION ==========
+function ReviewsSection() {
+  const { t } = useI18n()
+  const reviews = [
+    {
+      name: t('reviewName1'),
+      role: t('reviewRole1'),
+      quote: t('reviewQuote1'),
+    },
+    {
+      name: t('reviewName2'),
+      role: t('reviewRole2'),
+      quote: t('reviewQuote2'),
+    },
+    {
+      name: t('reviewName3'),
+      role: t('reviewRole3'),
+      quote: t('reviewQuote3'),
+    },
+  ]
+
+  return (
+    <section className="landing-section reviews-section">
+      <SectionHeader
+        eyebrow={t('reviewsEyebrow')}
+        title={t('reviewsTitle')}
+        description={t('reviewsDescription')}
+      />
+
+      <div className="reviews-grid">
+        {reviews.map((review, index) => (
+          <motion.article
+            key={review.name}
+            className="review-card"
+            initial={{ opacity: 0, y: 24 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, margin: '-70px' }}
+            transition={{ duration: 0.55, delay: index * 0.08, ease: [0.16, 1, 0.3, 1] }}
+          >
+            <div className="review-stars" aria-hidden="true">
+              {Array.from({ length: 5 }).map((_, starIndex) => (
+                <span key={starIndex}>★</span>
+              ))}
+            </div>
+            <p>{review.quote}</p>
+            <div className="review-person">
+              <span>{review.name.slice(0, 1)}</span>
+              <div>
+                <strong>{review.name}</strong>
+                <small>{review.role}</small>
+              </div>
+            </div>
+          </motion.article>
+        ))}
       </div>
     </section>
   )
