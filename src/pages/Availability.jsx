@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { ArrowLeft, Check, X, ArrowRight, Palmtree, Plus, Lock } from 'lucide-react'
+import { ArrowLeft, Check, X, ArrowRight, Palmtree, Plus, Clock, Lock } from 'lucide-react'
 import { collection, doc, onSnapshot, query, updateDoc, where, serverTimestamp } from 'firebase/firestore'
 import { db } from '../firebase'
 import { useAuth } from '../AuthContext'
