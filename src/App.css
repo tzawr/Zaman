@@ -13403,3 +13403,32 @@ input[type="time"]::-webkit-calendar-picker-indicator:hover {
     padding: 24px 20px;
   }
 }
+
+/* CRITICAL: premium-panel-grid 1-column — base style at line 9545 is after the 1180px media query
+   so it wins the cascade. This end-of-file block is the only way to override it. */
+@media (max-width: 1180px) {
+  .premium-panel-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .premium-panel-wide,
+  .premium-panel-stack {
+    grid-row: auto;
+    min-height: 0;
+  }
+
+  .premium-panel:not(.premium-panel-wide):not(.premium-panel-stack) {
+    min-height: 0;
+  }
+
+  /* Coverage stats: desktop max-width not needed when panel is full-width */
+  .premium-coverage-stats {
+    max-width: none;
+  }
+
+  /* Export row: buttons can shrink to fit */
+  .premium-export-row {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+}
