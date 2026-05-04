@@ -13782,6 +13782,167 @@ input[type="time"]::-webkit-calendar-picker-indicator:hover {
   filter: brightness(1.04);
 }
 
+.app .landing-hero-meta,
+.app .landing-meta-item,
+.app .hero-proof-row > div,
+.app .mockup-header,
+.app .mockup-dots span,
+.app .mockup-url,
+.app .mockup-title,
+.app .mockup-day-label,
+.app .mockup-time,
+.app .proof-rule,
+.app .proof-subtitle,
+.app .premium-panel-copy h3,
+.app .premium-panel-copy p,
+.app .premium-coverage-stats span,
+.app .premium-coverage-health span,
+.app .premium-calendar-head,
+.app .premium-calendar-grid span,
+.app .premium-timeline,
+.app .premium-event-row,
+.app .premium-event-time,
+.app .premium-event-chip strong,
+.app .premium-event-chip small,
+.app .premium-avatars,
+.app .premium-avatars b,
+.app .premium-now-line span,
+.app .premium-now-line i,
+.app .premium-rule-input-demo,
+.app .premium-rule-input-box,
+.app .premium-rule-input-box span,
+.app .premium-rule-input-box p,
+.app .premium-parser-line,
+.app .premium-parser-line svg,
+.app .premium-parser-line i,
+.app .premium-parsed-pills span,
+.app .premium-parsed-pills svg,
+.app .premium-parsed-pills strong,
+.app .premium-parsed-pills small,
+.app .premium-ready-status,
+.app .premium-ready-status svg,
+.app .premium-note-card span,
+.app .premium-typing,
+.app .premium-typing i,
+.app .premium-advice-list span,
+.app .premium-advice-list svg,
+.app .premium-document-stack,
+.app .premium-doc,
+.app .premium-doc span,
+.app .landing-qa-number,
+.app .landing-qa-copy strong,
+.app .landing-qa-copy span,
+.app .landing-qa-arrow,
+.app .landing-qa-aside,
+.app .qa-aside-orbit,
+.app .qa-aside-orbit span,
+.app .qa-aside-icon,
+.app .qa-aside-copy strong,
+.app .qa-aside-copy span,
+.app .qa-aside-steps span {
+  transition:
+    transform 190ms var(--ease-out),
+    color 190ms var(--ease-out),
+    border-color 190ms var(--ease-out),
+    background 190ms var(--ease-out),
+    box-shadow 190ms var(--ease-out),
+    opacity 190ms var(--ease-out),
+    filter 190ms var(--ease-out);
+}
+
+.app .landing-meta-item:hover,
+.app .hero-proof-row > div:hover,
+.app .mockup-header:hover,
+.app .mockup-url:hover,
+.app .mockup-title:hover,
+.app .mockup-day-label:hover,
+.app .mockup-time:hover,
+.app .proof-rule:hover,
+.app .proof-subtitle:hover,
+.app .premium-panel-copy h3:hover,
+.app .premium-panel-copy p:hover,
+.app .premium-calendar-head:hover,
+.app .premium-event-time:hover,
+.app .premium-event-chip strong:hover,
+.app .premium-event-chip small:hover,
+.app .premium-avatars:hover,
+.app .premium-rule-input-box span:hover,
+.app .premium-rule-input-box p:hover,
+.app .premium-parser-line:hover,
+.app .premium-ready-status:hover,
+.app .premium-note-card span:hover,
+.app .premium-typing:hover,
+.app .premium-document-stack:hover,
+.app .landing-qa-number:hover,
+.app .landing-qa-copy strong:hover,
+.app .landing-qa-copy span:hover,
+.app .landing-qa-arrow:hover,
+.app .landing-qa-aside:hover,
+.app .qa-aside-orbit:hover,
+.app .qa-aside-icon:hover,
+.app .qa-aside-copy strong:hover,
+.app .qa-aside-copy span:hover {
+  transform: translateY(-1px);
+  filter: brightness(1.06) saturate(1.04);
+}
+
+.app .mockup-dots span:hover,
+.app .premium-calendar-grid span:hover,
+.app .premium-avatars b:hover,
+.app .premium-now-line span:hover,
+.app .premium-now-line i:hover,
+.app .premium-parser-line svg:hover,
+.app .premium-parser-line i:hover,
+.app .premium-parsed-pills span:hover,
+.app .premium-parsed-pills svg:hover,
+.app .premium-parsed-pills strong:hover,
+.app .premium-parsed-pills small:hover,
+.app .premium-ready-status svg:hover,
+.app .premium-typing i:hover,
+.app .premium-advice-list span:hover,
+.app .premium-advice-list svg:hover,
+.app .premium-doc:hover,
+.app .premium-doc span:hover,
+.app .qa-aside-orbit span:hover,
+.app .qa-aside-steps span:hover {
+  transform: translateY(-2px) scale(1.04);
+  border-color: rgba(147, 197, 253, 0.38);
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.18), 0 0 18px rgba(96, 165, 250, 0.12);
+  filter: brightness(1.08) saturate(1.08);
+}
+
+.app .proof-rule:hover svg,
+.app .proof-hours:hover svg,
+.app .proof-issue:hover svg,
+.app .premium-event-chip:hover .premium-avatars b,
+.app .premium-note-card:hover svg,
+.app .premium-advice-list span:hover svg,
+.app .landing-qa-item:hover .landing-qa-number,
+.app .landing-qa-item:hover .landing-qa-arrow,
+.app .landing-qa-aside:hover .qa-aside-icon {
+  transform: scale(1.12) rotate(-3deg);
+  color: #bfdbfe;
+}
+
+.app .premium-rule-input-demo:hover .premium-parser-line i,
+.app .premium-typing:hover i,
+.app .qa-aside-orbit:hover span {
+  box-shadow: 0 0 18px rgba(147, 197, 253, 0.34);
+  opacity: 1;
+}
+
+.app .premium-document-stack:hover .doc-back {
+  transform: translate(48px, 16px) rotate(11deg);
+}
+
+.app .premium-document-stack:hover .doc-mid {
+  transform: translate(26px, 8px) rotate(5deg);
+}
+
+.app .premium-document-stack:hover .doc-front {
+  transform: translateY(-4px) rotate(-5deg);
+}
+
 @media (prefers-reduced-motion: reduce) {
   .app button:not(:disabled),
   .app [role="button"],
@@ -13813,6 +13974,54 @@ input[type="time"]::-webkit-calendar-picker-indicator:hover {
   .app .premium-parsed-pill,
   .app .premium-coverage-stat,
   .app .premium-advice-item {
+    transition: none;
+    transform: none;
+  }
+
+  .app .landing-meta-item,
+  .app .hero-proof-row > div,
+  .app .mockup-header,
+  .app .mockup-dots span,
+  .app .mockup-url,
+  .app .mockup-title,
+  .app .mockup-day-label,
+  .app .mockup-time,
+  .app .proof-rule,
+  .app .proof-subtitle,
+  .app .premium-panel-copy h3,
+  .app .premium-panel-copy p,
+  .app .premium-coverage-stats span,
+  .app .premium-coverage-health span,
+  .app .premium-calendar-head,
+  .app .premium-calendar-grid span,
+  .app .premium-event-time,
+  .app .premium-avatars b,
+  .app .premium-now-line span,
+  .app .premium-now-line i,
+  .app .premium-rule-input-box,
+  .app .premium-rule-input-box span,
+  .app .premium-rule-input-box p,
+  .app .premium-parser-line,
+  .app .premium-parser-line i,
+  .app .premium-parsed-pills span,
+  .app .premium-ready-status,
+  .app .premium-typing,
+  .app .premium-typing i,
+  .app .premium-advice-list span,
+  .app .premium-document-stack,
+  .app .premium-doc,
+  .app .premium-doc span,
+  .app .landing-qa-number,
+  .app .landing-qa-copy strong,
+  .app .landing-qa-copy span,
+  .app .landing-qa-arrow,
+  .app .landing-qa-aside,
+  .app .qa-aside-orbit,
+  .app .qa-aside-orbit span,
+  .app .qa-aside-icon,
+  .app .qa-aside-copy strong,
+  .app .qa-aside-copy span,
+  .app .qa-aside-steps span {
     transition: none;
     transform: none;
   }
