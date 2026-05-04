@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { ArrowLeft, Check, X, ArrowRight, Palmtree, Plus, Clock, Lock } from 'lucide-react'
+import { ArrowLeft, Check, X, ArrowRight, Palmtree, Plus, Lock } from 'lucide-react'
 import { collection, doc, onSnapshot, query, updateDoc, where, serverTimestamp } from 'firebase/firestore'
 import { db } from '../firebase'
 import { useAuth } from '../AuthContext'
@@ -99,6 +99,10 @@ function Availability() {
   const [linkedPortalUserId, setLinkedPortalUserId] = useState('')
   const [saving, setSaving] = useState(false)
   const [loading, setLoading] = useState(true)
+  const [availabilityDirty, setAvailabilityDirty] = useState(false)
+  const [timeOffDirty, setTimeOffDirty] = useState(false)
+  const [availabilitySaved, setAvailabilitySaved] = useState(false)
+  const [timeOffSaved, setTimeOffSaved] = useState(false)
 
   useEffect(() => {
     if (!currentUser) navigate('/signin')
@@ -320,64 +324,62 @@ function Availability() {
   }
 
   function toggleDay(dayKey) {
-    if (!canEdit) {
-      toast.info(t('availabilityManagedByManager'))
-      return
-    }
-    const next = {
-      ...availability,
-      [dayKey]: { ...availability[dayKey], available: !availability[dayKey].available }
-    }
-    setAvailability(next)
-    saveAvailability(next)
+    if (!canEdit) { toast.info(t('availabilityManagedByManager')); return }
+    setAvailability(prev => ({
+      ...prev,
+      [dayKey]: { ...prev[dayKey], available: !prev[dayKey].available }
+    }))
+    setAvailabilityDirty(true)
+    setAvailabilitySaved(false)
   }
 
   function updateTime(dayKey, field, value) {
     if (!canEdit) return
-    const next = {
-      ...availability,
-      [dayKey]: { ...availability[dayKey], [field]: value }
-    }
-    setAvailability(next)
-    saveAvailability(next)
+    setAvailability(prev => ({
+      ...prev,
+      [dayKey]: { ...prev[dayKey], [field]: value }
+    }))
+    setAvailabilityDirty(true)
+    setAvailabilitySaved(false)
+  }
+
+  async function handleSaveAvailability() {
+    await saveAvailability(availability)
+    setAvailabilityDirty(false)
+    setAvailabilitySaved(true)
+    setTimeout(() => setAvailabilitySaved(false), 2000)
   }
 
   function addTimeOff() {
-    if (!canEdit) {
-      toast.info(t('timeOffManagedByManager'))
-      return
-    }
-    if (!newTimeOffStart || !newTimeOffEnd) {
-      toast.info(t('pickBothDates'))
-      return
-    }
-    if (newTimeOffEnd < newTimeOffStart) {
-      toast.info(t('endAfterStart'))
-      return
-    }
+    if (!canEdit) { toast.info(t('timeOffManagedByManager')); return }
+    if (!newTimeOffStart || !newTimeOffEnd) { toast.info(t('pickBothDates')); return }
+    if (newTimeOffEnd < newTimeOffStart) { toast.info(t('endAfterStart')); return }
     const entry = {
       id: Date.now().toString(),
       start: newTimeOffStart,
       end: newTimeOffEnd,
       reason: newTimeOffReason.trim() || t('timeOff')
     }
-    const next = [...timeOff, entry]
-    setTimeOff(next)
-    saveTimeOff(next)
+    setTimeOff(prev => [...prev, entry])
+    setTimeOffDirty(true)
+    setTimeOffSaved(false)
     setNewTimeOffStart('')
     setNewTimeOffEnd('')
     setNewTimeOffReason('')
-    toast.success(t('timeOffAdded'))
   }
 
   function removeTimeOff(id) {
-    if (!canEdit) {
-      toast.info(t('timeOffManagedByManager'))
-      return
-    }
-    const next = timeOff.filter(entry => entry.id !== id)
-    setTimeOff(next)
-    saveTimeOff(next)
+    if (!canEdit) { toast.info(t('timeOffManagedByManager')); return }
+    setTimeOff(prev => prev.filter(entry => entry.id !== id))
+    setTimeOffDirty(true)
+    setTimeOffSaved(false)
+  }
+
+  async function handleSaveTimeOff() {
+    await saveTimeOff(timeOff)
+    setTimeOffDirty(false)
+    setTimeOffSaved(true)
+    setTimeout(() => setTimeOffSaved(false), 2000)
   }
 
   if (loading || !employee) {
@@ -409,12 +411,6 @@ function Availability() {
             : `${t('availabilityManagerSubtitleBefore')} ${employee.name}. ${t('availabilityManagerSubtitleAfter')}`
         }
       >
-        {saving && (
-          <span className="saving-pill">
-            <Clock size={12} />
-            {t('saving')}
-          </span>
-        )}
         {isEmployeePortal && !canEdit && (
           <span className="saving-pill">
             <Lock size={12} />
@@ -433,7 +429,7 @@ function Availability() {
             const d = availability[day.key]
             return (
               <div key={day.key} className={`day-row ${d.available ? 'available' : 'unavailable'}`}>
-                <button 
+                <button
                   className="day-toggle"
                   onClick={() => toggleDay(day.key)}
                   disabled={!canEdit}
@@ -473,6 +469,18 @@ function Availability() {
             )
           })}
         </div>
+        {canEdit && (
+          <div className="avail-save-row">
+            <button
+              className={`avail-save-btn${availabilitySaved ? ' confirmed' : ''}`}
+              onClick={handleSaveAvailability}
+              disabled={!availabilityDirty || saving}
+            >
+              {availabilitySaved && <Check size={14} />}
+              <span>{availabilitySaved ? t('saved') : t('save')}</span>
+            </button>
+          </div>
+        )}
       </Section>
 
       <Section 
@@ -540,6 +548,18 @@ function Availability() {
             <span>{isEmployeePortal ? t('submitTimeOff') : t('addTimeOff')}</span>
           </button>
         </div>
+        {canEdit && (
+          <div className="avail-save-row">
+            <button
+              className={`avail-save-btn${timeOffSaved ? ' confirmed' : ''}`}
+              onClick={handleSaveTimeOff}
+              disabled={!timeOffDirty || saving}
+            >
+              {timeOffSaved && <Check size={14} />}
+              <span>{timeOffSaved ? t('saved') : t('save')}</span>
+            </button>
+          </div>
+        )}
       </Section>
     </main>
   )

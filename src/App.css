@@ -1645,6 +1645,60 @@
   color: #111;
 }
 
+/* Availability save row */
+.avail-save-row {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid #1e1e1e;
+}
+
+.avail-save-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 24px;
+  border-radius: var(--radius-md);
+  font-size: 14px;
+  font-weight: 600;
+  font-family: var(--font-sans);
+  cursor: pointer;
+  transition: all 0.18s ease;
+  border: 1px solid transparent;
+  background: linear-gradient(135deg, var(--accent-1) 0%, var(--accent-2) 100%);
+  color: white;
+  box-shadow: 0 2px 8px rgba(99, 102, 241, 0.25);
+}
+
+.avail-save-btn:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 16px rgba(99, 102, 241, 0.4);
+}
+
+.avail-save-btn:disabled {
+  background: transparent;
+  border-color: #2a2a2a;
+  color: #444;
+  box-shadow: none;
+  cursor: default;
+  transform: none;
+}
+
+.avail-save-btn.confirmed {
+  background: #16a34a;
+  box-shadow: 0 2px 8px rgba(22, 163, 74, 0.25);
+}
+
+.app.light .avail-save-row {
+  border-top-color: rgba(0, 0, 0, 0.07);
+}
+
+.app.light .avail-save-btn:disabled {
+  border-color: rgba(0, 0, 0, 0.1);
+  color: #bbb;
+}
+
 /* Time Off Form */
 .timeoff-form {
   margin-bottom: 20px;
