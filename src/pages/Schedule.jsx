@@ -595,7 +595,7 @@ function formatWeekRange(mondayStr, language = 'en') {
   const sunday = new Date(monday)
   sunday.setDate(monday.getDate() + 6)
   
-  const locale = language === 'fa' ? 'fa-IR' : 'en-US'
+  const locale = language === 'fa' ? 'fa-IR-u-nu-latn' : 'en-US'
   const format = (d) => d.toLocaleDateString(locale, {
     month: 'short', 
     day: 'numeric' 

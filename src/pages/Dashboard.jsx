@@ -116,14 +116,14 @@ function Dashboard() {
     const monday = new Date(mondayStr + 'T12:00:00')
     const sunday = new Date(monday)
     sunday.setDate(monday.getDate() + 6)
-    const fmt = (d) => d.toLocaleDateString(language === 'fa' ? 'fa-IR' : 'en-US', { month: 'short', day: 'numeric' })
+    const fmt = (d) => d.toLocaleDateString(language === 'fa' ? 'fa-IR-u-nu-latn' : 'en-US', { month: 'short', day: 'numeric' })
     return `${fmt(monday)} — ${fmt(sunday)}`
   }
 
   function formatTime(timestamp) {
     if (!timestamp) return ''
     const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp)
-    return date.toLocaleDateString(language === 'fa' ? 'fa-IR' : 'en-US', { month: 'short', day: 'numeric' })
+    return date.toLocaleDateString(language === 'fa' ? 'fa-IR-u-nu-latn' : 'en-US', { month: 'short', day: 'numeric' })
   }
 
   return (

@@ -105,7 +105,7 @@ function formatTime(time24, language = 'en') {
   if (!time24) return ''
   const [h, m] = time24.split(':').map(Number)
   if (language === 'fa') {
-    return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`.replace(/\d/g, d => Number(d).toLocaleString('fa-IR'))
+    return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`
   }
   const period = h >= 12 ? 'PM' : 'AM'
   const displayH = h === 0 ? 12 : h > 12 ? h - 12 : h
@@ -115,7 +115,20 @@ function formatTime(time24, language = 'en') {
 function formatDayDate(dateStr, language = 'en') {
   if (!dateStr) return ''
   const d = new Date(dateStr + 'T12:00:00')
-  return d.toLocaleDateString(language === 'fa' ? 'fa-IR' : 'en-US', { month: 'short', day: 'numeric' })
+  return d.toLocaleDateString(language === 'fa' ? 'fa-IR-u-nu-latn' : 'en-US', { month: 'short', day: 'numeric' })
+}
+
+function formatRole(role, t, language = 'en') {
+  if (language !== 'fa') return role
+  const normalized = role?.toLowerCase?.().trim()
+  if (normalized === 'shift supervisor' || normalized === 'shift lead') return t('roleShiftSupervisor')
+  if (normalized === 'barista') return t('roleBarista')
+  if (normalized === 'manager') return t('roleManager')
+  return role
+}
+
+function formatHours(hours, language = 'en') {
+  return language === 'fa' ? `${hours} ساعت` : `${hours}h`
 }
 
 function calcHours(start, end) {
@@ -243,12 +256,12 @@ function ScheduleTable({ data, employees = [], roles = [], onUpdate, highlightFi
                         onClick={() => onUpdate && handleShiftClick(day.key, shift)}
                       >
                         <div className="schedule-shift-name">{shift.employee}</div>
-                        <div className="schedule-shift-role">{shift.role}</div>
+                        <div className="schedule-shift-role">{formatRole(shift.role, t, language)}</div>
                         <div className="schedule-shift-time">
                           <Clock size={11} />
                           <span>{formatTime(shift.start, language)} — {formatTime(shift.end, language)}</span>
                         </div>
-                        <div className="schedule-shift-hours">{shift.hours}h</div>
+                        <div className="schedule-shift-hours">{formatHours(shift.hours, language)}</div>
                       </div>
                     )
                   })
@@ -263,7 +276,7 @@ function ScheduleTable({ data, employees = [], roles = [], onUpdate, highlightFi
                     onClick={() => onUpdate && handleAddShift(day.key)}
                   >
                     <div className="schedule-shift-empty-slot-role">
-                      {slot.role || t('openShift')}
+                      {formatRole(slot.role, t, language) || t('openShift')}
                     </div>
                     <div className="schedule-shift-time">
                       <Clock size={11} />

@@ -6987,10 +6987,10 @@ select.input {
   text-align: right;
 }
 
-.app.rtl .schedules-page-full .schedules-split,
-.app.rtl .schedules-main-header,
 .app.rtl .schedule-card-header,
-.app.rtl .schedule-filter-controls {
+.app.rtl .schedule-filter-segment,
+.app.rtl .schedule-table-wrapper,
+.app.rtl .schedule-table {
   direction: ltr;
 }
 
@@ -7035,11 +7035,12 @@ select.input {
 }
 
 .app.rtl .schedule-filter-label {
-  margin-inline-end: auto;
+  margin-inline-end: 0;
 }
 
 .app.rtl .schedule-filter-controls {
-  justify-content: flex-start;
+  justify-content: flex-end;
+  direction: rtl;
 }
 
 .app.rtl .page-hero-actions {
@@ -7071,6 +7072,22 @@ select.input {
 
 .app.rtl .legal-text {
   line-height: 1.95;
+}
+
+.app.rtl .pricing-page-grid,
+.app.rtl .pricing-includes,
+.app.rtl .pricing-page-features {
+  direction: rtl;
+}
+
+.app.rtl .pricing-page-badge {
+  right: 24px;
+  left: auto;
+}
+
+.app.rtl .pricing-page-price {
+  direction: ltr;
+  justify-content: flex-end;
 }
 
 .app.rtl .legal-text ul,
@@ -13090,4 +13107,129 @@ input[type="time"]::-webkit-calendar-picker-indicator:hover {
   top: -22px !important;
   transform: translateY(-34px) !important;
   margin-bottom: -34px !important;
+}
+
+/* Persian schedule history needs RTL reading order without corrupting the calendar grid */
+.schedules-page-full .schedules-split {
+  grid-template-areas: "sidebar main";
+}
+
+.schedules-page-full .schedules-sidebar {
+  grid-area: sidebar;
+}
+
+.schedules-page-full .schedules-main {
+  grid-area: main;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.schedules-page-full .schedules-main .schedule-table-wrapper {
+  width: 100%;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+}
+
+.app.rtl .schedules-page-full .schedules-split {
+  grid-template-columns: minmax(0, 1fr) minmax(360px, 390px);
+  grid-template-areas: "main sidebar";
+  direction: rtl;
+}
+
+.app.rtl .schedules-page-full .page-hero-content {
+  margin-inline-start: auto;
+  margin-inline-end: 0;
+}
+
+.app.rtl .schedules-main-header {
+  direction: rtl;
+  align-items: flex-start;
+}
+
+.app.rtl .schedules-main-header > div:first-child {
+  text-align: right;
+}
+
+.app.rtl .schedules-main-header > div:last-child {
+  direction: rtl;
+  justify-content: flex-start;
+}
+
+.app.rtl .schedule-filter-bar {
+  direction: rtl;
+}
+
+.app.rtl .schedule-filter-controls {
+  margin-inline-start: 0;
+  margin-inline-end: auto;
+}
+
+.app.rtl .schedule-filter-select {
+  text-align: right;
+}
+
+.app.rtl .schedules-sidebar-head,
+.app.rtl .schedule-card-tags,
+.app.rtl .schedules-sidebar .schedule-meta {
+  direction: rtl;
+  text-align: right;
+}
+
+.app.rtl .schedules-sidebar .schedule-card-header {
+  flex-direction: row-reverse;
+  direction: rtl;
+}
+
+.app.rtl .schedules-sidebar .schedule-week {
+  direction: rtl;
+  text-align: right;
+  justify-content: flex-start;
+}
+
+.app.rtl .schedules-sidebar .schedule-card-tags {
+  justify-content: flex-start;
+}
+
+.app.rtl .schedules-page-full .schedule-table-wrapper {
+  direction: ltr;
+}
+
+.app.rtl .schedules-page-full .schedule-table {
+  direction: ltr;
+  min-width: 1120px;
+}
+
+.app.rtl .schedules-page-full .schedule-day-column {
+  direction: rtl;
+}
+
+.app.rtl .schedules-page-full .schedule-day-header,
+.app.rtl .schedules-page-full .schedule-shift {
+  direction: rtl;
+  text-align: right;
+}
+
+.app.rtl .schedules-page-full .schedule-shift-time,
+.app.rtl .schedules-page-full .schedule-shift-hours {
+  direction: ltr;
+  unicode-bidi: plaintext;
+}
+
+.app.rtl .schedules-page-full .schedule-shift-time {
+  justify-content: flex-end;
+}
+
+.app.rtl .schedules-page-full .schedule-shift-time span,
+.app.rtl .schedules-page-full .schedule-shift-hours {
+  font-variant-numeric: tabular-nums;
+}
+
+@media (max-width: 1000px) {
+  .schedules-page-full .schedules-split,
+  .app.rtl .schedules-page-full .schedules-split {
+    grid-template-columns: 1fr;
+    grid-template-areas:
+      "sidebar"
+      "main";
+  }
 }

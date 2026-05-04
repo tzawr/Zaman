@@ -108,7 +108,7 @@ function Schedules() {
     const sunday = new Date(monday)
     sunday.setDate(monday.getDate() + 6)
     
-    const locale = language === 'fa' ? 'fa-IR' : 'en-US'
+    const locale = language === 'fa' ? 'fa-IR-u-nu-latn' : 'en-US'
     const format = (d, withYear = false) => d.toLocaleDateString(locale, {
       month: 'short', 
       day: 'numeric',
@@ -121,7 +121,7 @@ function Schedules() {
   function formatCreatedAt(timestamp) {
     if (!timestamp) return ''
     const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp)
-    return date.toLocaleDateString(language === 'fa' ? 'fa-IR' : 'en-US', {
+    return date.toLocaleDateString(language === 'fa' ? 'fa-IR-u-nu-latn' : 'en-US', {
       month: 'short', 
       day: 'numeric',
       year: 'numeric',

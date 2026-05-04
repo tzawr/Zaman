@@ -24,7 +24,7 @@ function formatTime(time24, language = 'en') {
   if (!time24) return ''
   const [h, m] = time24.split(':').map(Number)
   if (language === 'fa') {
-    return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`.replace(/\d/g, d => Number(d).toLocaleString('fa-IR'))
+    return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`
   }
   const period = h >= 12 ? 'PM' : 'AM'
   const displayH = h === 0 ? 12 : h > 12 ? h - 12 : h
@@ -37,14 +37,14 @@ function formatWeekRange(weekStart, language) {
   const end = new Date(start)
   end.setDate(end.getDate() + 6)
   const opts = { month: 'short', day: 'numeric' }
-  const locale = language === 'fa' ? 'fa-IR' : 'en-US'
+  const locale = language === 'fa' ? 'fa-IR-u-nu-latn' : 'en-US'
   return `${start.toLocaleDateString(locale, opts)} – ${end.toLocaleDateString(locale, { ...opts, year: 'numeric' })}`
 }
 
 function formatDayDate(dateStr, language) {
   if (!dateStr) return ''
   const d = new Date(dateStr + 'T12:00:00')
-  return d.toLocaleDateString(language === 'fa' ? 'fa-IR' : 'en-US', { month: 'short', day: 'numeric' })
+  return d.toLocaleDateString(language === 'fa' ? 'fa-IR-u-nu-latn' : 'en-US', { month: 'short', day: 'numeric' })
 }
 
 function MySchedule() {

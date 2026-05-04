@@ -353,7 +353,7 @@ function formatMockTime(range, language) {
     const rawHour = Number(match[1])
     const hour = match[3] === 'p' && rawHour !== 12 ? rawHour + 12 : match[3] === 'a' && rawHour === 12 ? 0 : rawHour
     const minute = match[2] || '00'
-    return `${String(hour).padStart(2, '0')}:${minute}`.replace(/\d/g, d => Number(d).toLocaleString('fa-IR'))
+    return `${String(hour).padStart(2, '0')}:${minute}`
   }).join(' - ')
 }
 
