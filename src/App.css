@@ -13579,3 +13579,241 @@ input[type="time"]::-webkit-calendar-picker-indicator:hover {
     gap: 8px;
   }
 }
+
+/* ========== CURSOR INTERACTION POLISH ========== */
+
+.app button:not(:disabled),
+.app [role="button"]:not([aria-disabled="true"]),
+.app a.landing-cta-primary,
+.app a.landing-cta-secondary,
+.app a.landing-cta-ghost,
+.app .dashboard-card,
+.app .team-card,
+.app .schedule-card,
+.app .dashboard-schedule-item,
+.app .dashboard-team-card,
+.app .dashboard-invite-card,
+.app .landing-feature-card,
+.app .landing-pricing-card,
+.app .pricing-page-card,
+.app .landing-qa-item,
+.app .marquee-item,
+.app .premium-panel,
+.app .premium-calendar-card,
+.app .premium-note-card,
+.app .premium-event-chip,
+.app .premium-constraint-tile,
+.app .mockup-v2,
+.app .mockup-window,
+.app .hero-preview-frame,
+.app .hero-floating-card,
+.app .orbit-card {
+  will-change: transform;
+}
+
+.app button:not(:disabled) {
+  transform: translateY(0) scale(1);
+  transition:
+    transform 180ms var(--ease-out),
+    box-shadow 180ms var(--ease-out),
+    border-color 180ms var(--ease-out),
+    background 180ms var(--ease-out),
+    color 180ms var(--ease-out),
+    opacity 180ms var(--ease-out);
+}
+
+.app button:not(:disabled):hover {
+  transform: translateY(-2px) scale(1.015);
+  box-shadow: 0 14px 34px rgba(0, 0, 0, 0.24), 0 0 28px rgba(96, 165, 250, 0.16);
+}
+
+.app button:not(:disabled):active {
+  transform: translateY(0) scale(0.985);
+  transition-duration: 90ms;
+}
+
+.app button:not(:disabled):focus-visible,
+.app a:focus-visible,
+.app [role="button"]:focus-visible {
+  outline: 2px solid rgba(147, 197, 253, 0.82);
+  outline-offset: 3px;
+  box-shadow: 0 0 0 6px rgba(96, 165, 250, 0.18);
+}
+
+.app .navbar-icon-button:not(:disabled):hover,
+.app .navbar-language-button:not(:disabled):hover,
+.app .theme-toggle-btn:not(:disabled):hover,
+.app .profile-button:not(:disabled):hover,
+.app .modal-close-btn:not(:disabled):hover,
+.app .schedule-delete-btn:not(:disabled):hover,
+.app .timeoff-remove:not(:disabled):hover,
+.app .role-remove:not(:disabled):hover,
+.app .toast-close:not(:disabled):hover {
+  transform: translateY(-1px) scale(1.08);
+}
+
+.app .landing-cta-primary,
+.app .landing-cta-secondary,
+.app .landing-cta-ghost,
+.app .add-button,
+.app .secondary-button,
+.app .danger-button,
+.app .settings-button,
+.app .google-auth-btn,
+.app .dashboard-see-all,
+.app .dashboard-invite-btn,
+.app .employee-invite-btn,
+.app .invite-copy-btn,
+.app .my-schedule-week-btn,
+.app .my-schedule-toggle-btn,
+.app .export-dropdown-item,
+.app .premium-export-row button {
+  position: relative;
+  overflow: hidden;
+}
+
+.app .landing-cta-primary::after,
+.app .add-button::after,
+.app .settings-button::after,
+.app .dashboard-invite-btn::after,
+.app .employee-invite-btn::after,
+.app .invite-copy-btn::after,
+.app .premium-export-row button::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(110deg, transparent 0%, rgba(255, 255, 255, 0.28) 45%, transparent 72%);
+  transform: translateX(-120%);
+  transition: transform 520ms var(--ease-out);
+}
+
+.app .landing-cta-primary:hover::after,
+.app .add-button:hover::after,
+.app .settings-button:hover::after,
+.app .dashboard-invite-btn:hover::after,
+.app .employee-invite-btn:hover::after,
+.app .invite-copy-btn:hover::after,
+.app .premium-export-row button:hover::after {
+  transform: translateX(120%);
+}
+
+.app .dashboard-card,
+.app .team-card,
+.app .schedule-card,
+.app .dashboard-schedule-item,
+.app .dashboard-team-card,
+.app .dashboard-invite-card,
+.app .landing-feature-card,
+.app .landing-pricing-card,
+.app .pricing-page-card,
+.app .premium-panel,
+.app .premium-calendar-card,
+.app .premium-note-card,
+.app .premium-event-chip,
+.app .premium-constraint-tile,
+.app .mockup-v2,
+.app .mockup-window,
+.app .hero-preview-frame,
+.app .hero-floating-card,
+.app .orbit-card {
+  transition:
+    transform 260ms var(--ease-out),
+    box-shadow 260ms var(--ease-out),
+    border-color 260ms var(--ease-out),
+    background 260ms var(--ease-out),
+    filter 260ms var(--ease-out);
+}
+
+.app .dashboard-card:hover,
+.app .team-card:hover,
+.app .schedule-card:hover,
+.app .dashboard-schedule-item:hover,
+.app .dashboard-team-card:hover,
+.app .dashboard-invite-card:hover,
+.app .landing-feature-card:hover,
+.app .landing-pricing-card:hover,
+.app .pricing-page-card:hover,
+.app .premium-panel:hover,
+.app .premium-calendar-card:hover,
+.app .premium-note-card:hover,
+.app .premium-event-chip:hover,
+.app .premium-constraint-tile:hover,
+.app .mockup-v2:hover,
+.app .mockup-window:hover,
+.app .hero-preview-frame:hover,
+.app .hero-floating-card:hover,
+.app .orbit-card:hover {
+  transform: translateY(-4px);
+  border-color: rgba(147, 197, 253, 0.38);
+  box-shadow: 0 22px 55px rgba(0, 0, 0, 0.26), 0 0 34px rgba(96, 165, 250, 0.13);
+  filter: saturate(1.04);
+}
+
+.app .mockup-shift,
+.app .mockup-badge,
+.app .proof-shift,
+.app .proof-hours,
+.app .proof-issue,
+.app .premium-rule-stack div,
+.app .premium-parsed-pill,
+.app .premium-coverage-stat,
+.app .premium-advice-item {
+  transition:
+    transform 200ms var(--ease-out),
+    border-color 200ms var(--ease-out),
+    background 200ms var(--ease-out),
+    box-shadow 200ms var(--ease-out),
+    filter 200ms var(--ease-out);
+}
+
+.app .mockup-shift:hover,
+.app .mockup-badge:hover,
+.app .proof-shift:hover,
+.app .proof-hours:hover,
+.app .proof-issue:hover,
+.app .premium-rule-stack div:hover,
+.app .premium-parsed-pill:hover,
+.app .premium-coverage-stat:hover,
+.app .premium-advice-item:hover {
+  transform: translateY(-2px) scale(1.01);
+  border-color: rgba(147, 197, 253, 0.34);
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.2), 0 0 22px rgba(96, 165, 250, 0.12);
+  filter: brightness(1.04);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .app button:not(:disabled),
+  .app [role="button"],
+  .app .dashboard-card,
+  .app .team-card,
+  .app .schedule-card,
+  .app .dashboard-schedule-item,
+  .app .dashboard-team-card,
+  .app .dashboard-invite-card,
+  .app .landing-feature-card,
+  .app .landing-pricing-card,
+  .app .pricing-page-card,
+  .app .premium-panel,
+  .app .premium-calendar-card,
+  .app .premium-note-card,
+  .app .premium-event-chip,
+  .app .premium-constraint-tile,
+  .app .mockup-v2,
+  .app .mockup-window,
+  .app .hero-preview-frame,
+  .app .hero-floating-card,
+  .app .orbit-card,
+  .app .mockup-shift,
+  .app .mockup-badge,
+  .app .proof-shift,
+  .app .proof-hours,
+  .app .proof-issue,
+  .app .premium-rule-stack div,
+  .app .premium-parsed-pill,
+  .app .premium-coverage-stat,
+  .app .premium-advice-item {
+    transition: none;
+    transform: none;
+  }
+}
