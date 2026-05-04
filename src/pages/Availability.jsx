@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { ArrowLeft, Check, X, ArrowRight, Palmtree, Plus, Clock, Lock } from 'lucide-react'
-import { doc, onSnapshot, updateDoc, serverTimestamp } from 'firebase/firestore'
+import { collection, doc, onSnapshot, query, updateDoc, where, serverTimestamp } from 'firebase/firestore'
 import { db } from '../firebase'
 import { useAuth } from '../AuthContext'
 import { useToast } from '../components/Toast'
@@ -24,6 +24,25 @@ const DEFAULT_AVAIL = DAYS.reduce((acc, d) => {
   return acc
 }, {})
 
+function timestampMs(value) {
+  if (!value) return 0
+  if (typeof value.toMillis === 'function') return value.toMillis()
+  if (typeof value.seconds === 'number') return value.seconds * 1000
+  return 0
+}
+
+function hasValue(record, field) {
+  if (!record?.[field]) return false
+  if (Array.isArray(record[field])) return record[field].length > 0
+  return Object.keys(record[field]).length > 0
+}
+
+function freshestRecord(records, field, timestampField) {
+  return records
+    .filter(record => hasValue(record, field))
+    .sort((a, b) => timestampMs(b[timestampField]) - timestampMs(a[timestampField]))[0]
+}
+
 function Availability() {
   const { employeeId } = useParams()
   const navigate = useNavigate()
@@ -40,6 +59,7 @@ function Availability() {
   const [newTimeOffStart, setNewTimeOffStart] = useState('')
   const [newTimeOffEnd, setNewTimeOffEnd] = useState('')
   const [newTimeOffReason, setNewTimeOffReason] = useState('')
+  const [linkedPortalUserId, setLinkedPortalUserId] = useState('')
   const [saving, setSaving] = useState(false)
   const [loading, setLoading] = useState(true)
 
@@ -54,6 +74,35 @@ function Availability() {
       return
     }
 
+    let userRecord = null
+    let employeeRecord = null
+    let unsubEmployee = null
+
+    function applyRecords() {
+      if (!userRecord) return
+
+      setActiveEmployeeId(userRecord.linkedEmployeeId)
+      setEmployeeCanEdit(userRecord.allowEmployeeAvailabilityUpdates !== false)
+      setEmployee({
+        name: userRecord.employeeName || userRecord.displayName || t('myAvailability'),
+        role: userRecord.employeeRole || t('employee'),
+      })
+
+      const availabilityRecord = freshestRecord(
+        [userRecord, employeeRecord],
+        'availability',
+        'availabilityUpdatedAt'
+      )
+      const timeOffRecord = freshestRecord(
+        [userRecord, employeeRecord],
+        'timeOff',
+        'timeOffUpdatedAt'
+      )
+      setAvailability({ ...DEFAULT_AVAIL, ...(availabilityRecord?.availability || {}) })
+      setTimeOff(timeOffRecord?.timeOff || [])
+      setLoading(false)
+    }
+
     const unsub = onSnapshot(doc(db, 'users', currentUser.uid), (snap) => {
       if (!snap.exists()) {
         navigate('/signin')
@@ -64,29 +113,52 @@ function Availability() {
         navigate('/dashboard')
         return
       }
-
-      setActiveEmployeeId(userData.linkedEmployeeId)
-      setEmployeeCanEdit(userData.allowEmployeeAvailabilityUpdates !== false)
-      setEmployee({
-        name: userData.employeeName || userData.displayName || t('myAvailability'),
-        role: userData.employeeRole || t('employee'),
-      })
-      if (userData.availability && Object.keys(userData.availability).length > 0) {
-        setAvailability({ ...DEFAULT_AVAIL, ...userData.availability })
+      userRecord = userData
+      if (!unsubEmployee) {
+        unsubEmployee = onSnapshot(doc(db, 'employees', userData.linkedEmployeeId), (employeeSnap) => {
+          employeeRecord = employeeSnap.exists() ? employeeSnap.data() : null
+          applyRecords()
+        }, () => {
+          employeeRecord = null
+          applyRecords()
+        })
       }
-      setTimeOff(userData.timeOff || [])
-      setLoading(false)
+      applyRecords()
     }, () => {
       toast.error(t('availabilityPortalLoadError'))
       navigate('/my-schedule')
     })
 
-    return () => unsub()
+    return () => {
+      unsub()
+      if (unsubEmployee) unsubEmployee()
+    }
   }, [currentUser, employeeId, navigate, toast, t])
 
   useEffect(() => {
     if (!currentUser || !activeEmployeeId || portalMode === 'employee') return
-    const unsub = onSnapshot(doc(db, 'employees', activeEmployeeId), (snap) => {
+    let employeeRecord = null
+    let portalRecord = null
+
+    function applyRecords() {
+      if (!employeeRecord) return
+      const availabilityRecord = freshestRecord(
+        [employeeRecord, portalRecord],
+        'availability',
+        'availabilityUpdatedAt'
+      )
+      const timeOffRecord = freshestRecord(
+        [employeeRecord, portalRecord],
+        'timeOff',
+        'timeOffUpdatedAt'
+      )
+      setEmployee(employeeRecord)
+      setAvailability({ ...DEFAULT_AVAIL, ...(availabilityRecord?.availability || {}) })
+      setTimeOff(timeOffRecord?.timeOff || [])
+      setLoading(false)
+    }
+
+    const unsubEmployee = onSnapshot(doc(db, 'employees', activeEmployeeId), (snap) => {
       if (!snap.exists()) {
         navigate('/employees')
         return
@@ -96,17 +168,34 @@ function Availability() {
         navigate('/employees')
         return
       }
-      setEmployee(data)
-      if (data.availability && Object.keys(data.availability).length > 0) {
-        setAvailability({ ...DEFAULT_AVAIL, ...data.availability })
-      }
-      setTimeOff(data.timeOff || [])
-      setLoading(false)
+      employeeRecord = data
+      applyRecords()
     }, () => {
       toast.error(t('employeeAvailabilityLoadError'))
       navigate('/employees')
     })
-    return () => unsub()
+
+    const portalQuery = query(
+      collection(db, 'users'),
+      where('managerId', '==', currentUser.uid),
+      where('accountType', '==', 'employee'),
+      where('linkedEmployeeId', '==', activeEmployeeId)
+    )
+    const unsubPortal = onSnapshot(portalQuery, (snapshot) => {
+      const portalDoc = snapshot.docs[0]
+      portalRecord = portalDoc ? portalDoc.data() : null
+      setLinkedPortalUserId(portalDoc?.id || '')
+      applyRecords()
+    }, () => {
+      portalRecord = null
+      setLinkedPortalUserId('')
+      applyRecords()
+    })
+
+    return () => {
+      unsubEmployee()
+      unsubPortal()
+    }
   }, [currentUser, activeEmployeeId, portalMode, navigate, toast, t])
 
   const canEdit = portalMode === 'manager' || employeeCanEdit
@@ -136,6 +225,14 @@ function Availability() {
         }
       } else {
         await updateDoc(doc(db, 'employees', activeEmployeeId), payload)
+        if (linkedPortalUserId) {
+          try {
+            await updateDoc(doc(db, 'users', linkedPortalUserId), payload)
+          } catch {
+            // The employee record remains the manager-owned source if rules
+            // prevent managers from writing employee portal user docs.
+          }
+        }
       }
     } catch {
       toast.error(t('failedToSave'))
@@ -167,6 +264,14 @@ function Availability() {
         }
       } else {
         await updateDoc(doc(db, 'employees', activeEmployeeId), payload)
+        if (linkedPortalUserId) {
+          try {
+            await updateDoc(doc(db, 'users', linkedPortalUserId), payload)
+          } catch {
+            // The employee record remains the manager-owned source if rules
+            // prevent managers from writing employee portal user docs.
+          }
+        }
       }
     } catch {
       toast.error(t('failedToSave'))
