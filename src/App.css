@@ -4868,7 +4868,6 @@ input:checked + .slider:before {
   grid-template-columns: repeat(7, minmax(158px, 1fr));
   gap: 12px;
   margin-bottom: 32px;
-  min-width: 1180px;
 }
 
 .schedule-day-column {
@@ -5425,9 +5424,55 @@ input:checked + .slider:before {
   }
 }
 
-@media (max-width: 450px) {
+@media (max-width: 600px) {
+  .schedule-table-wrapper {
+    overflow-x: visible;
+  }
   .schedule-table {
     grid-template-columns: 1fr;
+    gap: 8px;
+  }
+  .schedule-day-column {
+    min-height: 0;
+  }
+  .schedule-day-header {
+    padding: 12px 14px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    text-align: left;
+  }
+  .schedule-day-name {
+    margin-bottom: 0;
+    font-size: 11px;
+  }
+  .schedule-day-date {
+    font-size: 14px;
+  }
+  .schedule-day-warning {
+    position: static;
+    margin-left: auto;
+  }
+  .schedule-day-shifts {
+    padding: 10px;
+    gap: 8px;
+  }
+  .schedule-shift {
+    padding: 10px 12px;
+  }
+  .schedule-summary {
+    padding: 20px 16px;
+  }
+  .schedule-summary-grid {
+    grid-template-columns: 1fr;
+  }
+  .schedule-issues,
+  .schedule-recommendations {
+    padding: 20px 16px;
+  }
+  .schedule-result-bar {
+    padding: 12px 14px;
+    gap: 10px;
   }
 }
 
@@ -13207,6 +13252,17 @@ input[type="time"]::-webkit-calendar-picker-indicator:hover {
 .app.rtl .schedules-page-full .schedule-shift {
   direction: rtl;
   text-align: right;
+}
+
+@media (max-width: 600px) {
+  .app.rtl .schedule-day-header {
+    text-align: right;
+    flex-direction: row-reverse;
+  }
+  .app.rtl .schedule-day-warning {
+    margin-left: 0;
+    margin-right: auto;
+  }
 }
 
 .app.rtl .schedules-page-full .schedule-shift-time,
