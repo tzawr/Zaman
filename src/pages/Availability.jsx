@@ -175,14 +175,16 @@ function Availability() {
       navigate('/employees')
     })
 
+    // Two-field query matches the composite index Firebase auto-creates for
+    // (managerId, accountType). The third field (linkedEmployeeId) was causing
+    // a missing-index error that silently failed, leaving portalRecord always null.
     const portalQuery = query(
       collection(db, 'users'),
       where('managerId', '==', currentUser.uid),
-      where('accountType', '==', 'employee'),
-      where('linkedEmployeeId', '==', activeEmployeeId)
+      where('accountType', '==', 'employee')
     )
     const unsubPortal = onSnapshot(portalQuery, (snapshot) => {
-      const portalDoc = snapshot.docs[0]
+      const portalDoc = snapshot.docs.find(d => d.data().linkedEmployeeId === activeEmployeeId)
       portalRecord = portalDoc ? portalDoc.data() : null
       setLinkedPortalUserId(portalDoc?.id || '')
       applyRecords()
