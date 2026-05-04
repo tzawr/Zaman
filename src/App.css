@@ -13289,3 +13289,87 @@ input[type="time"]::-webkit-calendar-picker-indicator:hover {
       "main";
   }
 }
+
+/* ========== PREMIUM PANELS MOBILE — must be at end to override final-polish non-media-query rules ========== */
+
+@media (max-width: 720px) {
+  /* Calendar scene: remove fixed height so stacked calendar+timeline isn't clipped */
+  .premium-calendar-scene {
+    height: auto;
+    inset: auto;
+  }
+
+  /* Panel stack: final-polish sets 470px min-height which overrides the earlier auto */
+  .premium-panel-stack {
+    min-height: 0;
+  }
+
+  /* Regular panels: same fix */
+  .premium-panel:not(.premium-panel-wide):not(.premium-panel-stack) {
+    min-height: 0;
+  }
+
+  /* Coverage stats: 34px margins are too wide at tablet width */
+  .premium-coverage-stats {
+    margin-left: 20px;
+    margin-right: 20px;
+  }
+
+  .premium-coverage-health {
+    margin-left: 20px;
+    margin-right: 20px;
+  }
+
+  /* Note card and inner items */
+  .premium-note-card {
+    margin-left: 20px;
+    margin-right: 20px;
+  }
+
+  .premium-typing {
+    margin-left: 20px;
+    margin-right: 20px;
+  }
+
+  .premium-advice-list {
+    margin-left: 20px;
+    margin-right: 20px;
+  }
+}
+
+@media (max-width: 500px) {
+  /* Coverage stats: 3-column is too cramped at ~320px content width */
+  .premium-coverage-stats {
+    grid-template-columns: 1fr 1fr;
+    margin-left: 16px;
+    margin-right: 16px;
+  }
+
+  /* Rule input demo: tighten horizontal margins */
+  .premium-rule-input-demo {
+    margin-left: 12px;
+    margin-right: 12px;
+  }
+
+  /* Parsed pills: single column on narrow phones */
+  .premium-parsed-pills {
+    grid-template-columns: 1fr;
+  }
+
+  /* Inner elements: tighter margins */
+  .premium-note-card,
+  .premium-typing,
+  .premium-advice-list {
+    margin-left: 14px;
+    margin-right: 14px;
+  }
+
+  /* Pricing cards: less top/bottom breathing room on small screens */
+  .landing-pricing-card {
+    padding: 28px 20px;
+  }
+
+  .pricing-page-card {
+    padding: 24px 20px;
+  }
+}
