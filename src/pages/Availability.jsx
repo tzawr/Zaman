@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { ArrowLeft, Check, X, ArrowRight, Palmtree, Plus, Clock, Lock } from 'lucide-react'
-import { doc, onSnapshot, updateDoc, serverTimestamp } from 'firebase/firestore'
+import { collection, doc, onSnapshot, query, updateDoc, where, serverTimestamp } from 'firebase/firestore'
 import { db } from '../firebase'
 import { useAuth } from '../AuthContext'
 import { useToast } from '../components/Toast'
@@ -86,7 +86,20 @@ function Availability() {
 
   useEffect(() => {
     if (!currentUser || !activeEmployeeId || portalMode === 'employee') return
-    const unsub = onSnapshot(doc(db, 'employees', activeEmployeeId), (snap) => {
+    let employeeRecord = null
+    let portalRecord = null
+
+    function applyRecords() {
+      if (!employeeRecord) return
+      const availabilitySource = portalRecord?.availability || employeeRecord.availability || {}
+      const timeOffSource = portalRecord?.timeOff || employeeRecord.timeOff || []
+      setEmployee(employeeRecord)
+      setAvailability({ ...DEFAULT_AVAIL, ...availabilitySource })
+      setTimeOff(timeOffSource)
+      setLoading(false)
+    }
+
+    const unsubEmployee = onSnapshot(doc(db, 'employees', activeEmployeeId), (snap) => {
       if (!snap.exists()) {
         navigate('/employees')
         return
@@ -96,17 +109,29 @@ function Availability() {
         navigate('/employees')
         return
       }
-      setEmployee(data)
-      if (data.availability && Object.keys(data.availability).length > 0) {
-        setAvailability({ ...DEFAULT_AVAIL, ...data.availability })
-      }
-      setTimeOff(data.timeOff || [])
-      setLoading(false)
+      employeeRecord = data
+      applyRecords()
     }, () => {
       toast.error(t('employeeAvailabilityLoadError'))
       navigate('/employees')
     })
-    return () => unsub()
+
+    const portalQuery = query(
+      collection(db, 'users'),
+      where('managerId', '==', currentUser.uid),
+      where('linkedEmployeeId', '==', activeEmployeeId)
+    )
+    const unsubPortal = onSnapshot(portalQuery, (snapshot) => {
+      portalRecord = snapshot.docs
+        .map(portalDoc => portalDoc.data())
+        .find(data => data.accountType === 'employee') || null
+      applyRecords()
+    })
+
+    return () => {
+      unsubEmployee()
+      unsubPortal()
+    }
   }, [currentUser, activeEmployeeId, portalMode, navigate, toast, t])
 
   const canEdit = portalMode === 'manager' || employeeCanEdit
@@ -120,15 +145,23 @@ function Availability() {
     }
     try {
       setSaving(true)
-      const targetRef = isEmployeePortal
-        ? doc(db, 'users', currentUser.uid)
-        : doc(db, 'employees', activeEmployeeId)
-      await updateDoc(targetRef, {
+      const payload = {
         availability: next,
         availabilityUpdatedAt: serverTimestamp(),
         availabilityUpdatedBy: currentUser.uid,
         availabilityUpdatedByType: isEmployeePortal ? 'employee' : 'manager'
-      })
+      }
+      if (isEmployeePortal) {
+        await updateDoc(doc(db, 'users', currentUser.uid), payload)
+        try {
+          await updateDoc(doc(db, 'employees', activeEmployeeId), payload)
+        } catch {
+          // Manager views also read the employee portal user doc, so rules that
+          // block employees from writing team records should not hide updates.
+        }
+      } else {
+        await updateDoc(doc(db, 'employees', activeEmployeeId), payload)
+      }
     } catch {
       toast.error(t('failedToSave'))
     } finally {
@@ -143,15 +176,23 @@ function Availability() {
     }
     try {
       setSaving(true)
-      const targetRef = isEmployeePortal
-        ? doc(db, 'users', currentUser.uid)
-        : doc(db, 'employees', activeEmployeeId)
-      await updateDoc(targetRef, {
+      const payload = {
         timeOff: next,
         timeOffUpdatedAt: serverTimestamp(),
         timeOffUpdatedBy: currentUser.uid,
         timeOffUpdatedByType: isEmployeePortal ? 'employee' : 'manager'
-      })
+      }
+      if (isEmployeePortal) {
+        await updateDoc(doc(db, 'users', currentUser.uid), payload)
+        try {
+          await updateDoc(doc(db, 'employees', activeEmployeeId), payload)
+        } catch {
+          // Keep the portal save successful even when employee records are
+          // manager-owned by Firestore rules.
+        }
+      } else {
+        await updateDoc(doc(db, 'employees', activeEmployeeId), payload)
+      }
     } catch {
       toast.error(t('failedToSave'))
     } finally {
@@ -215,7 +256,7 @@ function Availability() {
       toast.info(t('timeOffManagedByManager'))
       return
     }
-    const next = timeOff.filter(t => t.id !== id)
+    const next = timeOff.filter(entry => entry.id !== id)
     setTimeOff(next)
     saveTimeOff(next)
   }
@@ -326,15 +367,15 @@ function Availability() {
       >
         {timeOff.length > 0 && (
           <div className="timeoff-list">
-            {timeOff.map(t => (
-              <div key={t.id} className="timeoff-item">
+            {timeOff.map(entry => (
+              <div key={entry.id} className="timeoff-item">
                 <div className="timeoff-info">
-                  <div className="timeoff-dates">{t.start} → {t.end}</div>
-                  <div className="timeoff-reason">{t.reason}</div>
+                  <div className="timeoff-dates">{entry.start} → {entry.end}</div>
+                  <div className="timeoff-reason">{entry.reason}</div>
                 </div>
                 <button 
                   className="timeoff-remove"
-                  onClick={() => removeTimeOff(t.id)}
+                  onClick={() => removeTimeOff(entry.id)}
                   disabled={!canEdit}
                   aria-label={t('removeTimeOff')}
                 >
