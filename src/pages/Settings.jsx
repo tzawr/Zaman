@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Loader2, ArrowLeft, Check, X, ArrowRight, Pencil, Trash2, Plus, Clock, Shield, Target, Users, Eye, KeyRound, Lock, AlignLeft, Mic, MicOff } from 'lucide-react'
-import { doc, onSnapshot, setDoc, serverTimestamp } from 'firebase/firestore'
+import { doc, onSnapshot, setDoc, serverTimestamp, collection, query, where, getDocs, writeBatch } from 'firebase/firestore'
 import {
   updatePassword,
   reauthenticateWithCredential,
@@ -127,11 +127,33 @@ function Settings() {
   function toggleClopeningPrevention() {
     const v = !preventClopening; setPreventClopening(v); saveToFirebase({ preventClopening: v })
   }
+  async function propagatePermissionsToEmployees(updates) {
+    try {
+      const q = query(
+        collection(db, 'users'),
+        where('managerId', '==', currentUser.uid),
+        where('accountType', '==', 'employee')
+      )
+      const snap = await getDocs(q)
+      if (snap.empty) return
+      const batch = writeBatch(db)
+      snap.docs.forEach(d => batch.update(d.ref, updates))
+      await batch.commit()
+    } catch {
+      // Requires Firestore rule: allow write if resource.data.managerId == request.auth.uid
+    }
+  }
   function toggleAllowEmployeeFullView() {
-    const v = !allowEmployeeFullView; setAllowEmployeeFullView(v); saveToFirebase({ allowEmployeeFullView: v })
+    const v = !allowEmployeeFullView
+    setAllowEmployeeFullView(v)
+    saveToFirebase({ allowEmployeeFullView: v })
+    propagatePermissionsToEmployees({ allowEmployeeFullView: v })
   }
   function toggleEmployeeAvailabilityUpdates() {
-    const v = !allowEmployeeAvailabilityUpdates; setAllowEmployeeAvailabilityUpdates(v); saveToFirebase({ allowEmployeeAvailabilityUpdates: v })
+    const v = !allowEmployeeAvailabilityUpdates
+    setAllowEmployeeAvailabilityUpdates(v)
+    saveToFirebase({ allowEmployeeAvailabilityUpdates: v })
+    propagatePermissionsToEmployees({ allowEmployeeAvailabilityUpdates: v })
   }
   function updateMinHours(v) {
     const n = parseInt(v) || 8; setMinHoursBetweenShifts(n); saveToFirebase({ minHoursBetweenShifts: n })
