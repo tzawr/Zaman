@@ -13293,70 +13293,100 @@ input[type="time"]::-webkit-calendar-picker-indicator:hover {
 /* ========== PREMIUM PANELS MOBILE — must be at end to override final-polish non-media-query rules ========== */
 
 @media (max-width: 720px) {
-  /* Calendar scene: remove fixed height so stacked calendar+timeline isn't clipped */
+  /* Calendar scene: remove fixed height so content isn't clipped */
   .premium-calendar-scene {
     height: auto;
     inset: auto;
+    grid-template-columns: 1fr;
+    padding: 0 18px 24px;
+    gap: 16px;
   }
 
-  /* Panel stack: final-polish sets 470px min-height which overrides the earlier auto */
-  .premium-panel-stack {
+  /* Hide the decorative calendar card — too small to read and adds ~220px of height.
+     Keep the timeline which shows the actual scheduling value. */
+  .premium-calendar-card {
+    display: none;
+  }
+
+  /* Timeline: full-width, flatten the 3D perspective */
+  .premium-timeline {
+    width: 100%;
+    transform: none;
+    padding: 4px 0;
+  }
+
+  /* Event chips: slightly more compact */
+  .premium-event-chip {
+    min-height: 52px;
+  }
+
+  /* Panel-wide: let height be content-driven */
+  .premium-panel-wide {
     min-height: 0;
   }
 
-  /* Regular panels: same fix */
+  /* Panel stack and regular panels */
+  .premium-panel-stack,
   .premium-panel:not(.premium-panel-wide):not(.premium-panel-stack) {
     min-height: 0;
   }
 
-  /* Coverage stats: 34px margins are too wide at tablet width */
+  /* Coverage stats: 34px margins too wide */
   .premium-coverage-stats {
-    margin-left: 20px;
-    margin-right: 20px;
+    margin-left: 18px;
+    margin-right: 18px;
   }
 
   .premium-coverage-health {
-    margin-left: 20px;
-    margin-right: 20px;
+    margin-left: 18px;
+    margin-right: 18px;
   }
 
-  /* Note card and inner items */
+  /* Inner demo elements */
   .premium-note-card {
-    margin-left: 20px;
-    margin-right: 20px;
+    margin-left: 18px;
+    margin-right: 18px;
   }
 
   .premium-typing {
-    margin-left: 20px;
-    margin-right: 20px;
+    margin-left: 18px;
+    margin-right: 18px;
   }
 
   .premium-advice-list {
-    margin-left: 20px;
-    margin-right: 20px;
+    margin-left: 18px;
+    margin-right: 18px;
   }
 }
 
 @media (max-width: 500px) {
-  /* Coverage stats: 3-column is too cramped at ~320px content width */
+  /* Coverage stats: 3-column grid too cramped */
   .premium-coverage-stats {
     grid-template-columns: 1fr 1fr;
-    margin-left: 16px;
-    margin-right: 16px;
+    margin-left: 14px;
+    margin-right: 14px;
   }
 
-  /* Rule input demo: tighten horizontal margins */
+  /* Panel copy: tighter horizontal padding */
+  .premium-panel-copy {
+    padding: 20px 18px 0;
+  }
+
+  .premium-panel-stack .premium-panel-copy {
+    padding: 20px 18px 0;
+  }
+
+  /* Rule input demo: tighten margins */
   .premium-rule-input-demo {
-    margin-left: 12px;
-    margin-right: 12px;
+    margin: 2px 14px 20px;
   }
 
-  /* Parsed pills: single column on narrow phones */
+  /* Parsed pills: single column */
   .premium-parsed-pills {
     grid-template-columns: 1fr;
   }
 
-  /* Inner elements: tighter margins */
+  /* Inner elements */
   .premium-note-card,
   .premium-typing,
   .premium-advice-list {
@@ -13364,7 +13394,7 @@ input[type="time"]::-webkit-calendar-picker-indicator:hover {
     margin-right: 14px;
   }
 
-  /* Pricing cards: less top/bottom breathing room on small screens */
+  /* Pricing cards: reduce padding */
   .landing-pricing-card {
     padding: 28px 20px;
   }
