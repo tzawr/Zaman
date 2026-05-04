@@ -116,8 +116,8 @@ export async function exportToPNG(elementId, weekStart) {
       useCORS: true,
       width: element.scrollWidth,
       height: element.scrollHeight,
-      windowWidth: Math.max(document.documentElement.clientWidth, element.scrollWidth),
-      windowHeight: Math.max(document.documentElement.clientHeight, element.scrollHeight),
+      windowWidth: 1600,
+      windowHeight: element.scrollHeight,
       scrollX: 0,
       scrollY: 0,
     })
@@ -154,8 +154,8 @@ export async function exportToPDF(elementId, weekStart) {
         useCORS: true,
         width: element.scrollWidth,
         height: element.scrollHeight,
-        windowWidth: Math.max(document.documentElement.clientWidth, element.scrollWidth),
-        windowHeight: Math.max(document.documentElement.clientHeight, element.scrollHeight),
+        windowWidth: 1600,
+        windowHeight: element.scrollHeight,
         scrollX: 0,
         scrollY: 0,
       })
@@ -232,7 +232,6 @@ function prepareExportElement(source) {
   const clone = source.cloneNode(true)
   clone.removeAttribute('id')
   clone.classList.add('schedule-export-clone')
-  clone.style.width = `${source.scrollWidth}px`
   clone.style.maxWidth = 'none'
   clone.style.height = 'auto'
   clone.style.overflow = 'visible'
@@ -251,11 +250,17 @@ function prepareExportElement(source) {
     if (node.classList.contains('schedule-table-wrapper')) {
       node.style.maxWidth = 'none'
       node.style.overflow = 'visible'
+      node.style.width = 'auto'
     }
     if (node.classList.contains('schedule-table')) {
-      node.style.width = `${node.scrollWidth}px`
+      node.style.gridTemplateColumns = 'repeat(7, minmax(158px, 1fr))'
+      node.style.minWidth = '1180px'
+      node.style.width = 'auto'
     }
   })
+
+  // Measure after forcing desktop grid
+  clone.style.width = `${clone.scrollWidth}px`
 
   return {
     element: clone,
