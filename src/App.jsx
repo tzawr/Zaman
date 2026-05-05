@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { Sun, Moon, Mail } from 'lucide-react'
+import { useEffect, useState } from 'react'
+import { Crown, Mail, Moon, ShieldCheck, Sun } from 'lucide-react'
 import { BrowserRouter, Routes, Route, Link, Navigate } from 'react-router-dom'
 import { useAuth } from './AuthContext'
 import Landing from './pages/Landing'
@@ -29,6 +29,8 @@ import ForgotPassword from './pages/ForgotPassword'
 import Profile from './pages/Profile'
 import AdminUsers from './pages/AdminUsers'
 import { I18nProvider, useI18n } from './i18n'
+import { isAdminUid } from './utils/admin'
+import { getUserTier } from './utils/tier'
 import './App.css'
 
 function ProtectedRoute({ children }) {
@@ -49,16 +51,41 @@ function App() {
 
 function AppShell() {
   const { language, isRtl, t, toggleLanguage } = useI18n()
+  const { currentUser, userData } = useAuth()
+  const [resolvedTier, setResolvedTier] = useState('free')
   const [darkMode, setDarkMode] = useState(() => {
     const saved = localStorage.getItem('hengam-theme')
     if (saved === 'light') return false
     return true
   })
 
+  useEffect(() => {
+    let active = true
+    if (!currentUser) {
+      return () => {
+        active = false
+      }
+    }
+    getUserTier(currentUser.uid)
+      .then((tier) => {
+        if (active) setResolvedTier(tier === 'pro' ? 'pro' : 'free')
+      })
+      .catch(() => {
+        if (active) setResolvedTier(userData?.tier === 'pro' ? 'pro' : 'free')
+      })
+    return () => {
+      active = false
+    }
+  }, [currentUser, userData?.tier])
+
+  const displayTier = currentUser ? resolvedTier : 'free'
+  const isPro = currentUser && displayTier === 'pro'
+  const isAdmin = isAdminUid(currentUser?.uid)
+
   return (
     <BrowserRouter>
       <div className={`${darkMode ? 'app dark' : 'app light'} ${isRtl ? 'rtl' : 'ltr'}`} dir="ltr">
-        <nav className="navbar">
+        <nav className={`navbar ${isPro ? 'navbar-pro' : ''}`}>
           <Link to="/" className="logo-link" aria-label="Hengam home">
             <Logo size={36} />
           </Link>
@@ -69,6 +96,21 @@ function AppShell() {
           </div>
           <div className="navbar-right-group">
             <div className="navbar-actions">
+              {currentUser && (
+                <Link
+                  to="/settings"
+                  className={`navbar-tier-badge ${isPro ? 'pro' : 'free'}`}
+                  aria-label={`Current plan: ${isPro ? 'Pro' : 'Free'}`}
+                >
+                  <Crown size={14} />
+                  <span>{isPro ? 'Pro' : 'Free'}</span>
+                </Link>
+              )}
+              {isAdmin && (
+                <Link to="/admin/users" className="navbar-admin-link" aria-label="Open admin users panel">
+                  <ShieldCheck size={16} />
+                </Link>
+              )}
               <button
                 type="button"
                 className="navbar-icon-button"
