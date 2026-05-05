@@ -949,36 +949,45 @@ function Pricing({ onCTA }) {
       name: t('tierFree'),
       price: '$0',
       period: t('priceForever'),
+      annualNote: null,
       description: t('priceFreeDesc'),
-      features: [t('priceUpTo5'), t('priceOneSchedule'), t('priceBasic'), t('priceEmailSupport')],
+      features: [
+        t('priceUpTo5'),
+        t('priceOneSchedule'),
+        t('priceManagerAvailability'),
+        t('priceScheduleReview'),
+        t('priceCsvExport'),
+        t('price2WeeksHistory'),
+      ],
       cta: t('priceFreeCta'),
       highlighted: false,
     },
     {
       id: 'pro',
       name: t('tierPro'),
-      price: '$9',
+      price: '$29',
       period: t('priceMonthly'),
+      annualNote: t('priceAnnualNote'),
       description: t('priceProDesc'),
-      features: [t('priceUpTo25'), t('priceUnlimitedSchedules'), t('priceCustomRules'), t('priceHistory'), t('pricePriority')],
+      features: [
+        t('priceUnlimitedEmployees'),
+        t('priceUnlimitedSchedules'),
+        t('priceRuleParsing'),
+        t('priceSmartRecommendations'),
+        t('priceEmployeePortal'),
+        t('priceAllExports'),
+        t('priceUnlimitedHistory'),
+        t('priceSpeechInput'),
+        t('priceEmailSupport'),
+      ],
       cta: t('priceProCta'),
       highlighted: true,
-    },
-    {
-      id: 'business',
-      name: t('tierBusiness'),
-      price: '$19',
-      period: t('priceMonthly'),
-      description: t('priceBusinessDesc'),
-      features: [t('priceUnlimitedEmployees'), t('priceUnlimitedEverything'), t('priceAdvanced'), t('priceLocations'), t('priceDedicated')],
-      cta: t('priceBusinessCta'),
-      highlighted: false,
     },
   ]
 
   return (
     <section className="landing-section">
-      <SectionHeader 
+      <SectionHeader
         eyebrow={t('pricingEyebrow')}
         title={t('pricingTitle')}
         description={t('pricingDescription')}
@@ -987,19 +996,20 @@ function Pricing({ onCTA }) {
       <div className="landing-pricing-grid">
         {tiers.map((tier, i) => (
           <motion.div
-            key={tier.name}
+            key={tier.id}
             className={`landing-pricing-card ${tier.highlighted ? 'landing-pricing-highlighted' : ''}`}
             initial={{ opacity: 0, y: 30 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true, margin: '-50px' }}
             transition={{ duration: 0.5, delay: i * 0.1 }}
           >
-            {tier.highlighted && <div className="landing-pricing-badge">{t('pricePopular')}</div>}
+            {tier.highlighted && <div className="landing-pricing-badge">{t('pricingBest')}</div>}
             <div className="landing-pricing-name">{tier.name}</div>
             <div className="landing-pricing-price">
               <span className="landing-pricing-amount">{tier.price}</span>
-              <span className="landing-pricing-period">/ {tier.period}</span>
+              <span className="landing-pricing-period">{tier.period}</span>
             </div>
+            {tier.annualNote && <p className="landing-pricing-annual">{tier.annualNote}</p>}
             <p className="landing-pricing-desc">{tier.description}</p>
             <ul className="landing-pricing-features">
               {tier.features.map(feat => (
@@ -1009,21 +1019,16 @@ function Pricing({ onCTA }) {
                 </li>
               ))}
             </ul>
-            <button 
+            <button
               className={tier.highlighted ? 'landing-cta-primary' : 'landing-cta-ghost'}
-              onClick={() => {
-                if (tier.id === 'business') {
-                  window.location.href = 'mailto:contact@hengamapp.com?subject=Hengam Business inquiry'
-                } else {
-                  onCTA()
-                }
-              }}
+              onClick={onCTA}
             >
               {tier.cta}
             </button>
           </motion.div>
         ))}
       </div>
+      <p className="landing-pricing-footnote">{t('pricingCancelNote')}</p>
     </section>
   )
 }

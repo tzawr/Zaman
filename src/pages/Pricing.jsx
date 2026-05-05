@@ -1,4 +1,5 @@
-import { Check, Mail, Sparkles, Shield, Zap } from 'lucide-react'
+import { Check, Sparkles, Shield, Zap } from 'lucide-react'
+import { motion } from 'framer-motion'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../AuthContext'
 import PageHero from '../components/PageHero'
@@ -16,30 +17,39 @@ function PricingPage() {
       name: t('tierFree'),
       price: '$0',
       period: t('priceForever'),
+      annualNote: null,
       description: t('priceFreeDesc'),
-      features: [t('priceUpTo5'), t('priceOneSchedule'), t('pricingIncludeChecksTitle'), t('priceCsvExport')],
+      features: [
+        t('priceUpTo5'),
+        t('priceOneSchedule'),
+        t('priceManagerAvailability'),
+        t('priceScheduleReview'),
+        t('priceCsvExport'),
+        t('price2WeeksHistory'),
+      ],
       cta: t('priceFreeCta'),
       highlighted: false,
     },
     {
       id: 'pro',
       name: t('tierPro'),
-      price: '$9',
+      price: '$29',
       period: t('priceMonthly'),
+      annualNote: t('priceAnnualNote'),
       description: t('priceProDesc'),
-      features: [t('priceUpTo25'), t('priceUnlimitedSchedules'), t('priceCustomRules'), t('priceHistory'), t('heroMeta3'), t('pricePriority')],
-      cta: t('pricingChoosePro'),
+      features: [
+        t('priceUnlimitedEmployees'),
+        t('priceUnlimitedSchedules'),
+        t('priceRuleParsing'),
+        t('priceSmartRecommendations'),
+        t('priceEmployeePortal'),
+        t('priceAllExports'),
+        t('priceUnlimitedHistory'),
+        t('priceSpeechInput'),
+        t('priceEmailSupport'),
+      ],
+      cta: t('priceProCta'),
       highlighted: true,
-    },
-    {
-      id: 'business',
-      name: t('tierBusiness'),
-      price: '$19',
-      period: t('priceMonthly'),
-      description: t('priceBusinessDesc'),
-      features: [t('priceUnlimitedEmployees'), t('priceUnlimitedSchedules'), t('priceAdvanced'), t('priceLocations'), t('priceDedicated')],
-      cta: t('priceBusinessCta'),
-      highlighted: false,
     },
   ]
 
@@ -63,48 +73,44 @@ function PricingPage() {
       </PageHero>
 
       <section className="pricing-page-grid">
-        {plans.map(plan => (
-          <article
-            key={plan.name}
+        {plans.map((plan, i) => (
+          <motion.article
+            key={plan.id}
             className={`pricing-page-card ${plan.highlighted ? 'pricing-page-card-featured' : ''}`}
+            initial={{ opacity: 0, y: 24 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.45, delay: i * 0.1 }}
           >
             {plan.highlighted && <div className="pricing-page-badge">{t('pricingBest')}</div>}
             <div className="pricing-page-plan">{plan.name}</div>
             <div className="pricing-page-price">
               <span>{plan.price}</span>
-              <small>/ {plan.period}</small>
+              <small>{plan.period}</small>
             </div>
+            {plan.annualNote && <p className="pricing-page-annual">{plan.annualNote}</p>}
             <p className="pricing-page-desc">{plan.description}</p>
 
             <ul className="pricing-page-features">
               {plan.features.map(feature => (
                 <li key={feature}>
-                  <Check size={16} />
+                  <Check size={15} />
                   <span>{feature}</span>
                 </li>
               ))}
             </ul>
 
-            {plan.id === 'business' ? (
-              <a
-                className="landing-cta-ghost pricing-page-cta"
-                href="mailto:aliseyfiazadsa6@gmail.com?subject=Hengam Business plan"
-              >
-                <Mail size={16} />
-                <span>{plan.cta}</span>
-              </a>
-            ) : (
-              <button
-                className={plan.highlighted ? 'landing-cta-primary pricing-page-cta' : 'landing-cta-ghost pricing-page-cta'}
-                onClick={handlePlan}
-              >
-                <Zap size={16} />
-                <span>{plan.cta}</span>
-              </button>
-            )}
-          </article>
+            <button
+              className={plan.highlighted ? 'landing-cta-primary pricing-page-cta' : 'landing-cta-ghost pricing-page-cta'}
+              onClick={handlePlan}
+            >
+              <Zap size={15} />
+              <span>{plan.cta}</span>
+            </button>
+          </motion.article>
         ))}
       </section>
+
+      <p className="pricing-cancel-note">{t('pricingCancelNote')}</p>
 
       <Section title={t('pricingIncludesTitle')} icon={Shield} delay={0.05}>
         <div className="pricing-includes">
