@@ -29,7 +29,10 @@ function AdminUsers() {
       },
     })
     const body = await response.json().catch(() => ({}))
-    if (!response.ok) throw new Error(body.message || body.error || 'Admin request failed')
+    if (!response.ok) {
+      const detail = body.detail ? ` (${body.detail})` : ''
+      throw new Error(`${body.message || body.error || 'Admin request failed'}${detail}`)
+    }
     return body
   }, [currentUser])
 
