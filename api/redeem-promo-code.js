@@ -50,6 +50,7 @@ export default async function handler(req, res) {
         reason: `promo code ${cleanCode}`,
         grantedBy: 'promo-code',
         grantedAt: FieldValue.serverTimestamp(),
+        code: cleanCode,
       })
       tx.update(promoRef, { usedCount: FieldValue.increment(1) })
       return { blocked: false, message: 'Promo code applied. Pro access is active.' }

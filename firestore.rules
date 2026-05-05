@@ -63,18 +63,63 @@ function isAdmin() {
         );
     }
 
+    function promoDoc(code) {
+      return get(/databases/$(database)/documents/promoCodes/$(code));
+    }
+
+    function validPromoCode(code) {
+      return code is string &&
+        exists(/databases/$(database)/documents/promoCodes/$(code)) &&
+        promoDoc(code).data.tier == 'pro' &&
+        promoDoc(code).data.active == true &&
+        (
+          !('expiresAt' in promoDoc(code).data) ||
+          promoDoc(code).data.expiresAt == null ||
+          promoDoc(code).data.expiresAt > request.time
+        ) &&
+        (
+          !('maxUses' in promoDoc(code).data) ||
+          promoDoc(code).data.maxUses == null ||
+          promoDoc(code).data.usedCount < promoDoc(code).data.maxUses
+        );
+    }
+
+    function isPromoOverride(uid) {
+      return signedIn() &&
+        request.auth.uid == uid &&
+        request.resource.data.keys().hasOnly(['tier', 'expiresAt', 'reason', 'grantedBy', 'grantedAt', 'code']) &&
+        request.resource.data.tier == 'pro' &&
+        request.resource.data.grantedBy == 'promo-code' &&
+        request.resource.data.reason == 'promo code ' + request.resource.data.code &&
+        validPromoCode(request.resource.data.code) &&
+        (
+          request.resource.data.expiresAt == null ||
+          request.resource.data.expiresAt <= request.time + duration.value(366, 'd')
+        );
+    }
+
+    function isPromoUseIncrement() {
+      return signedIn() &&
+        validPromoCode(code) &&
+        request.resource.data.diff(resource.data).changedKeys().hasOnly(['usedCount']) &&
+        request.resource.data.usedCount == resource.data.usedCount + 1;
+    }
+
     match /adminOverrides/{uid} {
       allow read: if isAdmin() || (signedIn() && request.auth.uid == uid);
-      allow create, update: if isAdmin() &&
-        request.resource.data.tier in ['free', 'pro'] &&
-        request.resource.data.keys().hasOnly(['tier', 'expiresAt', 'reason', 'grantedBy', 'grantedAt']) &&
-        request.resource.data.grantedBy == request.auth.uid;
+      allow create, update: if (
+        isAdmin() &&
+          request.resource.data.tier in ['free', 'pro'] &&
+          request.resource.data.keys().hasOnly(['tier', 'expiresAt', 'reason', 'grantedBy', 'grantedAt', 'code']) &&
+          request.resource.data.grantedBy == request.auth.uid
+      ) || isPromoOverride(uid);
       allow delete: if isAdmin();
     }
 
     match /promoCodes/{code} {
-      // Promo redemption must happen through /api/redeem-promo-code using Admin SDK.
-      allow read, create, update, delete: if isAdmin();
+      allow read: if isAdmin() || signedIn();
+      allow create, delete: if isAdmin();
+      allow update: if isAdmin() || isPromoUseIncrement();
     }
 
     match /userStats/{uid} {

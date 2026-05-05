@@ -125,7 +125,12 @@ export async function redeemPromoCode(code) {
     body: JSON.stringify({ code }),
   })
   const data = await response.json().catch(() => ({}))
-  if (!response.ok) return block(data.reason || 'promo_invalid', data.message || data.error || 'Promo code could not be redeemed.')
+  if (!response.ok) {
+    if (auth.currentUser && (data.reason === 'server_error' || data.reason === 'firebase_admin_config')) {
+      return redeemPromoCodeClientOnly(code, auth.currentUser.uid)
+    }
+    return block(data.reason || 'promo_invalid', data.message || data.error || 'Promo code could not be redeemed.')
+  }
   return allow(data)
 }
 
@@ -153,6 +158,7 @@ export async function redeemPromoCodeClientOnly(code, userId, adminUid = 'promo-
       reason: `promo code ${cleanCode}`,
       grantedBy: adminUid,
       grantedAt: serverTimestamp(),
+      code: cleanCode,
     })
     tx.update(promoRef, { usedCount: increment(1) })
     return allow({ message: 'Promo code applied. Pro access is active.' })
