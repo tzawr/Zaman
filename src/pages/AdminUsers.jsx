@@ -25,29 +25,10 @@ function AdminUsers() {
   const [promoDuration, setPromoDuration] = useState('30')
   const [promoMaxUses, setPromoMaxUses] = useState('')
   const [promoExpiresAt, setPromoExpiresAt] = useState('')
-  const [usingFirestoreFallback, setUsingFirestoreFallback] = useState(false)
 
-  const adminFetch = useCallback(async (options = {}) => {
-    const token = await currentUser.getIdToken()
-    const response = await fetch('/api/admin-users', {
-      ...options,
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}`,
-        ...(options.headers || {}),
-      },
-    })
-    const body = await response.json().catch(() => ({}))
-    if (!response.ok) {
-      const detail = body.detail ? ` (${body.detail})` : ''
-      const error = new Error(`${body.message || body.error || 'Admin request failed'}${detail}`)
-      error.reason = body.reason
-      throw error
-    }
-    return body
-  }, [currentUser])
-
-  const loadUsersFromFirestore = useCallback(async () => {
+  const loadUsers = useCallback(async () => {
+    try {
+      setError('')
     const [usersSnap, overridesSnap] = await Promise.all([
       getDocs(collection(db, 'users')),
       getDocs(collection(db, 'adminOverrides')),
@@ -66,30 +47,12 @@ function AdminUsers() {
       }
     })
     setUsers(directUsers)
-    setUsingFirestoreFallback(true)
-  }, [])
-
-  const loadUsers = useCallback(async () => {
-    try {
-      setError('')
-      const data = await adminFetch()
-      setUsers(data.users || [])
-      setUsingFirestoreFallback(false)
     } catch (err) {
-      if (err.reason === 'firebase_admin_config' || err.message.includes('Firebase Admin credentials')) {
-        try {
-          await loadUsersFromFirestore()
-          setError('Server admin credentials are broken on Vercel, so this page is using the Firestore admin fallback.')
-        } catch (fallbackErr) {
-          setError(`${err.message} Firestore fallback also failed: ${fallbackErr.message}`)
-        }
-      } else {
-        setError(err.message)
-      }
+      setError(err.message)
     } finally {
       setLoading(false)
     }
-  }, [adminFetch, loadUsersFromFirestore])
+  }, [])
 
   useEffect(() => {
     if (!currentUser || !isAdminUid(currentUser.uid)) return
@@ -115,32 +78,18 @@ function AdminUsers() {
     if (!duration) return
     const reason = window.prompt('Reason', 'admin grant')
     if (!reason) return
-    if (usingFirestoreFallback) {
-      await setDoc(doc(db, 'adminOverrides', uid), {
-        tier: 'pro',
-        expiresAt: expiresFromDuration(duration),
-        reason,
-        grantedBy: currentUser.uid,
-        grantedAt: serverTimestamp(),
-      })
-    } else {
-      await adminFetch({
-        method: 'POST',
-        body: JSON.stringify({ action: 'grantPro', uid, duration, reason }),
-      })
-    }
+    await setDoc(doc(db, 'adminOverrides', uid), {
+      tier: 'pro',
+      expiresAt: expiresFromDuration(duration),
+      reason,
+      grantedBy: currentUser.uid,
+      grantedAt: serverTimestamp(),
+    })
     await loadUsers()
   }
 
   async function revokeOverride(uid) {
-    if (usingFirestoreFallback) {
-      await deleteDoc(doc(db, 'adminOverrides', uid))
-    } else {
-      await adminFetch({
-        method: 'POST',
-        body: JSON.stringify({ action: 'revokeOverride', uid }),
-      })
-    }
+    await deleteDoc(doc(db, 'adminOverrides', uid))
     await loadUsers()
   }
 
@@ -148,30 +97,17 @@ function AdminUsers() {
     e.preventDefault()
     const code = promoCode.trim().toUpperCase()
     if (!code) return
-    if (usingFirestoreFallback) {
-      await setDoc(doc(db, 'promoCodes', code), {
-        code,
-        tier: 'pro',
-        durationDays: promoDuration === 'forever' ? null : Number(promoDuration),
-        maxUses: promoMaxUses === '' ? null : Number(promoMaxUses),
-        usedCount: 0,
-        expiresAt: promoExpiresAt ? Timestamp.fromDate(new Date(`${promoExpiresAt}T23:59:59`)) : null,
-        active: true,
-        createdAt: serverTimestamp(),
-        createdBy: currentUser.uid,
-      }, { merge: true })
-    } else {
-      await adminFetch({
-        method: 'POST',
-        body: JSON.stringify({
-          action: 'createPromo',
-          code,
-          durationDays: promoDuration,
-          maxUses: promoMaxUses,
-          expiresAt: promoExpiresAt,
-        }),
-      })
-    }
+    await setDoc(doc(db, 'promoCodes', code), {
+      code,
+      tier: 'pro',
+      durationDays: promoDuration === 'forever' ? null : Number(promoDuration),
+      maxUses: promoMaxUses === '' ? null : Number(promoMaxUses),
+      usedCount: 0,
+      expiresAt: promoExpiresAt ? Timestamp.fromDate(new Date(`${promoExpiresAt}T23:59:59`)) : null,
+      active: true,
+      createdAt: serverTimestamp(),
+      createdBy: currentUser.uid,
+    }, { merge: true })
     setPromoCode('')
     setPromoMaxUses('')
     setPromoExpiresAt('')
@@ -188,7 +124,7 @@ function AdminUsers() {
 
       {error && <div className="empty-state"><p>{error}</p></div>}
 
-      <Section title="Create promo code" subtitle={usingFirestoreFallback ? 'Codes are using Firestore admin fallback.' : 'Codes are created by the server admin API.'} icon={Ticket}>
+      <Section title="Create promo code" subtitle="Codes are created through Firestore admin rules." icon={Ticket}>
         <form className="employee-form" onSubmit={createPromoCode}>
           <div className="employee-form-row">
             <input className="input" placeholder="FOUNDER50" value={promoCode} onChange={e => setPromoCode(e.target.value)} />
