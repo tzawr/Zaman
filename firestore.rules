@@ -5,12 +5,12 @@ service cloud.firestore {
       return request.auth != null;
     }
 
-    function isAdmin() {
-      return signedIn() && request.auth.uid in [
-        // Keep this list in sync with Vercel ADMIN_UIDS and src/utils/admin.js.
-        // "YOUR_ADMIN_UID"
-      ];
-    }
+function isAdmin() {
+  return signedIn() && request.auth.uid in [
+    // Keep this list in sync with Vercel ADMIN_UIDS and src/utils/admin.js.
+    "AjV7SA0tuzLOcizYBrbjH8Mo0fg1"
+  ];
+}
 
     function userDoc(uid) {
       return get(/databases/$(database)/documents/users/$(uid));
