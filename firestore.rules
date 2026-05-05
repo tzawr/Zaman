@@ -7,19 +7,111 @@ service cloud.firestore {
 
     function isAdmin() {
       return signedIn() && request.auth.uid in [
-        // Add your Firebase Auth UID here.
+        // Keep this list in sync with Vercel ADMIN_UIDS and src/utils/admin.js.
         // "YOUR_ADMIN_UID"
       ];
     }
 
+    function userDoc(uid) {
+      return get(/databases/$(database)/documents/users/$(uid));
+    }
+
+    function overrideDoc(uid) {
+      return get(/databases/$(database)/documents/adminOverrides/$(uid));
+    }
+
+    function hasActiveOverride(uid) {
+      return exists(/databases/$(database)/documents/adminOverrides/$(uid)) &&
+        overrideDoc(uid).data.tier in ['free', 'pro'] &&
+        (
+          !('expiresAt' in overrideDoc(uid).data) ||
+          overrideDoc(uid).data.expiresAt == null ||
+          overrideDoc(uid).data.expiresAt > request.time
+        );
+    }
+
+    function effectiveTier(uid) {
+      return hasActiveOverride(uid)
+        ? overrideDoc(uid).data.tier
+        : (
+          exists(/databases/$(database)/documents/users/$(uid)) &&
+          userDoc(uid).data.tier in ['pro', 'business']
+            ? 'pro'
+            : 'free'
+        );
+    }
+
+    function isPro(uid) {
+      return effectiveTier(uid) == 'pro';
+    }
+
+    function userStats(uid) {
+      return get(/databases/$(database)/documents/userStats/$(uid));
+    }
+
+    function freeEmployeeSlotAvailable(uid) {
+      return exists(/databases/$(database)/documents/userStats/$(uid)) &&
+        userStats(uid).data.employeeCount < 5;
+    }
+
+    function freeGenerationSlotAvailable(uid) {
+      return exists(/databases/$(database)/documents/userStats/$(uid)) &&
+        (
+          !('generationWindowStart' in userStats(uid).data) ||
+          userStats(uid).data.generationWindowStart <= request.time - duration.value(7, 'd') ||
+          userStats(uid).data.generationCount7d < 2
+        );
+    }
+
     match /adminOverrides/{uid} {
       allow read: if isAdmin() || (signedIn() && request.auth.uid == uid);
-      allow write: if isAdmin();
+      allow create, update: if isAdmin() &&
+        request.resource.data.tier in ['free', 'pro'] &&
+        request.resource.data.keys().hasOnly(['tier', 'expiresAt', 'reason', 'grantedBy', 'grantedAt']) &&
+        request.resource.data.grantedBy == request.auth.uid;
+      allow delete: if isAdmin();
     }
 
     match /promoCodes/{code} {
-      allow read: if signedIn();
+      // Promo redemption must happen through /api/redeem-promo-code using Admin SDK.
+      allow read, create, update, delete: if isAdmin();
+    }
+
+    match /userStats/{uid} {
+      allow read: if isAdmin() || (signedIn() && request.auth.uid == uid);
+      // Counters should be written by server code. Admin SDK bypasses rules.
       allow write: if isAdmin();
+    }
+
+    match /employees/{employeeId} {
+      allow read: if signedIn() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow create: if signedIn() &&
+        request.resource.data.userId == request.auth.uid &&
+        (isPro(request.auth.uid) || freeEmployeeSlotAvailable(request.auth.uid));
+      allow update, delete: if signedIn() && (resource.data.userId == request.auth.uid || isAdmin());
+    }
+
+    match /schedules/{scheduleId} {
+      allow read: if signedIn() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow create: if signedIn() &&
+        request.resource.data.userId == request.auth.uid &&
+        request.resource.data.createdAt == request.time &&
+        (isPro(request.auth.uid) || freeGenerationSlotAvailable(request.auth.uid));
+      allow update, delete: if signedIn() && (resource.data.userId == request.auth.uid || isAdmin());
+    }
+
+    match /invites/{inviteId} {
+      allow read: if signedIn();
+      allow create: if signedIn() &&
+        request.resource.data.managerId == request.auth.uid &&
+        isPro(request.auth.uid);
+      allow update, delete: if signedIn() &&
+        (resource.data.managerId == request.auth.uid || isAdmin());
+    }
+
+    match /users/{uid} {
+      allow read, update: if signedIn() && (request.auth.uid == uid || isAdmin());
+      allow create: if signedIn() && request.auth.uid == uid;
     }
   }
 }

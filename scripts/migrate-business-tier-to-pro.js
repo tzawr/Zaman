@@ -19,8 +19,19 @@ function initAdmin() {
 
 initAdmin()
 const db = getFirestore()
+const lockRef = db.collection('migrationLocks').doc('business-tier-to-pro-v1')
+const lockSnap = await lockRef.get()
+if (lockSnap.exists) {
+  console.log('Migration already ran. Delete migrationLocks/business-tier-to-pro-v1 only if you intentionally need to rerun it.')
+  process.exit(0)
+}
+
 const snap = await db.collection('users').where('tier', '==', 'business').get()
 const batch = db.batch()
 snap.docs.forEach(userDoc => batch.update(userDoc.ref, { tier: 'pro' }))
+batch.set(lockRef, {
+  ranAt: new Date(),
+  migratedCount: snap.size,
+})
 await batch.commit()
 console.log(`Migrated ${snap.size} business-tier users to pro.`)

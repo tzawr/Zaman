@@ -1,22 +1,5 @@
-import { cert, getApps, initializeApp } from 'firebase-admin/app'
-import { getAuth } from 'firebase-admin/auth'
 import { FieldValue, Timestamp, getFirestore } from 'firebase-admin/firestore'
-
-function initAdmin() {
-  if (getApps().length) return
-  const serviceAccountJson = process.env.FIREBASE_SERVICE_ACCOUNT_KEY
-  if (serviceAccountJson) {
-    initializeApp({ credential: cert(JSON.parse(serviceAccountJson)) })
-    return
-  }
-  const projectId = process.env.FIREBASE_PROJECT_ID || process.env.VITE_FIREBASE_PROJECT_ID
-  const clientEmail = process.env.FIREBASE_CLIENT_EMAIL
-  const privateKey = process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n')
-  if (!projectId || !clientEmail || !privateKey) {
-    throw new Error('Firebase Admin credentials are not configured')
-  }
-  initializeApp({ credential: cert({ projectId, clientEmail, privateKey }) })
-}
+import { initAdmin, requireSignedIn } from './_firebase-admin.js'
 
 function block(res, status, reason, message) {
   return res.status(status).json({ blocked: true, reason, message })
@@ -34,11 +17,7 @@ export default async function handler(req, res) {
 
   try {
     initAdmin()
-    const authHeader = req.headers.authorization || ''
-    const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : ''
-    if (!token) return block(res, 401, 'auth_required', 'Sign in before redeeming a promo code.')
-
-    const decoded = await getAuth().verifyIdToken(token)
+    const decoded = await requireSignedIn(req)
     const userId = decoded.uid
     const cleanCode = String(req.body?.code || '').trim().toUpperCase()
     if (!cleanCode) return block(res, 400, 'promo_invalid', 'Enter a promo code.')

@@ -1,67 +1,64 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { Navigate, useNavigate } from 'react-router-dom'
-import {
-  Timestamp,
-  collection,
-  deleteDoc,
-  doc,
-  increment,
-  onSnapshot,
-  query,
-  serverTimestamp,
-  setDoc,
-} from 'firebase/firestore'
 import { ArrowLeft, Shield, Ticket, Trash2, UserCheck } from 'lucide-react'
-import { db } from '../firebase'
 import { useAuth } from '../AuthContext'
 import PageHero from '../components/PageHero'
 import Section from '../components/Section'
 import { ADMIN_UIDS, isAdminUid } from '../utils/admin'
-import { getUserTier, isOverrideActive, normalizeTier } from '../utils/tier'
-
-function durationToExpiresAt(duration) {
-  if (duration === 'forever') return null
-  const days = { '30': 30, '90': 90, '365': 365 }[duration] || 30
-  return Timestamp.fromDate(new Date(Date.now() + days * 24 * 60 * 60 * 1000))
-}
+import { isOverrideActive } from '../utils/tier'
 
 function AdminUsers() {
   const navigate = useNavigate()
   const { currentUser } = useAuth()
   const [users, setUsers] = useState([])
-  const [overrides, setOverrides] = useState({})
-  const [tiers, setTiers] = useState({})
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
   const [promoCode, setPromoCode] = useState('')
   const [promoDuration, setPromoDuration] = useState('30')
   const [promoMaxUses, setPromoMaxUses] = useState('')
   const [promoExpiresAt, setPromoExpiresAt] = useState('')
 
+  const adminFetch = useCallback(async (options = {}) => {
+    const token = await currentUser.getIdToken()
+    const response = await fetch('/api/admin-users', {
+      ...options,
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+        ...(options.headers || {}),
+      },
+    })
+    const body = await response.json().catch(() => ({}))
+    if (!response.ok) throw new Error(body.message || body.error || 'Admin request failed')
+    return body
+  }, [currentUser])
+
+  const loadUsers = useCallback(async () => {
+    try {
+      setError('')
+      const data = await adminFetch()
+      setUsers(data.users || [])
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setLoading(false)
+    }
+  }, [adminFetch])
+
   useEffect(() => {
     if (!currentUser || !isAdminUid(currentUser.uid)) return
-    const unsubUsers = onSnapshot(query(collection(db, 'users')), async (snap) => {
-      const rows = snap.docs.map(userDoc => ({ id: userDoc.id, ...userDoc.data() }))
-      setUsers(rows)
-      setLoading(false)
-      const tierEntries = await Promise.all(rows.map(async row => [row.id, await getUserTier(row.id)]))
-      setTiers(Object.fromEntries(tierEntries))
-    })
-    const unsubOverrides = onSnapshot(collection(db, 'adminOverrides'), (snap) => {
-      setOverrides(Object.fromEntries(snap.docs.map(overrideDoc => [overrideDoc.id, overrideDoc.data()])))
-    })
-    return () => {
-      unsubUsers()
-      unsubOverrides()
-    }
-  }, [currentUser])
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- this syncs the admin page with server-side admin data after auth is ready.
+    loadUsers()
+  }, [currentUser, loadUsers])
 
   if (!currentUser) return <Navigate to="/signin" replace />
   if (!isAdminUid(currentUser.uid)) {
     return (
       <main className="app-page">
         <div className="empty-state">
-          <p>Add your UID to ADMIN_UIDS to use this admin page.</p>
+          <p>Add your UID to ADMIN_UIDS to show this admin page link.</p>
           <p style={{ marginTop: 8, opacity: 0.7 }}>Current UID: {currentUser.uid}</p>
+          <p style={{ marginTop: 8, opacity: 0.7 }}>Server-side admin access is also enforced by ADMIN_UIDS on Vercel.</p>
         </div>
       </main>
     )
@@ -72,36 +69,35 @@ function AdminUsers() {
     if (!duration) return
     const reason = window.prompt('Reason', 'admin grant')
     if (!reason) return
-    await setDoc(doc(db, 'adminOverrides', uid), {
-      tier: 'pro',
-      expiresAt: durationToExpiresAt(duration),
-      reason,
-      grantedBy: currentUser.uid,
-      grantedAt: serverTimestamp(),
+    await adminFetch({
+      method: 'POST',
+      body: JSON.stringify({ action: 'grantPro', uid, duration, reason }),
     })
-    setTiers(prev => ({ ...prev, [uid]: 'pro' }))
+    await loadUsers()
   }
 
   async function revokeOverride(uid) {
-    await deleteDoc(doc(db, 'adminOverrides', uid))
-    setTiers(prev => ({ ...prev, [uid]: normalizeTier(users.find(user => user.id === uid)?.tier) }))
+    await adminFetch({
+      method: 'POST',
+      body: JSON.stringify({ action: 'revokeOverride', uid }),
+    })
+    await loadUsers()
   }
 
   async function createPromoCode(e) {
     e.preventDefault()
     const code = promoCode.trim().toUpperCase()
     if (!code) return
-    await setDoc(doc(db, 'promoCodes', code), {
-      code,
-      tier: 'pro',
-      durationDays: promoDuration === 'forever' ? null : Number(promoDuration),
-      maxUses: promoMaxUses.trim() ? Number(promoMaxUses) : null,
-      usedCount: increment(0),
-      expiresAt: promoExpiresAt ? Timestamp.fromDate(new Date(`${promoExpiresAt}T23:59:59`)) : null,
-      active: true,
-      createdAt: serverTimestamp(),
-      createdBy: currentUser.uid,
-    }, { merge: true })
+    await adminFetch({
+      method: 'POST',
+      body: JSON.stringify({
+        action: 'createPromo',
+        code,
+        durationDays: promoDuration,
+        maxUses: promoMaxUses,
+        expiresAt: promoExpiresAt,
+      }),
+    })
     setPromoCode('')
     setPromoMaxUses('')
     setPromoExpiresAt('')
@@ -114,9 +110,11 @@ function AdminUsers() {
         <span>Back to dashboard</span>
       </button>
 
-      <PageHero eyebrow="Admin" title="Users and Pro access" subtitle={`${ADMIN_UIDS.length} admin UID configured`} />
+      <PageHero eyebrow="Admin" title="Users and Pro access" subtitle={`${ADMIN_UIDS.length} frontend admin UID configured`} />
 
-      <Section title="Create promo code" subtitle="Codes are stored uppercase in promoCodes." icon={Ticket}>
+      {error && <div className="empty-state"><p>{error}</p></div>}
+
+      <Section title="Create promo code" subtitle="Codes are created by the server admin API." icon={Ticket}>
         <form className="employee-form" onSubmit={createPromoCode}>
           <div className="employee-form-row">
             <input className="input" placeholder="FOUNDER50" value={promoCode} onChange={e => setPromoCode(e.target.value)} />
@@ -136,13 +134,13 @@ function AdminUsers() {
       <Section title="Users" subtitle={loading ? 'Loading users...' : `${users.length} users`} icon={Shield}>
         <div className="roles-list">
           {users.map(user => {
-            const override = overrides[user.id]
+            const override = user.override
             return (
               <div key={user.id} className="role-item">
                 <div>
                   <div className="role-name">{user.email || user.displayName || user.id}</div>
                   <div className="team-card-meta">
-                    Tier: {tiers[user.id] || normalizeTier(user.tier)} · Override: {override ? `${override.tier}${isOverrideActive(override) ? '' : ' expired'}` : 'none'}
+                    Tier: {user.tier} · Override: {override ? `${override.tier}${isOverrideActive(override) ? '' : ' expired'}` : 'none'}
                   </div>
                 </div>
                 <div className="role-actions">
