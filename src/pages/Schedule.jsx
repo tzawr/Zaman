@@ -40,6 +40,14 @@ import { useSpeechInput } from '../utils/useSpeechInput'
 import PageHero from '../components/PageHero'
 import Section from '../components/Section'
 import { useI18n } from '../i18n'
+import {
+  canExport,
+  canGenerateSchedule as canGenerateScheduleGate,
+  canUsePlainLanguageRules,
+  canViewRecommendationsForTier,
+  enforceScheduleHistoryLimit,
+  getUserTier,
+} from '../utils/tier'
 
 function Schedule() {
   const navigate = useNavigate()
@@ -59,6 +67,7 @@ function Schedule() {
   const [scheduleData, setScheduleData] = useState(null)
   const [exporting, setExporting] = useState(null) // null | 'csv' | 'png' | 'pdf'
   const [exportMenuOpen, setExportMenuOpen] = useState(false)
+  const [tier, setTier] = useState('free')
   const specialSpeech = useSpeechInput((text) => {
     setPrompt(prev => prev ? `${prev.trim()}\n${text}` : text)
   })
@@ -128,6 +137,11 @@ function Schedule() {
     return () => unsubscribe()
   }, [currentUser])
 
+  useEffect(() => {
+    if (!currentUser) return
+    getUserTier(currentUser.uid).then(setTier).catch(() => setTier('free'))
+  }, [currentUser, userSettings])
+
   async function generateSchedule() {
     setError('')
     setScheduleData(null)
@@ -143,17 +157,25 @@ function Schedule() {
       setError(t('scheduleNeedHours'))
       return
     }
+    const generationGate = await canGenerateScheduleGate(currentUser.uid)
+    if (generationGate.blocked) {
+      setError(generationGate.message)
+      return
+    }
+    const plainLanguageGate = await canUsePlainLanguageRules(currentUser.uid)
 
     try {
       setGenerating(true)
       const schedulingEmployees = await mergeEmployeePortalAvailability(employees)
 
       // Step 1: Parse both coverage rules and special instructions into structured constraints (AI, cached)
-      const parsedRules = enhanceParsedRules(
-        await parseSchedulingInstructionsCached(userSettings.coverageRules, prompt),
-        prompt,
-        schedulingEmployees
-      )
+      const parsedRules = plainLanguageGate.blocked
+        ? null
+        : enhanceParsedRules(
+            await parseSchedulingInstructionsCached(userSettings.coverageRules, prompt),
+            prompt,
+            schedulingEmployees
+          )
 
       // Step 2: Build deterministic constraints from structured rules
       const constraints = buildConstraintsFromParsedRules(parsedRules, userSettings.operatingHours)
@@ -181,7 +203,9 @@ function Schedule() {
       if (best.violations.length > 0) {
         console.warn('[scheduler] violations:', best.violations)
         result.issues = best.violations
-        result.recommendations = await generateScheduleRecommendations(result, best.violations, schedulingEmployees)
+        result.recommendations = canViewRecommendationsForTier(tier)
+          ? await generateScheduleRecommendations(result, best.violations, schedulingEmployees)
+          : []
       }
 
       // Step 5: Save and display
@@ -221,6 +245,7 @@ function Schedule() {
         employeeCount: employees.length,
         createdAt: serverTimestamp()
       })
+      await enforceScheduleHistoryLimit(currentUser.uid)
       setSaved(true)
     } catch (err) {
       console.error('Failed to save schedule:', err)
@@ -229,6 +254,12 @@ function Schedule() {
 
   async function handleExport(type) {
     if (!activeScheduleData) return
+    const gate = await canExport(currentUser.uid, type)
+    if (gate.blocked) {
+      setError(gate.message)
+      setExportMenuOpen(false)
+      return
+    }
     setExporting(type)
     setExportMenuOpen(false)
     
@@ -527,6 +558,7 @@ function Schedule() {
       employees={employees}
       roles={userSettings?.roles || []}
       onUpdate={handleScheduleUpdate}
+      showRecommendations={canViewRecommendationsForTier(tier)}
     />
   </div>
 )}

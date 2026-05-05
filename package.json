@@ -8,10 +8,12 @@
     "dev:vercel": "vercel dev",
     "build": "vite build",
     "lint": "eslint .",
+    "test:tier": "node --test src/utils/tier.test.js",
     "preview": "vite preview"
   },
   "dependencies": {
     "firebase": "^12.12.1",
+    "firebase-admin": "^13.8.0",
     "framer-motion": "^12.38.0",
     "html2canvas": "^1.4.1",
     "jspdf": "^4.2.1",

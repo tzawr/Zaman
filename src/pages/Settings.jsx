@@ -15,6 +15,7 @@ import PageHero from '../components/PageHero'
 import Section from '../components/Section'
 import { useSpeechInput } from '../utils/useSpeechInput'
 import { useI18n } from '../i18n'
+import { redeemPromoCode } from '../utils/tier'
 
 const DAYS = [
   { key: 'monday', labelKey: 'dayMonday' },
@@ -50,6 +51,8 @@ function Settings() {
   const [allowEmployeeAvailabilityUpdates, setAllowEmployeeAvailabilityUpdates] = useState(false)
   const [roles, setRoles] = useState([])
   const [coverageRules, setCoverageRules] = useState('')
+  const [promoCode, setPromoCode] = useState('')
+  const [redeemingCode, setRedeemingCode] = useState(false)
 
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -227,6 +230,22 @@ function Settings() {
     }
   }
 
+  async function handleRedeemCode() {
+    if (!promoCode.trim()) {
+      toast.info('Enter a promo code')
+      return
+    }
+    setRedeemingCode(true)
+    const result = await redeemPromoCode(promoCode)
+    setRedeemingCode(false)
+    if (result.blocked) {
+      toast.error(result.message)
+      return
+    }
+    setPromoCode('')
+    toast.success(result.message || 'Promo code applied')
+  }
+
   if (loading) {
     return (
       <main className="app-page">
@@ -256,6 +275,27 @@ function Settings() {
           </span>
         )}
       </PageHero>
+
+      <Section
+        title="Redeem code"
+        subtitle="Apply a promo code or admin-issued Pro access code to this workspace."
+        icon={KeyRound}
+      >
+        <div className="role-add-row">
+          <input
+            type="text"
+            className="input"
+            placeholder="FOUNDER50"
+            value={promoCode}
+            onChange={(e) => setPromoCode(e.target.value.toUpperCase())}
+            onKeyDown={(e) => e.key === 'Enter' && handleRedeemCode()}
+          />
+          <button className="add-button" onClick={handleRedeemCode} disabled={redeemingCode}>
+            <KeyRound size={16} />
+            <span>{redeemingCode ? 'Applying...' : 'Apply code'}</span>
+          </button>
+        </div>
+      </Section>
 
       <Section
         title={t('rolesTitle')}

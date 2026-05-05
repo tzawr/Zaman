@@ -9,6 +9,7 @@ import { useToast } from '../components/Toast'
 import PageHero from '../components/PageHero'
 import Section from '../components/Section'
 import { useI18n } from '../i18n'
+import { canAddEmployee, canInviteEmployees } from '../utils/tier'
 
 function Employees() {
   const navigate = useNavigate()
@@ -72,6 +73,11 @@ function Employees() {
       toast.info(t('toastTargetHoursRange'))
       return
     }
+    const gate = await canAddEmployee(currentUser.uid, employees.length)
+    if (gate.blocked) {
+      toast.info(gate.message)
+      return
+    }
     try {
       setAdding(true)
       await addDoc(collection(db, 'employees'), {
@@ -94,6 +100,11 @@ function Employees() {
   }
 
   async function generateInvite(emp) {
+    const gate = await canInviteEmployees(currentUser.uid)
+    if (gate.blocked) {
+      toast.info(gate.message)
+      return
+    }
     const token = crypto.randomUUID()
     await setDoc(doc(db, 'invites', token), {
       managerId: currentUser.uid,

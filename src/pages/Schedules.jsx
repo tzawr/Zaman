@@ -31,6 +31,7 @@ import { useToast } from '../components/Toast'
 import PageHero from '../components/PageHero'
 import { exportToCSV, exportToPNG, exportToPDF } from '../utils/exportSchedule'
 import { useI18n } from '../i18n'
+import { canExport, canViewRecommendationsForTier, getUserTier } from '../utils/tier'
 
 function Schedules() {
   const navigate = useNavigate()
@@ -49,6 +50,7 @@ function Schedules() {
   const [roles, setRoles] = useState([])
   const [filterType, setFilterType] = useState('role')
   const [filterValue, setFilterValue] = useState('')
+  const [tier, setTier] = useState('free')
 
   useEffect(() => {
     if (!currentUser) navigate('/signin')
@@ -76,6 +78,11 @@ function Schedules() {
     })
     
     return () => unsubscribe()
+  }, [currentUser])
+
+  useEffect(() => {
+    if (!currentUser) return
+    getUserTier(currentUser.uid).then(setTier).catch(() => setTier('free'))
   }, [currentUser])
 
   useEffect(() => {
@@ -139,6 +146,12 @@ function Schedules() {
 
   async function handleExport(type) {
     if (!selectedSchedule?.data) return
+    const gate = await canExport(currentUser.uid, type)
+    if (gate.blocked) {
+      toast.info(gate.message)
+      setExportMenuOpen(false)
+      return
+    }
     setExporting(type)
     setExportMenuOpen(false)
     
@@ -170,6 +183,7 @@ function Schedules() {
     .filter((name, index, list) => list.indexOf(name) === index)
     .sort((a, b) => a.localeCompare(b))
   const activeHighlightFilter = filterValue ? { type: filterType, value: filterValue } : null
+  const visibleSchedules = tier === 'pro' ? schedules : schedules.slice(0, 2)
 
   function copyToClipboard(text) {
     if (!text) return
@@ -229,7 +243,7 @@ function Schedules() {
         </PageHero>
       </div>
 
-      {schedules.length === 0 ? (
+      {visibleSchedules.length === 0 ? (
         <div className="schedules-empty-state">
           <Rocket size={40} />
           <p>{t('noSchedulesYet')}</p>
@@ -246,10 +260,10 @@ function Schedules() {
           <aside className="schedules-sidebar">
             <div className="schedules-sidebar-head">
               <h3 className="schedules-sidebar-title">{t('allSchedules')}</h3>
-              <span>{schedules.length}</span>
+              <span>{visibleSchedules.length}</span>
             </div>
             <div className="schedule-list">
-              {schedules.map(sched => (
+              {visibleSchedules.map(sched => (
                 <div 
                   key={sched.id}
                   className={`schedule-card ${selectedSchedule?.id === sched.id ? 'selected' : ''}`}
@@ -416,6 +430,7 @@ function Schedules() {
                       roles={roles}
                       onUpdate={handleScheduleUpdate}
                       highlightFilter={activeHighlightFilter}
+                      showRecommendations={canViewRecommendationsForTier(tier)}
                     />
                   </>
                 ) : (

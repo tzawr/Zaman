@@ -1,5 +1,5 @@
 import { Check, Sparkles, Shield, Zap } from 'lucide-react'
-import { motion } from 'framer-motion'
+import { motion as Motion } from 'framer-motion'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../AuthContext'
 import PageHero from '../components/PageHero'
@@ -74,7 +74,7 @@ function PricingPage() {
 
       <section className="pricing-page-grid">
         {plans.map((plan, i) => (
-          <motion.article
+          <Motion.article
             key={plan.id}
             className={`pricing-page-card ${plan.highlighted ? 'pricing-page-card-featured' : ''}`}
             initial={{ opacity: 0, y: 24 }}
@@ -106,7 +106,7 @@ function PricingPage() {
               <Zap size={15} />
               <span>{plan.cta}</span>
             </button>
-          </motion.article>
+          </Motion.article>
         ))}
       </section>
 

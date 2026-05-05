@@ -140,7 +140,7 @@ function calcHours(start, end) {
   return Math.round(hours * 10) / 10
 }
 
-function ScheduleTable({ data, employees = [], roles = [], onUpdate, highlightFilter = null }) {
+function ScheduleTable({ data, employees = [], roles = [], onUpdate, highlightFilter = null, showRecommendations = true }) {
   const { t, language } = useI18n()
   const [editing, setEditing] = useState(null) // { dayKey, shift } or { dayKey, shift: null } for new
   const newShiftCounter = useRef(0)
@@ -380,7 +380,7 @@ function ScheduleTable({ data, employees = [], roles = [], onUpdate, highlightFi
       )}
 
       {/* Recommendations */}
-      {data.recommendations && data.recommendations.length > 0 && (
+      {showRecommendations && data.recommendations && data.recommendations.length > 0 && (
         <div className="schedule-recommendations">
           <h4 className="schedule-recommendations-title">
             <Sparkles size={16} />

@@ -1,8 +1,8 @@
-import { motion } from 'framer-motion'
+import { motion as Motion } from 'framer-motion'
 
 function PageHero({ eyebrow, title, subtitle, children }) {
   return (
-    <motion.div
+    <Motion.div
       className="page-hero"
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
@@ -23,7 +23,7 @@ function PageHero({ eyebrow, title, subtitle, children }) {
           <div className="page-hero-extra">{children}</div>
         )}
       </div>
-    </motion.div>
+    </Motion.div>
   )
 }
 

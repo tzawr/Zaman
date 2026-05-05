@@ -1,8 +1,8 @@
-import { motion } from 'framer-motion'
+import { motion as Motion } from 'framer-motion'
 
 function Section({ title, subtitle, icon: Icon, children, delay = 0, className = '' }) {
   return (
-    <motion.section
+    <Motion.section
       className={`app-section ${className}`}
       initial={{ opacity: 0, y: 16 }}
       animate={{ opacity: 1, y: 0 }}
@@ -24,7 +24,7 @@ function Section({ title, subtitle, icon: Icon, children, delay = 0, className =
       <div className="app-section-body">
         {children}
       </div>
-    </motion.section>
+    </Motion.section>
   )
 }
 

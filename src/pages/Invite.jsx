@@ -8,6 +8,7 @@ import { useAuth } from '../AuthContext'
 import PageHero from '../components/PageHero'
 import Section from '../components/Section'
 import { useI18n } from '../i18n'
+import { canInviteEmployees } from '../utils/tier'
 
 function Invite() {
   const navigate = useNavigate()
@@ -29,6 +30,11 @@ function Invite() {
   }, [currentUser, navigate])
 
   async function generateInvite(emp) {
+    const gate = await canInviteEmployees(currentUser.uid)
+    if (gate.blocked) {
+      window.alert(gate.message)
+      return
+    }
     const token = crypto.randomUUID()
     await setDoc(doc(db, 'invites', token), {
       managerId: currentUser.uid,

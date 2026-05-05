@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components -- useAuth is intentionally co-located with AuthProvider */
 import { createContext, useContext, useEffect, useState } from 'react'
 import {
   onAuthStateChanged,
@@ -6,7 +7,7 @@ import {
   signInWithPopup,
   signOut,
 } from 'firebase/auth'
-import { doc, onSnapshot } from 'firebase/firestore'
+import { doc, onSnapshot, updateDoc } from 'firebase/firestore'
 import { auth, googleProvider, db } from './firebase'
 
 const AuthContext = createContext()
@@ -35,7 +36,13 @@ export function AuthProvider({ children }) {
   useEffect(() => {
     if (!currentUser) return
     const unsub = onSnapshot(doc(db, 'users', currentUser.uid), (snap) => {
-      setUserData(snap.exists() ? snap.data() : null)
+      const data = snap.exists() ? snap.data() : null
+      if (data?.tier === 'business') {
+        updateDoc(doc(db, 'users', currentUser.uid), { tier: 'pro' }).catch(() => {})
+        setUserData({ ...data, tier: 'pro' })
+      } else {
+        setUserData(data)
+      }
       setLoading(false)
     })
     return () => unsub()

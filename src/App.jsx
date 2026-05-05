@@ -27,6 +27,7 @@ import VerifyEmail from './pages/VerifyEmail'
 import VerifyEmailToken from './pages/VerifyEmailToken'
 import ForgotPassword from './pages/ForgotPassword'
 import Profile from './pages/Profile'
+import AdminUsers from './pages/AdminUsers'
 import { I18nProvider, useI18n } from './i18n'
 import './App.css'
 
@@ -136,6 +137,7 @@ function AppShell() {
   <Route path="/my-schedule" element={<ProtectedRoute><MySchedule /></ProtectedRoute>} />
   <Route path="/my-availability" element={<ProtectedRoute><Availability /></ProtectedRoute>} />
   <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
+  <Route path="/admin/users" element={<ProtectedRoute><AdminUsers /></ProtectedRoute>} />
 </Routes>
 
 <Footer />
