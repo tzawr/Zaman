@@ -98,7 +98,7 @@ function AppShell() {
             <div className="navbar-actions">
               {currentUser && (
                 <Link
-                  to="/settings"
+                  to="/pricing"
                   className={`navbar-tier-badge ${isPro ? 'pro' : 'free'}`}
                   aria-label={`Current plan: ${isPro ? 'Pro' : 'Free'}`}
                 >

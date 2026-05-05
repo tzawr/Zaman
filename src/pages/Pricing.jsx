@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react'
 import { Check, Sparkles, Shield, Zap } from 'lucide-react'
 import { motion as Motion } from 'framer-motion'
 import { useNavigate } from 'react-router-dom'
@@ -5,11 +6,34 @@ import { useAuth } from '../AuthContext'
 import PageHero from '../components/PageHero'
 import Section from '../components/Section'
 import { useI18n } from '../i18n'
+import { getUserTier } from '../utils/tier'
 
 function PricingPage() {
   const navigate = useNavigate()
-  const { currentUser } = useAuth()
+  const { currentUser, userData } = useAuth()
   const { t } = useI18n()
+  const [resolvedTier, setResolvedTier] = useState('free')
+
+  useEffect(() => {
+    let active = true
+    if (!currentUser) {
+      return () => {
+        active = false
+      }
+    }
+    getUserTier(currentUser.uid)
+      .then((tier) => {
+        if (active) setResolvedTier(tier === 'pro' ? 'pro' : 'free')
+      })
+      .catch(() => {
+        if (active) setResolvedTier(userData?.tier === 'pro' ? 'pro' : 'free')
+      })
+    return () => {
+      active = false
+    }
+  }, [currentUser, userData?.tier])
+
+  const isPro = Boolean(currentUser && resolvedTier === 'pro')
 
   const plans = [
     {
@@ -53,7 +77,15 @@ function PricingPage() {
     },
   ]
 
-  function handlePlan() {
+  function handlePlan(planId) {
+    if (isPro) {
+      navigate('/dashboard')
+      return
+    }
+    if (planId === 'free' && currentUser) {
+      navigate('/dashboard')
+      return
+    }
     navigate(currentUser ? '/dashboard' : '/signin')
   }
 
@@ -72,11 +104,20 @@ function PricingPage() {
         </div>
       </PageHero>
 
-      <section className="pricing-page-grid">
+      <section className={`pricing-page-grid ${isPro ? 'pricing-page-grid-pro' : ''}`}>
+        {isPro && (
+          <div className="pricing-current-plan-glass" aria-live="polite">
+            <Sparkles size={18} />
+            <div>
+              <strong>You are already Pro</strong>
+              <span>Your account has every Hengam feature unlocked.</span>
+            </div>
+          </div>
+        )}
         {plans.map((plan, i) => (
           <Motion.article
             key={plan.id}
-            className={`pricing-page-card ${plan.highlighted ? 'pricing-page-card-featured' : ''}`}
+            className={`pricing-page-card ${plan.highlighted ? 'pricing-page-card-featured' : ''} ${isPro ? 'pricing-page-card-soft' : ''}`}
             initial={{ opacity: 0, y: 24 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.45, delay: i * 0.1 }}
@@ -101,10 +142,10 @@ function PricingPage() {
 
             <button
               className={plan.highlighted ? 'landing-cta-primary pricing-page-cta' : 'landing-cta-ghost pricing-page-cta'}
-              onClick={handlePlan}
+              onClick={() => handlePlan(plan.id)}
             >
               <Zap size={15} />
-              <span>{plan.cta}</span>
+              <span>{isPro ? (plan.id === 'pro' ? 'Current Pro plan' : 'Go to dashboard') : plan.cta}</span>
             </button>
           </Motion.article>
         ))}

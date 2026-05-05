@@ -4210,11 +4210,64 @@ input:checked + .slider:before {
 }
 
 .pricing-page-grid {
+  position: relative;
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 480px));
   gap: 20px;
   margin: 28px 0 16px;
   justify-content: center;
+}
+
+.pricing-page-grid-pro {
+  padding-top: 18px;
+}
+
+.pricing-current-plan-glass {
+  position: absolute;
+  z-index: 4;
+  top: 50%;
+  left: 50%;
+  width: min(420px, calc(100% - 32px));
+  min-height: 112px;
+  transform: translate(-50%, -50%);
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 20px 22px;
+  border: 1px solid rgba(125, 211, 252, 0.34);
+  border-radius: var(--radius-lg);
+  background:
+    linear-gradient(135deg, rgba(15, 23, 42, 0.54), rgba(29, 78, 216, 0.34)),
+    rgba(2, 8, 23, 0.54);
+  color: #eff6ff;
+  backdrop-filter: blur(24px) saturate(1.35);
+  -webkit-backdrop-filter: blur(24px) saturate(1.35);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.16),
+    0 26px 70px rgba(14, 116, 220, 0.24),
+    0 0 54px rgba(56, 189, 248, 0.18);
+}
+
+.pricing-current-plan-glass svg {
+  flex: 0 0 auto;
+  color: #93c5fd;
+}
+
+.pricing-current-plan-glass strong,
+.pricing-current-plan-glass span {
+  display: block;
+}
+
+.pricing-current-plan-glass strong {
+  font-size: 18px;
+  line-height: 1.2;
+  margin-bottom: 5px;
+}
+
+.pricing-current-plan-glass span {
+  color: rgba(219, 234, 254, 0.82);
+  font-size: 13px;
+  line-height: 1.45;
 }
 
 .pricing-page-card {
@@ -4227,6 +4280,16 @@ input:checked + .slider:before {
   border: 1px solid var(--border-subtle);
   background: var(--bg-surface);
   box-shadow: var(--shadow-sm);
+}
+
+.pricing-page-card-soft {
+  filter: blur(1.5px) saturate(0.86);
+  opacity: 0.72;
+}
+
+.pricing-page-card-soft:hover {
+  filter: blur(0.6px) saturate(0.98);
+  opacity: 0.86;
 }
 
 .pricing-page-card-featured {
