@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { motion } from 'framer-motion'
+import { motion, useInView } from 'framer-motion'
 import { 
   ArrowRight, 
   Sparkles, 
@@ -48,6 +48,32 @@ function Landing() {
 }
 
 // ========== HERO ==========
+function WordsPullUp({ text, className = '', showAsterisk = false }) {
+  const ref = useRef(null)
+  const isInView = useInView(ref, { once: true, margin: '-80px' })
+  const words = text.split(' ').filter(Boolean)
+
+  return (
+    <span ref={ref} className={`words-pull-up ${className}`}>
+      {words.map((word, i) => {
+        const isLast = i === words.length - 1
+        return (
+          <motion.span
+            key={`${word}-${i}`}
+            className="words-pull-up-word"
+            initial={{ y: 24, opacity: 0, filter: 'blur(8px)' }}
+            animate={isInView ? { y: 0, opacity: 1, filter: 'blur(0px)' } : {}}
+            transition={{ duration: 0.68, delay: i * 0.075, ease: [0.16, 1, 0.3, 1] }}
+          >
+            {word}
+            {showAsterisk && isLast && <span className="words-pull-up-asterisk">*</span>}
+          </motion.span>
+        )
+      })}
+    </span>
+  )
+}
+
 function Hero({ onCTA, isSignedIn }) {
   const containerRef = useRef(null)
   const { t, isRtl } = useI18n()
@@ -71,15 +97,14 @@ function Hero({ onCTA, isSignedIn }) {
           <span>{t('heroEyebrow')}</span>
         </motion.div>
 
-        <motion.h1 
-          className="landing-hero-title hero-title-v2"
-          initial={{ opacity: 0, y: 40 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8, delay: 0.1, ease: [0.16, 1, 0.3, 1] }}
-        >
-          <span className="hero-line">{t('heroTitle1')}</span>
-          <span className="hero-line">{t('heroTitle2')}</span>
-        </motion.h1>
+        <h1 className="landing-hero-title hero-title-v2 hero-title-pulled">
+          <span className="hero-line">
+            <WordsPullUp text={t('heroTitle1')} />
+          </span>
+          <span className="hero-line">
+            <WordsPullUp text={t('heroTitle2')} showAsterisk={!isRtl} />
+          </span>
+        </h1>
 
         <motion.p 
           className="landing-hero-subtitle"
