@@ -5,7 +5,6 @@ import {
   doc,
   getDoc,
   getDocs,
-  increment,
   orderBy,
   query,
   runTransaction,
@@ -114,31 +113,15 @@ export async function enforceScheduleHistoryLimit(uid) {
 }
 
 export async function redeemPromoCode(code) {
-  const token = await auth.currentUser?.getIdToken()
-  if (!token) return block('auth_required', 'Sign in before redeeming a promo code.')
-  const response = await fetch('/api/redeem-promo-code', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${token}`,
-    },
-    body: JSON.stringify({ code }),
-  })
-  const data = await response.json().catch(() => ({}))
-  if (!response.ok) {
-    if (auth.currentUser && (data.reason === 'server_error' || data.reason === 'firebase_admin_config')) {
-      return redeemPromoCodeClientOnly(code, auth.currentUser.uid)
-    }
-    return block(data.reason || 'promo_invalid', data.message || data.error || 'Promo code could not be redeemed.')
-  }
-  return allow(data)
+  if (!auth.currentUser) return block('auth_required', 'Sign in before redeeming a promo code.')
+  return redeemPromoCodeClientOnly(code, auth.currentUser.uid)
 }
 
 export async function redeemPromoCodeClientOnly(code, userId, adminUid = 'promo-code') {
   const cleanCode = String(code || '').trim().toUpperCase()
   if (!cleanCode) return block('promo_invalid', 'Enter a promo code.')
   const promoRef = doc(db, 'promoCodes', cleanCode)
-  const overrideRef = doc(db, 'adminOverrides', userId)
+  const userRef = doc(db, 'users', userId)
   return runTransaction(db, async (tx) => {
     const promoSnap = await tx.get(promoRef)
     if (!promoSnap.exists()) return block('promo_invalid', 'Promo code not found.')
@@ -152,15 +135,13 @@ export async function redeemPromoCodeClientOnly(code, userId, adminUid = 'promo-
     }
     const durationDays = promo.durationDays == null ? null : Number(promo.durationDays)
     const expiresAt = durationDays ? Timestamp.fromDate(new Date(now + durationDays * 24 * 60 * 60 * 1000)) : null
-    tx.set(overrideRef, {
+    tx.set(userRef, {
       tier: normalizeTier(promo.tier),
-      expiresAt,
-      reason: `promo code ${cleanCode}`,
-      grantedBy: adminUid,
-      grantedAt: serverTimestamp(),
-      code: cleanCode,
-    })
-    tx.update(promoRef, { usedCount: increment(1) })
+      promoCode: cleanCode,
+      promoTierExpiresAt: expiresAt,
+      promoGrantedBy: adminUid,
+      promoGrantedAt: serverTimestamp(),
+    }, { merge: true })
     return allow({ message: 'Promo code applied. Pro access is active.' })
   })
 }
