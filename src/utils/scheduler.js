@@ -9,10 +9,45 @@ function timeToMins(hhmm, asClose = false) {
   return asClose && mins === 0 ? 24 * 60 : mins
 }
 
+// Minutes are counted from the start of the day a shift belongs to, so an
+// overnight shift ending at 2am is 26:00. Display code turns that back into a
+// wall clock with a next-day marker; every arithmetic consumer can keep
+// treating the string as plain minutes.
 function minsToTime(mins) {
-  mins = Math.max(0, Math.min(mins, 24 * 60))
+  mins = Math.max(0, Math.min(mins, 48 * 60))
   if (mins === 24 * 60) return '24:00'
   return `${String(Math.floor(mins / 60)).padStart(2, '0')}:${String(mins % 60).padStart(2, '0')}`
+}
+
+// A day that closes at or before it opens trades past midnight: 20:00 to 02:00
+// is a six hour night, not an empty day.
+function operatingWindow(opDay) {
+  if (!opDay?.open) return null
+  const start = timeToMins(opDay.start)
+  let end = timeToMins(opDay.end, true)
+  if (end <= start) end += 24 * 60
+  return { start, end, overnight: end > 24 * 60 }
+}
+
+// Resolves any wall-clock window (availability, a coverage slot, a minimum
+// staffing window) onto the same timeline as the operating window it sits in.
+function resolveWindow(startValue, endValue, opStartMins, opEndMins) {
+  let start = startValue ? timeToMins(startValue) : opStartMins
+  let end = endValue ? timeToMins(endValue, true) : opEndMins
+  // The window itself crosses midnight, e.g. available 20:00 to 02:00.
+  if (end <= start) end += 24 * 60
+  // The window sits wholly in the small hours of an overnight day, e.g.
+  // available 00:00 to 04:00 while the bar runs 20:00 to 02:00.
+  if (opEndMins > 24 * 60 && end <= opStartMins) {
+    start += 24 * 60
+    end += 24 * 60
+  }
+  return { start, end }
+}
+
+function availabilityWindow(av, opStartMins, opEndMins) {
+  if (!av) return null
+  return resolveWindow(av.start, av.end, opStartMins, opEndMins)
 }
 
 function snapHalf(mins) {
@@ -65,8 +100,7 @@ function isTimeOffDate(emp, date) {
 
 function computeShift(emp, dayKey, slotStartMins, slotEndMins, opStartMins, opEndMins, totals, dayIdx, idx, dailyBudget, preferWindows, anchor = 'start', options = {}) {
   const av = emp.availability[dayKey]
-  const avStart = timeToMins(av.start || minsToTime(opStartMins))
-  const avEnd = timeToMins(av.end || minsToTime(opEndMins), true)
+  const { start: avStart, end: avEnd } = availabilityWindow(av, opStartMins, opEndMins)
 
   // Apply preferred shift window if set — narrows the slot to match the preference
   // but only when the preferred window is large enough for a 4h shift
@@ -125,8 +159,7 @@ function chooseFlexWindow(emp, dayKey, opStartMins, opEndMins, totals, dailyBudg
   const av = emp.availability?.[dayKey]
   if (!av) return null
 
-  const avStart = timeToMins(av.start || minsToTime(opStartMins))
-  const avEnd = timeToMins(av.end || minsToTime(opEndMins), true)
+  const { start: avStart, end: avEnd } = availabilityWindow(av, opStartMins, opEndMins)
   const remaining = emp.targetHours != null
     ? emp.targetHours - (totals[emp.name] || 0)
     : 8.5
@@ -134,10 +167,18 @@ function chooseFlexWindow(emp, dayKey, opStartMins, opEndMins, totals, dailyBudg
   const hours = fixedHours || Math.min(8.5, remaining, budget)
   if (hours < 4) return null
 
-  const duration = hours * 60
   const earliest = Math.max(avStart, opStartMins)
-  const latest = Math.min(avEnd, opEndMins) - duration
-  if (latest < earliest) return null
+  const latestEnd = Math.min(avEnd, opEndMins)
+  const room = latestEnd - earliest
+
+  // A short trading day cannot fit a full daily budget. Take what the window
+  // allows instead of scheduling nobody — a six hour night is a shift, not a
+  // reason to leave the bar empty. An exact shift length that does not fit is
+  // still refused, since shortening it would break the rule that set it.
+  const duration = fixedHours ? hours * 60 : Math.min(hours * 60, room)
+  if (duration < 4 * 60 || duration > room) return null
+
+  const latest = latestEnd - duration
 
   // Flexible, non-coverage shifts should fill the middle/later day instead of
   // all piling onto the opening minute. Coverage slots already handle openers.
@@ -152,11 +193,10 @@ function dayCapacity(emp, dayKey, operatingHours, dailyBudget, date = null) {
   if (!av || av.available === false || !opDay?.open) return 0
   if (date && isTimeOffDate(emp, date)) return 0
 
-  const avStart = timeToMins(av.start || opDay.start)
-  const avEnd = timeToMins(av.end || opDay.end, true)
-  const opStart = timeToMins(opDay.start)
-  const opEnd = timeToMins(opDay.end, true)
-  const availableHours = Math.max(0, Math.min(avEnd, opEnd) - Math.max(avStart, opStart)) / 60
+  const op = operatingWindow(opDay)
+  if (!op) return 0
+  const { start: avStart, end: avEnd } = availabilityWindow(av, op.start, op.end)
+  const availableHours = Math.max(0, Math.min(avEnd, op.end) - Math.max(avStart, op.start)) / 60
   return Math.min(8.5, dailyBudget?.[emp.name] || 8.5, availableHours)
 }
 
@@ -234,9 +274,9 @@ function isEligible(
 
   if (requiredRole && emp.role?.toLowerCase() !== requiredRole.toLowerCase()) return false
 
-  const avStart = timeToMins(av.start || opDay.start)
-  const avEnd = timeToMins(av.end || opDay.end, true)
-  const actualStart = Math.max(slotStartMins, avStart, timeToMins(opDay.start))
+  const opStartMins = timeToMins(opDay.start)
+  const { start: avStart, end: avEnd } = availabilityWindow(av, opStartMins, opEndMins)
+  const actualStart = Math.max(slotStartMins, avStart, opStartMins)
   const actualEnd = Math.min(slotEndMins, avEnd, opEndMins)
   if (slotRequirements.latestStart != null && actualStart > slotRequirements.latestStart) return false
   if (slotRequirements.minEnd != null && actualEnd < slotRequirements.minEnd) return false
@@ -488,8 +528,7 @@ export function runScheduler(employees, settings, weekStart, rawConstraints = {}
       return
     }
 
-    const opStartMins = timeToMins(opDay.start)
-    const opEndMins = timeToMins(opDay.end, true)
+    const { start: opStartMins, end: opEndMins } = operatingWindow(opDay)
     const opDayWithDate = { ...opDay, date }
 
     const daySlots = coverageSlots.filter(s =>
@@ -506,9 +545,9 @@ export function runScheduler(employees, settings, weekStart, rawConstraints = {}
     // Phase 1: fill defined coverage slots
     daySlots.forEach(slot => {
       const count = slot.count || 1
-      const slotStart = timeToMins(slot.start)
-      // "18:00 to 00:00" means until midnight, not a zero-length window.
-      const slotEnd = timeToMins(slot.end, true)
+      // "18:00 to 00:00" means until midnight, not a zero-length window, and on
+      // an overnight day "20:00 to 02:00" runs into the small hours.
+      const { start: slotStart, end: slotEnd } = resolveWindow(slot.start, slot.end, opStartMins, opEndMins)
 
       for (let i = 0; i < count; i++) {
         const eligible = roster
@@ -516,7 +555,14 @@ export function runScheduler(employees, settings, weekStart, rawConstraints = {}
             emp, dayKey, dayIdx, slotStart, slotEnd, opDayWithDate, totals, assignedToday, lastClose,
             preventClopening, minHoursBetweenShifts, slot.role,
             avoid, maxDays, daysWorked, maxCloses, closes, opEndMins,
-            { latestStart: slot.latestStart != null ? timeToMins(slot.latestStart) : null, minEnd: slot.minEnd != null ? timeToMins(slot.minEnd, true) : null }
+            {
+              latestStart: slot.latestStart != null
+                ? resolveWindow(slot.latestStart, slot.latestStart, opStartMins, opEndMins).start
+                : null,
+              minEnd: slot.minEnd != null
+                ? resolveWindow(slot.minEnd, slot.minEnd, opStartMins, opEndMins).start
+                : null,
+            }
           ))
           .sort((a, b) => {
             const aPrio = priorityList.includes(a.name) ? 1 : 0
@@ -556,8 +602,7 @@ export function runScheduler(employees, settings, weekStart, rawConstraints = {}
     )
 
     dayMinimums.forEach(({ from, to, count }) => {
-      const fromMins = timeToMins(from)
-      const toMins = timeToMins(to, true)
+      const { start: fromMins, end: toMins } = resolveWindow(from, to, opStartMins, opEndMins)
       let active = shifts.filter(shift => activeInWindow(shift, fromMins, toMins)).length
 
       while (active < count) {

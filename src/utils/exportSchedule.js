@@ -1,3 +1,5 @@
+import { NEXT_DAY_MARK, isNextDay, toWallClock } from './shiftTime.js'
+
 // html2canvas and jsPDF together are ~1MB. They are only needed the moment
 // someone exports, so they load on demand instead of shipping with the app.
 const loadHtml2Canvas = () => import('html2canvas').then((m) => m.default)
@@ -60,7 +62,9 @@ export function exportToCSV(data, weekStart) {
           // Format all shifts for this employee this day
           const cellText = shifts.map(s => {
             totalHours += Number(s.hours) || 0
-            return `${s.start}-${s.end} (${s.hours}h)`
+            // An overnight shift is stored as 20:00-26:00; the file should
+            // show 20:00-02:00 (+1) so it reads as a clock time.
+            return `${toWallClock(s.start)}-${toWallClock(s.end)}${isNextDay(s.end) ? ` ${NEXT_DAY_MARK}` : ''} (${s.hours}h)`
           }).join(' | ')
           row.push(cellText)
         }

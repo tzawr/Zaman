@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react'
 import { Clock, AlertTriangle, TrendingUp, TrendingDown, Minus, Sparkles, X, Plus, Trash2 } from 'lucide-react'
 import { useI18n } from '../i18n'
+import { formatShiftTime, normalizeShiftTimes, shiftLengthHours, toWallClock } from '../utils/shiftTime'
 
 const DAYS = [
   { key: 'monday', labelKey: 'dayMonShort', fullLabelKey: 'dayMonday' },
@@ -101,16 +102,9 @@ function formatIssue(issue, t) {
   }
 }
 
-function formatTime(time24, language = 'en') {
-  if (!time24) return ''
-  const [h, m] = time24.split(':').map(Number)
-  if (language === 'fa') {
-    return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`
-  }
-  const period = h >= 12 ? 'PM' : 'AM'
-  const displayH = h === 0 ? 12 : h > 12 ? h - 12 : h
-  return m === 0 ? `${displayH}${period.toLowerCase()}` : `${displayH}:${String(m).padStart(2, '0')}${period.toLowerCase()}`
-}
+// Handles times past midnight on an overnight day, where 26:00 means 2am the
+// following morning.
+const formatTime = (time24, language = 'en') => formatShiftTime(time24, language)
 
 function formatDayDate(dateStr, language = 'en') {
   if (!dateStr) return ''
@@ -131,14 +125,7 @@ function formatHours(hours, language = 'en') {
   return language === 'fa' ? `${hours} ساعت` : `${hours}h`
 }
 
-function calcHours(start, end) {
-  if (!start || !end) return 0
-  const [sh, sm] = start.split(':').map(Number)
-  const [eh, em] = end.split(':').map(Number)
-  let hours = (eh + em / 60) - (sh + sm / 60)
-  if (hours < 0) hours += 24
-  return Math.round(hours * 10) / 10
-}
+const calcHours = (start, end) => shiftLengthHours(start, end)
 
 function ScheduleTable({ data, employees = [], roles = [], onUpdate, highlightFilter = null, showRecommendations = true }) {
   const { t, language } = useI18n()
@@ -179,13 +166,16 @@ function ScheduleTable({ data, employees = [], roles = [], onUpdate, highlightFi
     setEditing(null)
   }
 
-  function saveShift(updatedShift) {
+  function saveShift(edited) {
+    let updatedShift = edited
     if (!editing || !onUpdate) return
     
     const newData = JSON.parse(JSON.stringify(data))
     const day = newData.days[editing.dayKey]
     
-    // Recalculate hours
+    // An end at or before the start came from the 24-hour picker and means the
+    // next morning, so put it back on the schedule's timeline before measuring.
+    updatedShift = normalizeShiftTimes(updatedShift)
     updatedShift.hours = calcHours(updatedShift.start, updatedShift.end)
     
     if (editing.isNew) {
@@ -480,7 +470,7 @@ function EditShiftModal({ editing, employees, roles, onSave, onDelete, onClose, 
             <input
               type="time"
               className="input"
-              value={shift.start}
+              value={toWallClock(shift.start)}
               onChange={(e) => setShift({ ...shift, start: e.target.value })}
             />
           </div>
@@ -489,7 +479,7 @@ function EditShiftModal({ editing, employees, roles, onSave, onDelete, onClose, 
             <input
               type="time"
               className="input"
-              value={shift.end}
+              value={toWallClock(shift.end)}
               onChange={(e) => setShift({ ...shift, end: e.target.value })}
             />
           </div>
@@ -497,7 +487,7 @@ function EditShiftModal({ editing, employees, roles, onSave, onDelete, onClose, 
 
         <div className="shift-modal-preview">
           <Clock size={14} />
-          <span>{t('total')}: {calcHours(shift.start, shift.end)}h</span>
+          <span>{t('total')}: {calcHours(normalizeShiftTimes(shift).start, normalizeShiftTimes(shift).end)}h</span>
         </div>
 
         <div className="shift-modal-actions">

@@ -63,3 +63,16 @@ test('exporting nothing does not throw', () => {
   assert.doesNotThrow(() => exportToCSV(null, '2026-05-04'))
   assert.doesNotThrow(() => exportToCSV({ days: null }, '2026-05-04'))
 })
+
+test('an overnight shift exports as a clock time, not 26:00', () => {
+  const csv = csvFor([
+    { employee: 'Ava', role: 'Bartender', start: '20:00', end: '26:00', hours: 6 },
+    { employee: 'Bo', role: 'Server', start: '18:00', end: '24:00', hours: 6 },
+  ])
+  const ava = csv.split('\n').find(line => line.startsWith('Ava'))
+  const bo = csv.split('\n').find(line => line.startsWith('Bo'))
+
+  assert.ok(ava.includes('20:00-02:00 +1 (6h)'), `expected a next-day marker, got: ${ava}`)
+  assert.ok(!ava.includes('26:00'), 'the raw past-midnight time should not reach the file')
+  assert.ok(bo.includes('18:00-00:00 (6h)'), `midnight needs no marker, got: ${bo}`)
+})

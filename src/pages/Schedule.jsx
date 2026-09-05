@@ -38,6 +38,7 @@ import { useAuth } from '../AuthContext'
 import ScheduleTable from '../components/ScheduleTable'
 import { exportToCSV, exportToPNG, exportToPDF } from '../utils/exportSchedule'
 import { runScheduler } from '../utils/scheduler'
+import { shiftLengthHours, toMinutes } from '../utils/shiftTime'
 import { useSpeechInput } from '../utils/useSpeechInput'
 import PageHero from '../components/PageHero'
 import Section from '../components/Section'
@@ -1067,7 +1068,16 @@ function validateSchedule(data, employees, parsedRules = null, workspace = {}) {
         violations.push(`${capitalize(day)}: ${shift.employee} is not available`)
       } else if (av.start && av.end) {
         const ss = toM(shift.start), se = toM(shift.end)
-        const as = toM(av.start), ae = toM(av.end) || 24 * 60
+        // On a day that trades past midnight both the shift and the
+        // availability sit on a timeline that runs beyond 24:00.
+        const opDay = workspace.operatingHours?.[day]
+        const opStart = opDay ? toM(opDay.start) : 0
+        let opEnd = opDay ? (toM(opDay.end) || 24 * 60) : 24 * 60
+        if (opEnd <= opStart) opEnd += 24 * 60
+        let as = toM(av.start)
+        let ae = toM(av.end) || 24 * 60
+        if (ae <= as) ae += 24 * 60
+        if (opEnd > 24 * 60 && ae <= opStart) { as += 24 * 60; ae += 24 * 60 }
         if (ss < as || se > ae) {
           violations.push(`${capitalize(day)}: ${shift.employee} shift ${shift.start}–${shift.end} is outside availability ${av.start}–${av.end}`)
         }
@@ -1313,23 +1323,14 @@ function buildConstraintsFromParsedRules(parsedRules, operatingHours, dayCoverag
   return { slots, pairs, avoid, maxDays, maxCloses, preferWindows, shiftHoursByEmployee, trainingPairs, prioritize, minimumStaff }
 }
 
-function shiftHours(start, end) {
-  if (!start || !end) return 0
-  const [sh, sm] = start.split(':').map(Number)
-  const [eh, em] = end.split(':').map(Number)
-  let h = (eh + em / 60) - (sh + sm / 60)
-  if (h < 0) h += 24
-  return Math.round(h * 10) / 10
-}
+const shiftHours = (start, end) => shiftLengthHours(start, end)
 
 function shiftStartMins(shift) {
-  const [h, m] = (shift.start || '0:0').split(':').map(Number)
-  return h * 60 + (m || 0)
+  return toMinutes(shift.start)
 }
 
 function shiftEndMins(shift) {
-  const [h, m] = (shift.end || '0:0').split(':').map(Number)
-  const mins = h * 60 + (m || 0)
+  const mins = toMinutes(shift.end)
   return mins === 0 ? 24 * 60 : mins
 }
 

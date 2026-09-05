@@ -9,6 +9,7 @@ import PageHero from '../components/PageHero'
 import Section from '../components/Section'
 import ScheduleTable from '../components/ScheduleTable'
 import { useI18n } from '../i18n'
+import { formatShiftTime } from '../utils/shiftTime'
 
 const DAYS = [
   { key: 'monday', labelKey: 'dayMonShort' },
@@ -20,16 +21,8 @@ const DAYS = [
   { key: 'sunday', labelKey: 'daySunShort' },
 ]
 
-function formatTime(time24, language = 'en') {
-  if (!time24) return ''
-  const [h, m] = time24.split(':').map(Number)
-  if (language === 'fa') {
-    return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`
-  }
-  const period = h >= 12 ? 'PM' : 'AM'
-  const displayH = h === 0 ? 12 : h > 12 ? h - 12 : h
-  return m === 0 ? `${displayH}${period.toLowerCase()}` : `${displayH}:${String(m).padStart(2, '0')}${period.toLowerCase()}`
-}
+// An overnight shift ends at 26:00, meaning 2am the next morning.
+const formatTime = (time24, language = 'en') => formatShiftTime(time24, language)
 
 function formatWeekRange(weekStart, language) {
   if (!weekStart) return ''

@@ -50,7 +50,7 @@ function Settings() {
   const navigate = useNavigate()
   const { currentUser } = useAuth()
   const toast = useToast()
-  const { t } = useI18n()
+  const { t, tf } = useI18n()
 
   const [operatingHours, setOperatingHours] = useState(DEFAULT_HOURS)
   const [coverage, setCoverage] = useState(DEFAULT_COVERAGE)
@@ -128,12 +128,11 @@ function Settings() {
   function updateHourTime(k, field, v) {
     const next = { ...operatingHours, [k]: { ...operatingHours[k], [field]: v } }
     setOperatingHours(next); saveToFirebase({ operatingHours: next })
-    // A day that closes before it opens has no window to schedule into, and the
-    // generator would silently return nothing for it. Overnight trading hours
-    // are not supported yet, so say so rather than produce an empty day.
+    // Closing at or before opening means the day trades past midnight. That is
+    // supported, but it is also an easy mis-tap, so confirm what was set.
     const day = next[k]
     if (day.open && toMinutes(day.end) <= toMinutes(day.start, false)) {
-      toast.info(t('toastClosingBeforeOpening'))
+      toast.info(tf('toastOvernightHours', { start: day.start, end: day.end }))
     }
   }
   function updateCoverage(k, v) {
@@ -366,6 +365,9 @@ function Settings() {
                       value={d.end}
                       onChange={(v) => updateHourTime(day.key, 'end', v)}
                     />
+                    {toMinutes(d.end) <= toMinutes(d.start, false) && (
+                      <span className="overnight-badge">{t('overnightBadge')}</span>
+                    )}
                   </div>
                 )}
               </div>

@@ -15080,3 +15080,20 @@ input[type="time"]::-webkit-calendar-picker-indicator:hover {
     min-height: 40px;
   }
 }
+
+/* Marks a day whose closing time lands the next morning, so overnight trading
+   hours read as deliberate rather than as a mistake in the picker. */
+.overnight-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 9px;
+  border: 1px solid var(--border-accent);
+  border-radius: var(--radius-full);
+  background: var(--accent-bg);
+  color: var(--accent-1);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}

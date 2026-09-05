@@ -167,10 +167,16 @@ test('generated schedules hold their invariants across 500 random workspaces', (
 
     const operatingHours = {}
     DAYS.forEach(day => {
+      // A quarter of days trade overnight: they close earlier than they open.
+      const overnight = r() < 0.25
       operatingHours[day] = {
         open: r() > 0.15,
-        start: `${String([0, 5, 6, 7, 8, 9][Math.floor(r() * 6)]).padStart(2, '0')}:00`,
-        end: `${String([15, 17, 18, 20, 22, 23, 0][Math.floor(r() * 7)]).padStart(2, '0')}:00`,
+        start: overnight
+          ? `${String([17, 18, 19, 20, 21, 22][Math.floor(r() * 6)]).padStart(2, '0')}:00`
+          : `${String([0, 5, 6, 7, 8, 9][Math.floor(r() * 6)]).padStart(2, '0')}:00`,
+        end: overnight
+          ? `${String([0, 1, 2, 3, 4, 5][Math.floor(r() * 6)]).padStart(2, '0')}:00`
+          : `${String([15, 17, 18, 20, 22, 23, 0][Math.floor(r() * 7)]).padStart(2, '0')}:00`,
       }
     })
 
@@ -214,7 +220,16 @@ test('generated schedules hold their invariants across 500 random workspaces', (
       }
 
       const opStart = toMins(opDay.start)
-      const opEnd = toMins(opDay.end, true)
+      let opEnd = toMins(opDay.end, true)
+      // A day closing at or before it opens runs past midnight.
+      if (opEnd <= opStart) opEnd += 24 * 60
+      const resolve = (startValue, endValue) => {
+        let from = startValue ? toMins(startValue) : opStart
+        let to = endValue ? toMins(endValue, true) : opEnd
+        if (to <= from) to += 24 * 60
+        if (opEnd > 24 * 60 && to <= opStart) { from += 24 * 60; to += 24 * 60 }
+        return [from, to]
+      }
       const today = new Set()
 
       for (const shift of day.shifts) {
@@ -229,8 +244,9 @@ test('generated schedules hold their invariants across 500 random workspaces', (
 
         const av = employee.availability[dayKey]
         assert.ok(av && av.available !== false, `${context}: ${shift.employee} scheduled while unavailable`)
+        const [avStart, avEnd] = resolve(av.start, av.end)
         assert.ok(
-          start >= toMins(av.start || opDay.start) && end <= toMins(av.end || opDay.end, true),
+          start >= avStart && end <= avEnd,
           `${context}: ${shift.employee} outside their availability`,
         )
 
@@ -328,4 +344,93 @@ test('an employee list that is missing or malformed is ignored', () => {
   assert.doesNotThrow(() => runScheduler(null, settings, '2026-05-04', {}))
   assert.doesNotThrow(() => runScheduler([null, 'Ava', 42], settings, '2026-05-04', {}))
   assert.equal(runScheduler([null, 'Ava'], settings, '2026-05-04', {}).summary.length, 0)
+})
+
+test('a bar trading past midnight gets staffed', () => {
+  const result = runScheduler(
+    [person('Ava', 'Bartender', 30), person('Bo', 'Bartender', 30)],
+    { operatingHours: open('20:00', '02:00') },
+    '2026-05-04',
+    {},
+  )
+
+  const monday = result.days.monday.shifts
+  assert.ok(monday.length > 0, 'an overnight day should be staffed, not left empty')
+  for (const shift of monday) {
+    assert.equal(shift.start, '20:00')
+    assert.equal(shift.end, '26:00', 'a 2am finish is 26:00 on the day the shift starts')
+    assert.equal(shift.hours, 6)
+  }
+})
+
+test('coverage rules and availability work across midnight', () => {
+  const settings = { operatingHours: open('20:00', '02:00') }
+
+  const covered = runScheduler(
+    [person('Ava', 'Bartender', 30), person('Bo', 'Bartender', 30)],
+    settings,
+    '2026-05-04',
+    { slots: [{ start: '22:00', end: '02:00', role: 'Bartender', count: 2, days: 'all' }] },
+  )
+  assert.equal(covered.days.monday.emptySlots.length, 0, 'a 22:00-02:00 rule should be fillable')
+  assert.equal(covered.days.monday.shifts.length, 2)
+
+  // Availability written as crossing midnight resolves onto the same night.
+  const crossing = runScheduler(
+    [person('Ava', 'Bartender', 30, { available: true, start: '20:00', end: '02:00' })],
+    settings, '2026-05-04', {},
+  )
+  assert.equal(crossing.days.monday.shifts[0].end, '26:00')
+
+  // Someone only free during the day is never put on a night shift.
+  const daytimeOnly = runScheduler(
+    [person('Ava', 'Bartender', 30, { available: true, start: '09:00', end: '17:00' })],
+    settings, '2026-05-04', {},
+  )
+  assert.equal(allShifts(daytimeOnly).length, 0)
+
+  // Small-hours availability belongs to the night that is already running.
+  const smallHours = runScheduler(
+    [person('Ava', 'Bartender', 30, { available: true, start: '00:00', end: '06:00' })],
+    { operatingHours: open('20:00', '04:00') }, '2026-05-04', {},
+  )
+  assert.equal(smallHours.days.monday.shifts[0].start, '24:00')
+  assert.equal(smallHours.days.monday.shifts[0].end, '28:00')
+})
+
+test('a trading day shorter than a full shift still gets covered', () => {
+  // The daily budget used to be all-or-nothing, so a window shorter than it
+  // produced no shift at all.
+  const result = runScheduler(
+    [person('Ava', 'Barista', 40)],
+    { operatingHours: open('09:00', '15:00') },
+    '2026-05-04',
+    {},
+  )
+  const monday = result.days.monday.shifts
+  assert.equal(monday.length, 1)
+  assert.equal(monday[0].hours, 6)
+})
+
+test('daytime hours are unaffected by overnight support', () => {
+  const result = runScheduler(
+    [person('Ava', 'Barista', 30)],
+    { operatingHours: open('08:00', '18:00') },
+    '2026-05-04',
+    {},
+  )
+  for (const shift of allShifts(result)) {
+    assert.ok(toMins(shift.end, true) <= 18 * 60, `${shift.end} runs past closing`)
+  }
+
+  // Open 00:00 to 00:00 is a 24-hour day, not an overnight one.
+  const roundTheClock = runScheduler(
+    [person('Bo', 'Barista', 40)],
+    { operatingHours: open('00:00', '00:00') },
+    '2026-05-04',
+    {},
+  )
+  for (const shift of allShifts(roundTheClock)) {
+    assert.ok(toMins(shift.end, true) <= 24 * 60, `${shift.end} runs past midnight`)
+  }
 })
