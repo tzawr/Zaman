@@ -1,3 +1,10 @@
+import { requireSignedIn, sendError } from './_firebase-admin.js'
+
+// A prompt is a workspace's rules, roles and team — generous, but bounded.
+// Without a cap this endpoint would forward whatever it is handed to a metered
+// API.
+const MAX_PROMPT_CHARS = 20000
+
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' })
@@ -9,8 +16,19 @@ export default async function handler(req, res) {
   }
 
   try {
-    const { prompt } = req.body
-    if (!prompt) return res.status(400).json({ error: 'Missing prompt' })
+    // This endpoint spends money on every call, so it is never open to the
+    // internet: the caller must present a verified Firebase ID token.
+    await requireSignedIn(req)
+  } catch (err) {
+    return sendError(res, err, 'Sign in to generate a schedule.')
+  }
+
+  try {
+    const { prompt } = req.body || {}
+    if (!prompt || typeof prompt !== 'string') return res.status(400).json({ error: 'Missing prompt' })
+    if (prompt.length > MAX_PROMPT_CHARS) {
+      return res.status(413).json({ error: 'Prompt is too long' })
+    }
 
     const response = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',

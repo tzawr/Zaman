@@ -20,6 +20,8 @@ import {
   GraduationCap,
   Mic,
   MicOff,
+  AlertTriangle,
+  ArrowRight,
 } from 'lucide-react'
 import { 
   collection, 
@@ -31,7 +33,7 @@ import {
   addDoc, 
   serverTimestamp,
 } from 'firebase/firestore'
-import { db } from '../firebase'
+import { auth, db } from '../firebase'
 import { useAuth } from '../AuthContext'
 import ScheduleTable from '../components/ScheduleTable'
 import { exportToCSV, exportToPNG, exportToPDF } from '../utils/exportSchedule'
@@ -48,11 +50,12 @@ import {
   enforceScheduleHistoryLimit,
   getUserTier,
 } from '../utils/tier'
+import { getSetupStatus, describeMissingSetup, DAY_KEYS } from '../utils/setupChecklist'
 
 function Schedule() {
   const navigate = useNavigate()
   const { currentUser } = useAuth()
-  const { t, language } = useI18n()
+  const { t, tf, language } = useI18n()
   const generationSeedRef = useRef(0)
   
   const [employees, setEmployees] = useState([])
@@ -61,6 +64,7 @@ function Schedule() {
   const [weekStart, setWeekStart] = useState(getNextMonday())
   const [generating, setGenerating] = useState(false)
   const [error, setError] = useState('')
+  const [setupProblems, setSetupProblems] = useState([])
   const [loading, setLoading] = useState(true)
   const [saved, setSaved] = useState(false)
   const [copied, setCopied] = useState(false)
@@ -144,19 +148,25 @@ function Schedule() {
 
   async function generateSchedule() {
     setError('')
+    setSetupProblems([])
     setScheduleData(null)
     setSaved(false)
     setCopied(false)
 
-    if (employees.length === 0) {
-      setError(t('scheduleNeedEmployee'))
+    // Availability can arrive either from the employee record or from an
+    // invited employee's own portal, so merge before deciding what is missing.
+    const schedulingEmployees = await mergeEmployeePortalAvailability(employees)
+
+    const problems = describeMissingSetup(
+      getSetupStatus({ userData: userSettings, employees: schedulingEmployees }),
+      tf,
+      t
+    )
+    if (problems.length > 0) {
+      setSetupProblems(problems)
       return
     }
 
-    if (!userSettings?.operatingHours) {
-      setError(t('scheduleNeedHours'))
-      return
-    }
     const generationGate = await canGenerateScheduleGate(currentUser.uid)
     if (generationGate.blocked) {
       setError(generationGate.message)
@@ -166,7 +176,6 @@ function Schedule() {
 
     try {
       setGenerating(true)
-      const schedulingEmployees = await mergeEmployeePortalAvailability(employees)
 
       // Step 1: Parse both coverage rules and special instructions into structured constraints (AI, cached)
       const parsedRules = plainLanguageGate.blocked
@@ -178,7 +187,11 @@ function Schedule() {
           )
 
       // Step 2: Build deterministic constraints from structured rules
-      const constraints = buildConstraintsFromParsedRules(parsedRules, userSettings.operatingHours)
+      const constraints = buildConstraintsFromParsedRules(
+        parsedRules,
+        userSettings.operatingHours,
+        userSettings.coverage
+      )
 
       // Step 3: Try several deterministic variants and keep the cleanest one.
       let best = null
@@ -189,7 +202,10 @@ function Schedule() {
           ...constraints,
           seed: baseSeed + attempt,
         })
-        const violations = validateSchedule(candidate, schedulingEmployees, parsedRules)
+        const violations = validateSchedule(candidate, schedulingEmployees, parsedRules, {
+          coverage: userSettings.coverage,
+          operatingHours: userSettings.operatingHours,
+        })
         const score = scoreScheduleCandidate(candidate, violations, schedulingEmployees, parsedRules?.employeeRules)
         if (!best || score < best.score) {
           best = { result: candidate, violations, score }
@@ -457,7 +473,7 @@ function Schedule() {
   <button 
     className="generate-button gen-cta"
     onClick={generateSchedule}
-    disabled={generating || employees.length === 0}
+    disabled={generating}
   >
     {generating ? (
       <>
@@ -471,10 +487,33 @@ function Schedule() {
       </>
     )}
   </button>
-  {employees.length === 0 && (
+  {employees.length === 0 && setupProblems.length === 0 && (
     <p className="hint-text">
       <a onClick={() => navigate('/employees')}>{t('addTeamMembers')}</a> {t('addTeamFirstSuffix')}
     </p>
+  )}
+  {setupProblems.length > 0 && (
+    <div className="setup-blocked">
+      <div className="setup-blocked-head">
+        <AlertTriangle size={15} aria-hidden />
+        <span>{t('setupBlockedTitle')}</span>
+      </div>
+      <ul className="setup-blocked-list">
+        {setupProblems.map(problem => (
+          <li key={problem.key}>
+            <span className="setup-blocked-message">{problem.message}</span>
+            <button
+              type="button"
+              className="setup-blocked-fix"
+              onClick={() => navigate(problem.path)}
+            >
+              <span>{t('setupBlockedFix')}</span>
+              <ArrowRight size={13} />
+            </button>
+          </li>
+        ))}
+      </ul>
+    </div>
   )}
   {error && <p className="hint-text">{error}</p>}
 </div>
@@ -727,9 +766,16 @@ function findShiftDay(schedule, targetShift) {
 }
 
 async function callGenerateAPI(prompt) {
+  // The endpoint spends money per call, so it only answers signed-in callers.
+  const token = await auth.currentUser?.getIdToken()
+  if (!token) throw new Error('Sign in to generate a schedule.')
+
   const resp = await fetch('/api/generate-schedule', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
     body: JSON.stringify({ prompt }),
   })
   if (!resp.ok) {
@@ -968,7 +1014,7 @@ Field meanings:
 
 // JS validator — checks hard rules and structured scheduling rules.
 // Never makes scheduling decisions. Returns violation strings for the AI to fix.
-function validateSchedule(data, employees, parsedRules = null) {
+function validateSchedule(data, employees, parsedRules = null, workspace = {}) {
   const violations = []
   const DAYS = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday']
   const empMap = Object.fromEntries(employees.map(e => [e.name, e]))
@@ -976,6 +1022,20 @@ function validateSchedule(data, employees, parsedRules = null) {
   const toM = t => { const [h, m] = (t || '0:0').split(':').map(Number); return h * 60 + (m || 0) }
   const coverageRules = parsedRules?.coverage || null
   const employeeRules = parsedRules?.employeeRules || null
+
+  // --- Workspace per-day minimums. Checked before the per-day shift loop so a
+  // day that ended up with no shifts at all is still reported. ---
+  if (workspace.coverage && workspace.operatingHours) {
+    DAYS.forEach(day => {
+      const opDay = workspace.operatingHours[day]
+      const minPeople = Number(workspace.coverage[day]?.minPeople) || 0
+      if (!opDay?.open || minPeople < 1) return
+      const scheduled = (data.days?.[day]?.shifts || []).length
+      if (scheduled < minPeople) {
+        violations.push(`${capitalize(day)}: needs at least ${minPeople} ${minPeople === 1 ? 'person' : 'people'} on shift — only ${scheduled} scheduled`)
+      }
+    })
+  }
 
   DAYS.forEach(day => {
     const dayData = data.days?.[day]
@@ -1166,7 +1226,7 @@ function validateSchedule(data, employees, parsedRules = null) {
   return violations
 }
 
-function buildConstraintsFromParsedRules(parsedRules, operatingHours) {
+function buildConstraintsFromParsedRules(parsedRules, operatingHours, dayCoverage = null) {
   const slots = []
   const pairs = []
   const avoid = []
@@ -1178,7 +1238,26 @@ function buildConstraintsFromParsedRules(parsedRules, operatingHours) {
   const prioritize = {}
   const minimumStaff = []
 
-  if (!parsedRules) return { slots, pairs, avoid, maxDays, maxCloses, preferWindows, shiftHoursByEmployee, trainingPairs, prioritize, minimumStaff }
+  // The per-day minimums set in Workspace are a floor for the whole open day.
+  // They apply on their own, so free workspaces without AI-parsed rules still
+  // get their coverage honoured.
+  if (dayCoverage && operatingHours) {
+    DAY_KEYS.forEach(dayKey => {
+      const opDay = operatingHours[dayKey]
+      const minPeople = Number(dayCoverage[dayKey]?.minPeople) || 0
+      if (!opDay?.open || minPeople < 1) return
+      minimumStaff.push({
+        from: opDay.start,
+        to: opDay.end,
+        count: minPeople,
+        days: [dayKey],
+      })
+    })
+  }
+
+  const bundle = () => ({ slots, pairs, avoid, maxDays, maxCloses, preferWindows, shiftHoursByEmployee, trainingPairs, prioritize, minimumStaff })
+
+  if (!parsedRules) return bundle()
 
   const { coverage, employeeRules } = parsedRules
 

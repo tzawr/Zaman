@@ -1,13 +1,40 @@
+import { requireSignedIn, sendError } from './_firebase-admin.js'
+
+// The link in the email must point at Hengam and nowhere else. Taking it from
+// the request body would let anyone send a Hengam-branded email whose button
+// goes to a site they control.
+function appOrigin() {
+  const configured = process.env.APP_URL || process.env.VITE_SITE_URL
+  if (configured && /^https:\/\/[\w.-]+$/.test(configured.replace(/\/$/, ''))) {
+    return configured.replace(/\/$/, '')
+  }
+  return 'https://hengam.app'
+}
+
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' })
 
-  const { email, token, origin } = req.body
-  if (!email || !token) return res.status(400).json({ error: 'Missing email or token' })
+  // Unauthenticated, this endpoint is an open relay: it would send branded mail
+  // to any address anyone named, on the owner's Resend account.
+  let decoded
+  try {
+    decoded = await requireSignedIn(req)
+  } catch (err) {
+    return sendError(res, err, 'Sign in to request a verification email.')
+  }
+
+  const { token } = req.body || {}
+  // Always the caller's own verified-token address, never one from the body.
+  const email = decoded.email
+  if (!email) return res.status(400).json({ error: 'Account has no email address' })
+  if (!token || typeof token !== 'string' || token.length > 512) {
+    return res.status(400).json({ error: 'Missing or invalid token' })
+  }
 
   const apiKey = process.env.RESEND_API_KEY
   if (!apiKey) return res.status(500).json({ error: 'Email service not configured' })
 
-  const verifyUrl = `${origin || 'https://hengam.app'}/verify-email/${token}`
+  const verifyUrl = `${appOrigin()}/verify-email/${encodeURIComponent(token)}`
 
   const html = `
 <!DOCTYPE html>
