@@ -279,3 +279,53 @@ test('generated schedules hold their invariants across 500 random workspaces', (
     }
   }
 })
+
+// Constraints come from a language model parsing plain-English rules, so the
+// engine has to survive output that is close to the schema but not quite it.
+test('malformed AI-parsed constraints degrade instead of crashing', () => {
+  const employees = [
+    { name: 'Ava', role: 'Barista', targetHours: 30, availability: everyDay({ available: true, start: '', end: '' }), timeOff: [] },
+    { name: 'Bo', role: 'Supervisor', targetHours: 20, availability: everyDay({ available: true, start: '', end: '' }), timeOff: [] },
+  ]
+  const settings = { operatingHours: open('08:00', '20:00'), preventClopening: true, minHoursBetweenShifts: 10 }
+
+  const hostile = [
+    ['slots as an object', { slots: { start: '08:00', end: '16:00' } }],
+    ['slots as a string', { slots: 'every morning' }],
+    ['slot times as numbers', { slots: [{ start: 8, end: 16, count: 1, days: 'all' }] }],
+    ['slot times in 12-hour text', { slots: [{ start: '8am', end: '4pm', count: 1, days: 'all' }] }],
+    ['an absurd slot count', { slots: [{ start: '08:00', end: '16:00', count: 1e6, days: 'all' }] }],
+    ['explicit nulls for every rule', {
+      slots: null, pairs: null, avoid: null, maxDays: null, maxCloses: null,
+      preferWindows: null, shiftHoursByEmployee: null, trainingPairs: null,
+      minimumStaff: null, prioritize: null,
+    }],
+    ['a pair containing null', { pairs: [null, ['Ava', null]] }],
+    ['avoid as an object', { avoid: { Ava: 'Bo' } }],
+    ['trainingPairs as a string', { trainingPairs: 'Ava with a manager' }],
+    ['minimumStaff as an object', { minimumStaff: { from: '11:00', to: '14:00', count: 2 } }],
+    ['minimumStaff with unparseable times', { minimumStaff: [{ from: 'later', to: 'soon', count: 2 }] }],
+    ['shift hours as a word', { shiftHoursByEmployee: { Ava: 'four' } }],
+    ['constraints as an array', []],
+    ['constraints as a string', 'no rules'],
+  ]
+
+  for (const [label, constraints] of hostile) {
+    const started = Date.now()
+    let result
+    assert.doesNotThrow(() => { result = runScheduler(employees, settings, '2026-05-04', constraints) }, `threw on ${label}`)
+    assert.ok(Date.now() - started < 1000, `${label} took too long`)
+
+    for (const shift of allShifts(result)) {
+      assert.ok(shift.start && shift.end, `${label} produced a shift without times`)
+      assert.ok(Number.isFinite(shift.hours) && shift.hours > 0, `${label} produced ${shift.hours} hours`)
+    }
+  }
+})
+
+test('an employee list that is missing or malformed is ignored', () => {
+  const settings = { operatingHours: open('08:00', '20:00') }
+  assert.doesNotThrow(() => runScheduler(null, settings, '2026-05-04', {}))
+  assert.doesNotThrow(() => runScheduler([null, 'Ava', 42], settings, '2026-05-04', {}))
+  assert.equal(runScheduler([null, 'Ava'], settings, '2026-05-04', {}).summary.length, 0)
+})

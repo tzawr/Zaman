@@ -15065,3 +15065,18 @@ input[type="time"]::-webkit-calendar-picker-indicator:hover {
   text-transform: uppercase;
   color: var(--accent-1);
 }
+
+/* Footer links are 17px tall on their own, which is an awkward tap target on a
+   phone. Give each one a full-width row to hit without changing how the
+   desktop footer reads. */
+@media (max-width: 768px) {
+  .footer-list {
+    gap: 2px;
+  }
+
+  .footer-list a {
+    display: flex;
+    align-items: center;
+    min-height: 40px;
+  }
+}

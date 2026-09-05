@@ -101,6 +101,18 @@ export function metaForPath(pathname) {
   const path = pathname !== '/' && pathname.endsWith('/') ? pathname.slice(0, -1) : pathname
   if (PUBLIC_PAGES[path]) return { path, indexable: true, ...PUBLIC_PAGES[path] }
 
+  // An invite link is the employee-facing join page, not the manager's invite
+  // screen that shares the same path prefix.
+  if (path.startsWith('/invite/')) {
+    return {
+      path,
+      indexable: false,
+      title: `Join your team on ${SITE_NAME}`,
+      description: 'Accept your invite and see your shifts.',
+      crumbs: [],
+    }
+  }
+
   for (const [prefix, label] of Object.entries(PRIVATE_PAGES)) {
     if (path === prefix || path.startsWith(`${prefix}/`)) {
       return {

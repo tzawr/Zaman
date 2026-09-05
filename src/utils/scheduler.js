@@ -2,8 +2,9 @@ const DAYS = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'
 const DAY_ABBR = ['mo', 'tu', 'we', 'th', 'fr', 'sa', 'su']
 
 function timeToMins(hhmm, asClose = false) {
-  if (!hhmm) return asClose ? 24 * 60 : 0
+  if (!hhmm || typeof hhmm !== 'string') return asClose ? 24 * 60 : 0
   const [h, m] = hhmm.split(':').map(Number)
+  if (!Number.isFinite(h)) return asClose ? 24 * 60 : 0
   const mins = h * 60 + (m || 0)
   return asClose && mins === 0 ? 24 * 60 : mins
 }
@@ -286,21 +287,162 @@ function recordShift(emp, shift, totals, assignedToday, daysWorked, closes, last
   if (preventClopening && endsNearClose) lastClose[emp.name] = { dayIdx, mins: timeToMins(shift.end) }
 }
 
-export function runScheduler(employees, settings, weekStart, constraints = {}) {
-  const { operatingHours, preventClopening, minHoursBetweenShifts } = settings
+// ---------------------------------------------------------------------------
+// Constraints arrive from a language model parsing someone's plain-English
+// rules, so the shapes below are "close to the schema" rather than the schema.
+// Everything is coerced to what the engine expects and anything unusable is
+// dropped, so a bad parse degrades into fewer rules instead of a crash or a
+// schedule full of NaN.
+// ---------------------------------------------------------------------------
+
+const MAX_SLOT_COUNT = 50
+
+function isPlainObject(value) {
+  return !!value && typeof value === 'object' && !Array.isArray(value)
+}
+
+function cleanTime(value) {
+  if (typeof value !== 'string') return null
+  const match = value.trim().match(/^(\d{1,2}):(\d{2})$/)
+  if (!match) return null
+  const hours = Number(match[1])
+  const minutes = Number(match[2])
+  if (hours > 24 || minutes > 59 || (hours === 24 && minutes !== 0)) return null
+  return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`
+}
+
+function cleanName(value) {
+  return typeof value === 'string' && value.trim() ? value.trim() : null
+}
+
+function cleanCount(value, fallback, max) {
+  const count = Math.floor(Number(value))
+  if (!Number.isFinite(count) || count < 1) return fallback
+  return Math.min(count, max)
+}
+
+function cleanDays(value) {
+  if (value === 'all' || value == null) return 'all'
+  const list = (Array.isArray(value) ? value : [value])
+    .map(day => (typeof day === 'string' ? day.trim().toLowerCase() : null))
+    .filter(day => DAYS.includes(day))
+  return list.length ? list : 'all'
+}
+
+function cleanNumberMap(value, { min = 0, max = Infinity } = {}) {
+  if (!isPlainObject(value)) return {}
+  const result = {}
+  for (const [name, raw] of Object.entries(value)) {
+    const number = Number(raw)
+    if (!cleanName(name) || !Number.isFinite(number)) continue
+    if (number < min || number > max) continue
+    result[name] = number
+  }
+  return result
+}
+
+function cleanPairs(value) {
+  if (!Array.isArray(value)) return []
+  return value
+    .map(pair => (Array.isArray(pair) ? [cleanName(pair[0]), cleanName(pair[1])] : null))
+    .filter(pair => pair && pair[0] && pair[1] && pair[0] !== pair[1])
+}
+
+function normalizeConstraints(raw) {
+  const input = isPlainObject(raw) ? raw : {}
+
+  const slots = (Array.isArray(input.slots) ? input.slots : [])
+    .map(slot => {
+      if (!isPlainObject(slot)) return null
+      const start = cleanTime(slot.start)
+      const end = cleanTime(slot.end)
+      if (!start || !end) return null
+      return {
+        start,
+        end,
+        role: cleanName(slot.role),
+        count: cleanCount(slot.count, 1, MAX_SLOT_COUNT),
+        days: cleanDays(slot.days),
+        anchor: slot.anchor === 'end' ? 'end' : 'start',
+        latestStart: cleanTime(slot.latestStart),
+        minEnd: cleanTime(slot.minEnd),
+      }
+    })
+    .filter(Boolean)
+
+  const minimumStaff = (Array.isArray(input.minimumStaff) ? input.minimumStaff : [])
+    .map(entry => {
+      if (!isPlainObject(entry)) return null
+      const from = cleanTime(entry.from)
+      const to = cleanTime(entry.to)
+      if (!from || !to) return null
+      return { from, to, count: cleanCount(entry.count, 1, MAX_SLOT_COUNT), days: cleanDays(entry.days) }
+    })
+    .filter(Boolean)
+
+  const prioritize = {}
+  if (isPlainObject(input.prioritize)) {
+    for (const [day, names] of Object.entries(input.prioritize)) {
+      const dayKey = typeof day === 'string' ? day.trim().toLowerCase() : ''
+      if (!DAYS.includes(dayKey) || !Array.isArray(names)) continue
+      prioritize[dayKey] = names.map(cleanName).filter(Boolean)
+    }
+  }
+
+  const preferWindows = {}
+  if (isPlainObject(input.preferWindows)) {
+    for (const [name, window] of Object.entries(input.preferWindows)) {
+      if (!cleanName(name) || !isPlainObject(window)) continue
+      const start = cleanTime(window.start)
+      const end = cleanTime(window.end)
+      if (start && end) preferWindows[name] = { start, end }
+    }
+  }
+
+  const trainingPairs = (Array.isArray(input.trainingPairs) ? input.trainingPairs : [])
+    .map(pair => {
+      if (!isPlainObject(pair)) return null
+      const trainee = cleanName(pair.trainee)
+      const mentorRole = cleanName(pair.mentorRole)
+      return trainee && mentorRole ? { trainee, mentorRole } : null
+    })
+    .filter(Boolean)
+
+  const seed = Number(input.seed)
+
+  return {
+    slots,
+    pairs: cleanPairs(input.pairs),
+    avoid: cleanPairs(input.avoid),
+    prioritize,
+    maxDays: cleanNumberMap(input.maxDays, { min: 0 }),
+    maxCloses: cleanNumberMap(input.maxCloses, { min: 0 }),
+    preferWindows,
+    // A shift is between 4 and 8.5 hours; anything outside that cannot be honoured.
+    shiftHoursByEmployee: cleanNumberMap(input.shiftHoursByEmployee, { min: 4, max: 8.5 }),
+    trainingPairs,
+    minimumStaff,
+    seed: Number.isFinite(seed) ? seed : 1,
+  }
+}
+
+export function runScheduler(employees, settings, weekStart, rawConstraints = {}) {
+  const constraints = normalizeConstraints(rawConstraints)
+  const { operatingHours, preventClopening, minHoursBetweenShifts } = settings || {}
   const {
-    slots: coverageSlots = [],
-    pairs = [],
-    prioritize = {},
-    avoid = [],
-    maxDays = {},
-    maxCloses = {},
-    preferWindows = {},
-    shiftHoursByEmployee = {},
-    trainingPairs = [],
-    minimumStaff = [],
-    seed = 1,
+    slots: coverageSlots,
+    pairs,
+    prioritize,
+    avoid,
+    maxDays,
+    maxCloses,
+    preferWindows,
+    shiftHoursByEmployee,
+    trainingPairs,
+    minimumStaff,
+    seed,
   } = constraints
+  const roster = Array.isArray(employees) ? employees.filter(isPlainObject) : []
 
   const totals = {}
   const lastClose = {}
@@ -310,11 +452,11 @@ export function runScheduler(employees, settings, weekStart, constraints = {}) {
   const jitter = {}
   DAYS.forEach(day => {
     jitter[day] = {}
-    employees.forEach(emp => { jitter[day][emp.name] = rng() })
+    roster.forEach(emp => { jitter[day][emp.name] = rng() })
   })
 
   const dailyBudget = {}
-  employees.forEach(emp => {
+  roster.forEach(emp => {
     if (emp.targetHours == null) return
     const fixedShiftHours = Number(shiftHoursByEmployee?.[emp.name]) || null
     const openAvailDays = DAYS.filter(d => {
@@ -330,7 +472,7 @@ export function runScheduler(employees, settings, weekStart, constraints = {}) {
   })
 
   const plannedFlexDays = {}
-  employees.forEach(emp => {
+  roster.forEach(emp => {
     if (emp.targetHours == null) return
     plannedFlexDays[emp.name] = planFlexDays(emp, operatingHours, weekStart, dailyBudget)
   })
@@ -369,7 +511,7 @@ export function runScheduler(employees, settings, weekStart, constraints = {}) {
       const slotEnd = timeToMins(slot.end, true)
 
       for (let i = 0; i < count; i++) {
-        const eligible = employees
+        const eligible = roster
           .filter(emp => isEligible(
             emp, dayKey, dayIdx, slotStart, slotEnd, opDayWithDate, totals, assignedToday, lastClose,
             preventClopening, minHoursBetweenShifts, slot.role,
@@ -419,7 +561,7 @@ export function runScheduler(employees, settings, weekStart, constraints = {}) {
       let active = shifts.filter(shift => activeInWindow(shift, fromMins, toMins)).length
 
       while (active < count) {
-        const eligible = employees
+        const eligible = roster
           .filter(emp =>
             !assignedToday.has(emp.name) &&
             isEligible(
@@ -465,7 +607,7 @@ export function runScheduler(employees, settings, weekStart, constraints = {}) {
     })
 
     // Phase 3: add flexible shifts only when someone needs today to hit target.
-    const remaining = employees
+    const remaining = roster
       .filter(emp =>
         !assignedToday.has(emp.name) &&
         needsFlexShiftToday(emp, dayIdx, operatingHours, totals, dailyBudget, weekStart, plannedFlexDays[emp.name]) &&
@@ -519,7 +661,7 @@ export function runScheduler(employees, settings, weekStart, constraints = {}) {
         const shiftB = shifts.find(s => s.employee === b)
         if (!shiftA || !shiftB || activeInWindow(shiftA, timeToMins(shiftB.start), timeToMins(shiftB.end, true))) return
 
-        const empB = employees.find(e => e.name === b)
+        const empB = roster.find(e => e.name === b)
         if (!empB) return
         const replacement = computeShift(
           empB, dayKey, timeToMins(shiftA.start), timeToMins(shiftA.end, true),
@@ -544,7 +686,7 @@ export function runScheduler(employees, settings, weekStart, constraints = {}) {
 
       const missingName = scheduledA ? b : a
       const presentName = scheduledA ? a : b
-      const missing = employees.find(e => e.name === missingName)
+      const missing = roster.find(e => e.name === missingName)
       const presentShift = shifts.find(s => s.employee === presentName)
       if (!missing) return
       if (!isEligible(
@@ -571,12 +713,12 @@ export function runScheduler(employees, settings, weekStart, constraints = {}) {
     trainingPairs.forEach(({ trainee, mentorRole }) => {
       if (!assignedToday.has(trainee)) return
       const alreadyHasMentor = [...assignedToday].some(name => {
-        const e = employees.find(x => x.name === name)
+        const e = roster.find(x => x.name === name)
         return e?.role?.toLowerCase() === mentorRole?.toLowerCase()
       })
       if (alreadyHasMentor) return
 
-      const mentor = employees.find(e =>
+      const mentor = roster.find(e =>
         e.role?.toLowerCase() === mentorRole?.toLowerCase() &&
         isEligible(
           e, dayKey, dayIdx, opStartMins, opEndMins, opDayWithDate, totals, assignedToday, lastClose,
@@ -600,7 +742,7 @@ export function runScheduler(employees, settings, weekStart, constraints = {}) {
     result.days[dayKey] = { date, shifts, emptySlots }
   })
 
-  result.summary = employees.map(emp => {
+  result.summary = roster.map(emp => {
     const scheduled = Math.round((totals[emp.name] || 0) * 10) / 10
     const target = Number(emp.targetHours) || 0
     return {
