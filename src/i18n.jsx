@@ -5,6 +5,8 @@ const translations = {
   en: {
     navAbout: 'About',
     account: 'Account',
+    toastDuplicateName: '{name} is already on your team. Use a different name so shifts stay separate.',
+    toastClosingBeforeOpening: 'Closing time must be after opening time. Overnight hours are not supported yet.',
     breadcrumbLabel: 'Breadcrumb',
     breadcrumbHome: 'Home',
     notFoundTitle: 'We could not find that page',
@@ -918,6 +920,8 @@ const translations = {
   fa: {
     navAbout: 'درباره',
     account: 'حساب کاربری',
+    toastDuplicateName: '{name} از قبل در تیم شماست. نام دیگری بگذارید تا شیفت‌ها جدا بماند.',
+    toastClosingBeforeOpening: 'ساعت بستن باید بعد از ساعت باز شدن باشد. ساعت‌های شبانه هنوز پشتیبانی نمی‌شود.',
     breadcrumbLabel: 'مسیر صفحه',
     breadcrumbHome: 'خانه',
     notFoundTitle: 'این صفحه پیدا نشد',

@@ -15,7 +15,7 @@ function Employees() {
   const navigate = useNavigate()
   const { currentUser } = useAuth()
   const toast = useToast()
-  const { t } = useI18n()
+  const { t, tf } = useI18n()
 
   const [employees, setEmployees] = useState([])
   const [userData, setUserData] = useState(null)
@@ -66,6 +66,12 @@ function Employees() {
     }
     if (!role) {
       toast.info(t('toastSelectRole'))
+      return
+    }
+    // The scheduler identifies people by name, so two employees sharing one
+    // would share their shifts and double up in the hours summary.
+    if (employees.some(emp => emp.name?.trim().toLowerCase() === trimmed.toLowerCase())) {
+      toast.info(tf('toastDuplicateName', { name: trimmed }))
       return
     }
     const hrs = Number(targetHours)

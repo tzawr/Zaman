@@ -13,9 +13,9 @@ import { useAuth } from '../AuthContext'
 import { useToast } from '../components/Toast'
 import PageHero from '../components/PageHero'
 import Section from '../components/Section'
+import TimeSelect from '../components/TimeSelect'
 import { useSpeechInput } from '../utils/useSpeechInput'
 import { useI18n } from '../i18n'
-import { redeemPromoCode } from '../utils/tier'
 
 const DAYS = [
   { key: 'monday', labelKey: 'dayMonday' },
@@ -37,6 +37,15 @@ const DEFAULT_COVERAGE = DAYS.reduce((acc, d) => {
   return acc
 }, {})
 
+// '00:00' as a closing time means midnight, the end of the day.
+function toMinutes(value, isClosing = true) {
+  if (typeof value !== 'string') return 0
+  const [h, m] = value.split(':').map(Number)
+  if (!Number.isFinite(h)) return 0
+  const mins = h * 60 + (m || 0)
+  return isClosing && mins === 0 ? 24 * 60 : mins
+}
+
 function Settings() {
   const navigate = useNavigate()
   const { currentUser } = useAuth()
@@ -51,8 +60,6 @@ function Settings() {
   const [allowEmployeeAvailabilityUpdates, setAllowEmployeeAvailabilityUpdates] = useState(false)
   const [roles, setRoles] = useState([])
   const [coverageRules, setCoverageRules] = useState('')
-  const [promoCode, setPromoCode] = useState('')
-  const [redeemingCode, setRedeemingCode] = useState(false)
 
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -121,6 +128,13 @@ function Settings() {
   function updateHourTime(k, field, v) {
     const next = { ...operatingHours, [k]: { ...operatingHours[k], [field]: v } }
     setOperatingHours(next); saveToFirebase({ operatingHours: next })
+    // A day that closes before it opens has no window to schedule into, and the
+    // generator would silently return nothing for it. Overnight trading hours
+    // are not supported yet, so say so rather than produce an empty day.
+    const day = next[k]
+    if (day.open && toMinutes(day.end) <= toMinutes(day.start, false)) {
+      toast.info(t('toastClosingBeforeOpening'))
+    }
   }
   function updateCoverage(k, v) {
     const n = parseInt(v) || 0
@@ -230,22 +244,6 @@ function Settings() {
     }
   }
 
-  async function handleRedeemCode() {
-    if (!promoCode.trim()) {
-      toast.info('Enter a promo code')
-      return
-    }
-    setRedeemingCode(true)
-    const result = await redeemPromoCode(promoCode)
-    setRedeemingCode(false)
-    if (result.blocked) {
-      toast.error(result.message)
-      return
-    }
-    setPromoCode('')
-    toast.success(result.message || 'Promo code applied')
-  }
-
   if (loading) {
     return (
       <main className="app-page">
@@ -275,27 +273,6 @@ function Settings() {
           </span>
         )}
       </PageHero>
-
-      <Section
-        title="Redeem code"
-        subtitle="Apply a promo code or admin-issued Pro access code to this workspace."
-        icon={KeyRound}
-      >
-        <div className="role-add-row">
-          <input
-            type="text"
-            className="input"
-            placeholder="FOUNDER50"
-            value={promoCode}
-            onChange={(e) => setPromoCode(e.target.value.toUpperCase())}
-            onKeyDown={(e) => e.key === 'Enter' && handleRedeemCode()}
-          />
-          <button className="add-button" onClick={handleRedeemCode} disabled={redeemingCode}>
-            <KeyRound size={16} />
-            <span>{redeemingCode ? 'Applying...' : 'Apply code'}</span>
-          </button>
-        </div>
-      </Section>
 
       <Section
         title={t('rolesTitle')}
@@ -380,18 +357,14 @@ function Settings() {
                 </button>
                 {d.open && (
                   <div className="time-inputs">
-                    <input
-                      type="time"
-                      className="time-input"
+                    <TimeSelect
                       value={d.start}
-                      onChange={(e) => updateHourTime(day.key, 'start', e.target.value)}
+                      onChange={(v) => updateHourTime(day.key, 'start', v)}
                     />
                     <span className="time-arrow"><ArrowRight size={16} /></span>
-                    <input
-                      type="time"
-                      className="time-input"
+                    <TimeSelect
                       value={d.end}
-                      onChange={(e) => updateHourTime(day.key, 'end', e.target.value)}
+                      onChange={(v) => updateHourTime(day.key, 'end', v)}
                     />
                   </div>
                 )}
