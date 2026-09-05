@@ -1,6 +1,7 @@
 import {
   Timestamp,
   collection,
+  increment,
   deleteDoc,
   doc,
   getDoc,
@@ -117,11 +118,14 @@ export async function redeemPromoCode(code) {
   return redeemPromoCodeClientOnly(code, auth.currentUser.uid)
 }
 
+// Grants Pro by writing an adminOverrides document rather than by setting
+// users/{uid}.tier: the override carries its own expiry, and Firestore rules
+// let a user create one only when the promo code actually checks out.
 export async function redeemPromoCodeClientOnly(code, userId, adminUid = 'promo-code') {
   const cleanCode = String(code || '').trim().toUpperCase()
   if (!cleanCode) return block('promo_invalid', 'Enter a promo code.')
   const promoRef = doc(db, 'promoCodes', cleanCode)
-  const userRef = doc(db, 'users', userId)
+  const overrideRef = doc(db, 'adminOverrides', userId)
   return runTransaction(db, async (tx) => {
     const promoSnap = await tx.get(promoRef)
     if (!promoSnap.exists()) return block('promo_invalid', 'Promo code not found.')
@@ -135,13 +139,16 @@ export async function redeemPromoCodeClientOnly(code, userId, adminUid = 'promo-
     }
     const durationDays = promo.durationDays == null ? null : Number(promo.durationDays)
     const expiresAt = durationDays ? Timestamp.fromDate(new Date(now + durationDays * 24 * 60 * 60 * 1000)) : null
-    tx.set(userRef, {
+    tx.set(overrideRef, {
       tier: normalizeTier(promo.tier),
-      promoCode: cleanCode,
-      promoTierExpiresAt: expiresAt,
-      promoGrantedBy: adminUid,
-      promoGrantedAt: serverTimestamp(),
-    }, { merge: true })
+      expiresAt,
+      reason: `promo code ${cleanCode}`,
+      grantedBy: adminUid,
+      grantedAt: serverTimestamp(),
+      code: cleanCode,
+    })
+    // Without this a code with maxUses: 1 could be redeemed forever.
+    tx.update(promoRef, { usedCount: increment(1) })
     return allow({ message: 'Promo code applied. Pro access is active.' })
   })
 }

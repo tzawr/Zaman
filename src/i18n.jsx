@@ -4,6 +4,7 @@ import { createContext, useContext, useEffect, useMemo, useState } from 'react'
 const translations = {
   en: {
     navAbout: 'About',
+    account: 'Account',
     breadcrumbLabel: 'Breadcrumb',
     breadcrumbHome: 'Home',
     notFoundTitle: 'We could not find that page',
@@ -916,6 +917,7 @@ const translations = {
   },
   fa: {
     navAbout: 'درباره',
+    account: 'حساب کاربری',
     breadcrumbLabel: 'مسیر صفحه',
     breadcrumbHome: 'خانه',
     notFoundTitle: 'این صفحه پیدا نشد',

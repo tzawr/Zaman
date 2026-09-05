@@ -25,7 +25,17 @@ export const TIER_LIMITS = {
 }
 
 export function normalizeTier(tier) {
-  return tier === TIERS.PRO || tier === 'business' ? TIERS.PRO : TIERS.FREE
+  // Tier values also get set by hand in the Firebase console and by billing
+  // webhooks, so "Pro" and " pro " must not silently downgrade a paying account.
+  const value = typeof tier === 'string' ? tier.trim().toLowerCase() : tier
+  return value === TIERS.PRO || value === 'business' ? TIERS.PRO : TIERS.FREE
+}
+
+// Counts arrive from Firestore queries; a missing one must not read as
+// "below the limit" through NaN comparisons.
+function toCount(value) {
+  const count = Number(value)
+  return Number.isFinite(count) && count > 0 ? count : 0
 }
 
 export function timestampToMillis(value) {
@@ -58,7 +68,7 @@ export function allow(extra = {}) {
 export function canAddEmployeeForTier(tier, currentCount) {
   const resolved = normalizeTier(tier)
   const max = TIER_LIMITS[resolved].maxEmployees
-  if (currentCount >= max) {
+  if (toCount(currentCount) >= max) {
     return block('free_tier_limit', 'Free plan allows up to 5 employees. Upgrade to Pro for unlimited employees.')
   }
   return allow()
@@ -67,7 +77,7 @@ export function canAddEmployeeForTier(tier, currentCount) {
 export function canGenerateScheduleForTier(tier, recentGenerations) {
   const resolved = normalizeTier(tier)
   const max = TIER_LIMITS[resolved].maxGenerationsPer7Days
-  if (recentGenerations >= max) {
+  if (toCount(recentGenerations) >= max) {
     return block('free_tier_limit', 'Free plan allows 2 schedule generations per week. Upgrade to Pro for unlimited.')
   }
   return allow()
@@ -75,7 +85,8 @@ export function canGenerateScheduleForTier(tier, recentGenerations) {
 
 export function canExportFormatForTier(tier, format) {
   const resolved = normalizeTier(tier)
-  if (!TIER_LIMITS[resolved].exportFormats.includes(format)) {
+  const requested = typeof format === 'string' ? format.trim().toLowerCase() : format
+  if (!TIER_LIMITS[resolved].exportFormats.includes(requested)) {
     return block('free_tier_limit', 'Free plan includes CSV export only. Upgrade to Pro for PDF and PNG exports.')
   }
   return allow()

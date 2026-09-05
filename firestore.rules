@@ -45,22 +45,42 @@ function isAdmin() {
       return effectiveTier(uid) == 'pro';
     }
 
-    function userStats(uid) {
-      return get(/databases/$(database)/documents/userStats/$(uid));
+    function inviteDoc(token) {
+      return get(/databases/$(database)/documents/invites/$(token));
     }
 
-    function freeEmployeeSlotAvailable(uid) {
-      return exists(/databases/$(database)/documents/userStats/$(uid)) &&
-        userStats(uid).data.employeeCount < 5;
+    function changedKeys() {
+      return request.resource.data.diff(resource.data).affectedKeys();
     }
 
-    function freeGenerationSlotAvailable(uid) {
-      return exists(/databases/$(database)/documents/userStats/$(uid)) &&
-        (
-          !('generationWindowStart' in userStats(uid).data) ||
-          userStats(uid).data.generationWindowStart <= request.time - duration.value(7, 'd') ||
-          userStats(uid).data.generationCount7d < 2
-        );
+    // What a user is paying for. Only an admin or the promo flow (which writes
+    // an adminOverrides document, not this one) may set these.
+    function billingFields() {
+      return ['tier', 'subscriptionTier', 'stripeTier', 'promoCode',
+              'promoTierExpiresAt', 'promoGrantedBy', 'promoGrantedAt'];
+    }
+
+    // What attaches an account to a manager's workspace, and therefore what
+    // that account can read. Writable only when a real invite backs it.
+    function linkFields() {
+      return ['accountType', 'managerId', 'linkedEmployeeId'];
+    }
+
+    function inviteBacksLink() {
+      return request.resource.data.accountType == 'employee' &&
+        'inviteToken' in request.resource.data &&
+        request.resource.data.inviteToken is string &&
+        exists(/databases/$(database)/documents/invites/$(request.resource.data.inviteToken)) &&
+        inviteDoc(request.resource.data.inviteToken).data.managerId == request.resource.data.managerId &&
+        inviteDoc(request.resource.data.inviteToken).data.employeeId == request.resource.data.linkedEmployeeId;
+    }
+
+    // An employee who joined a workspace through an invite can read that
+    // workspace's schedules; the employee portal shows their own shifts from it.
+    function isLinkedEmployeeOf(managerUid) {
+      return exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+        userDoc(request.auth.uid).data.accountType == 'employee' &&
+        userDoc(request.auth.uid).data.managerId == managerUid;
     }
 
     function promoDoc(code) {
@@ -117,36 +137,41 @@ function isAdmin() {
     }
 
     match /promoCodes/{code} {
-      allow read: if isAdmin() || signedIn();
+      // The code itself is the secret, so a direct lookup is fine but the
+      // collection must not be listable.
+      allow get: if signedIn();
+      allow list: if isAdmin();
       allow create, delete: if isAdmin();
       allow update: if isAdmin() || isPromoUseIncrement();
     }
 
-    match /userStats/{uid} {
-      allow read: if isAdmin() || (signedIn() && request.auth.uid == uid);
-      // Counters should be written by server code. Admin SDK bypasses rules.
-      allow write: if isAdmin();
-    }
-
     match /employees/{employeeId} {
       allow read: if signedIn() && (resource.data.userId == request.auth.uid || isAdmin());
+      // The free-tier employee cap is enforced client-side in src/utils/tier.js;
+      // rules cannot count documents in a collection.
       allow create: if signedIn() &&
-        request.resource.data.userId == request.auth.uid &&
-        (isPro(request.auth.uid) || freeEmployeeSlotAvailable(request.auth.uid));
+        request.resource.data.userId == request.auth.uid;
       allow update, delete: if signedIn() && (resource.data.userId == request.auth.uid || isAdmin());
     }
 
     match /schedules/{scheduleId} {
-      allow read: if signedIn() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow read: if signedIn() && (
+        resource.data.userId == request.auth.uid ||
+        isAdmin() ||
+        isLinkedEmployeeOf(resource.data.userId)
+      );
+      // The free-tier generation quota is enforced client-side in src/utils/tier.js.
       allow create: if signedIn() &&
         request.resource.data.userId == request.auth.uid &&
-        request.resource.data.createdAt == request.time &&
-        (isPro(request.auth.uid) || freeGenerationSlotAvailable(request.auth.uid));
+        request.resource.data.createdAt == request.time;
       allow update, delete: if signedIn() && (resource.data.userId == request.auth.uid || isAdmin());
     }
 
     match /invites/{inviteId} {
-      allow read: if signedIn();
+      // The token is the document id, so accepting an invite needs a direct
+      // lookup. Listing would hand every signed-in user every open invite.
+      allow get: if signedIn();
+      allow list: if signedIn() && resource.data.managerId == request.auth.uid;
       allow create: if signedIn() &&
         request.resource.data.managerId == request.auth.uid &&
         isPro(request.auth.uid);
@@ -155,8 +180,20 @@ function isAdmin() {
     }
 
     match /users/{uid} {
-      allow read, update: if signedIn() && (request.auth.uid == uid || isAdmin());
-      allow create: if signedIn() && request.auth.uid == uid;
+      allow read: if signedIn() && (request.auth.uid == uid || isAdmin());
+
+      // A user owns their profile, availability and workspace settings, but not
+      // their plan, and not the fields that point their account at a workspace.
+      allow create: if isAdmin() || (
+        signedIn() && request.auth.uid == uid &&
+        !request.resource.data.keys().hasAny(billingFields()) &&
+        (!request.resource.data.keys().hasAny(linkFields()) || inviteBacksLink())
+      );
+      allow update: if isAdmin() || (
+        signedIn() && request.auth.uid == uid &&
+        !changedKeys().hasAny(billingFields()) &&
+        (!changedKeys().hasAny(linkFields()) || inviteBacksLink())
+      );
     }
   }
 }

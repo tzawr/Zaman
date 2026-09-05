@@ -91,7 +91,12 @@ export function exportToCSV(data, weekStart) {
     
     const csv = rows.map(row => 
       row.map(cell => {
-        const str = String(cell ?? '')
+        let str = String(cell ?? '')
+        // Employee names come from people who join through an invite link.
+        // A cell starting with = + - @ is run as a formula by Excel and Sheets,
+        // so break the leading character before the file leaves the browser.
+        // Plain numbers are left alone: the hours columns must stay numeric.
+        if (!/^-?\d+(\.\d+)?$/.test(str) && /^[=+\-@\t\r]/.test(str)) str = `'${str}`
         if (str.includes(',') || str.includes('"') || str.includes('\n')) {
           return `"${str.replace(/"/g, '""')}"`
         }

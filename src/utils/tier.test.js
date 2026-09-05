@@ -45,3 +45,24 @@ test('override wins over subscription tier', () => {
   }, now)
   assert.equal(tier, 'free')
 })
+
+test('tier values are matched regardless of casing or stray whitespace', () => {
+  // These get set by hand in the Firebase console and by billing webhooks.
+  for (const value of ['pro', 'Pro', 'PRO', ' pro ', 'business', 'Business']) {
+    assert.equal(resolveTierFromData({ user: { tier: value } }), 'pro', `${value} should resolve to pro`)
+  }
+  for (const value of ['free', 'Free', '', null, undefined, 'premium']) {
+    assert.equal(resolveTierFromData({ user: { tier: value } }), 'free', `${value} should resolve to free`)
+  }
+})
+
+test('export format matching ignores casing', () => {
+  assert.equal(canExportFormatForTier('free', 'CSV').blocked, false)
+  assert.equal(canExportFormatForTier('free', 'PDF').blocked, true)
+})
+
+test('a missing count is not treated as being under the limit', () => {
+  assert.equal(canAddEmployeeForTier('free', 5).blocked, true)
+  assert.equal(canAddEmployeeForTier('free', NaN).blocked, false)
+  assert.equal(canGenerateScheduleForTier('free', undefined).blocked, false)
+})

@@ -43,6 +43,9 @@ function InviteAccept() {
       accountType: 'employee',
       managerId: invite.managerId,
       linkedEmployeeId: invite.employeeId,
+      // Firestore rules check this against the invite before allowing an
+      // account to attach itself to a manager's workspace.
+      inviteToken: token,
       employeeName: invite.employeeName,
       employeeRole: invite.employeeRole || t('employee'),
       allowEmployeeFullView: invite.allowEmployeeFullView === true,
