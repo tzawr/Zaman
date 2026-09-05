@@ -1,5 +1,7 @@
-import html2canvas from 'html2canvas'
-import jsPDF from 'jspdf'
+// html2canvas and jsPDF together are ~1MB. They are only needed the moment
+// someone exports, so they load on demand instead of shipping with the app.
+const loadHtml2Canvas = () => import('html2canvas').then((m) => m.default)
+const loadJsPdf = () => import('jspdf').then((m) => m.jsPDF || m.default)
 
 export function exportToCSV(data, weekStart) {
     if (!data || !data.days) return
@@ -102,6 +104,7 @@ export function exportToCSV(data, weekStart) {
 
 // ========== PNG EXPORT ==========
 export async function exportToPNG(elementId, weekStart) {
+  const html2canvas = await loadHtml2Canvas()
   const source = document.getElementById(elementId)
   if (!source) {
     throw new Error('Schedule element not found')
@@ -139,6 +142,8 @@ export async function exportToPNG(elementId, weekStart) {
 }
 
 export async function exportToPDF(elementId, weekStart) {
+  const html2canvas = await loadHtml2Canvas()
+  const jsPDF = await loadJsPdf()
     const source = document.getElementById(elementId)
     if (!source) {
       throw new Error('Schedule element not found')

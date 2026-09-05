@@ -1,0 +1,28 @@
+# https://hengam.app
+User-agent: *
+Allow: /$
+Allow: /about
+Allow: /pricing
+Allow: /security
+Allow: /privacy
+Allow: /terms
+Allow: /signin
+Allow: /signup
+
+# Signed-in product surfaces and one-time links: nothing to index.
+Disallow: /dashboard
+Disallow: /onboarding
+Disallow: /employees
+Disallow: /settings
+Disallow: /schedule
+Disallow: /schedules
+Disallow: /invite
+Disallow: /my-schedule
+Disallow: /my-availability
+Disallow: /profile
+Disallow: /admin
+Disallow: /verify-email
+Disallow: /forgot-password
+Disallow: /api/
+
+Sitemap: https://hengam.app/sitemap.xml

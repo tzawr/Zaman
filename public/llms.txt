@@ -1,0 +1,33 @@
+# Hengam
+
+> Hengam is shift-scheduling software for cafes, restaurants, retail teams, and
+> anyone who builds a weekly rota. Managers write coverage rules in plain
+> English; Hengam parses them, generates a schedule with a deterministic
+> constraint solver, checks it against availability, time off, and target hours,
+> and explains in business terms when a week cannot be staffed.
+
+Hengam is a web application. It is free to start, with a Pro plan for teams that
+need unlimited schedules, AI rule parsing, and exports. The interface is
+available in English and Persian (فارسی).
+
+## How it works
+
+- Describe coverage in plain English ("1 supervisor and 1 barista from open until 4pm").
+- Add your team, their roles, availability windows, time off, and target weekly hours.
+- Hengam generates the week deterministically, then checks every shift against every rule.
+- When a week is impossible, Hengam names the exact constraint that broke instead of quietly producing a bad schedule.
+- Export the finished week as CSV, PNG, or PDF, or share per-employee schedule views.
+
+## Pages
+
+- [Home](https://hengam.app/): product overview, how scheduling works, and pricing summary.
+- [About](https://hengam.app/about): why Hengam exists and how the scheduling engine is designed.
+- [Pricing](https://hengam.app/pricing): Free and Pro plans and what each includes.
+- [Security](https://hengam.app/security): how workspace and employee data is stored and protected.
+- [Privacy Policy](https://hengam.app/privacy): what data is collected, why, and how to have it deleted.
+- [Terms of Service](https://hengam.app/terms): terms governing use of Hengam.
+- [Sign up](https://hengam.app/signup): create a free workspace.
+
+## Contact
+
+- Email: aliseyfiazadsa6@gmail.com

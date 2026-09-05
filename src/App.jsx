@@ -1,33 +1,38 @@
-import { useEffect, useState } from 'react'
+import { lazy, Suspense, useEffect, useState } from 'react'
 import { Crown, Mail, Moon, ShieldCheck, Sun } from 'lucide-react'
 import { BrowserRouter, Routes, Route, Link, Navigate } from 'react-router-dom'
 import { useAuth } from './AuthContext'
 import Landing from './pages/Landing'
-import Employees from './pages/Employees'
-import SignUp from './pages/SignUp'
-import SignIn from './pages/SignIn'
-import Onboarding from './pages/Onboarding'
-import Availability from './pages/Availability'
-import Settings from './pages/Settings'
-import Schedule from './pages/Schedule'
 import ProfileMenu from './components/ProfileMenu'
 import Logo from './components/Logo'
-import Schedules from './pages/Schedules'
 import Footer from './components/Footer'
-import Dashboard from './pages/Dashboard'
-import Privacy from './pages/Privacy'
-import Terms from './pages/Terms'
-import Security from './pages/Security'
-import About from './pages/About'
-import PricingPage from './pages/Pricing'
-import InviteAccept from './pages/InviteAccept'
-import MySchedule from './pages/MySchedule'
-import Invite from './pages/Invite'
-import VerifyEmail from './pages/VerifyEmail'
-import VerifyEmailToken from './pages/VerifyEmailToken'
-import ForgotPassword from './pages/ForgotPassword'
-import Profile from './pages/Profile'
-import AdminUsers from './pages/AdminUsers'
+import SeoManager from './components/Seo'
+
+// Every route except the landing page is code-split, so a first visit downloads
+// the marketing page and nothing else.
+const Employees = lazy(() => import('./pages/Employees'))
+const SignUp = lazy(() => import('./pages/SignUp'))
+const SignIn = lazy(() => import('./pages/SignIn'))
+const Onboarding = lazy(() => import('./pages/Onboarding'))
+const Availability = lazy(() => import('./pages/Availability'))
+const Settings = lazy(() => import('./pages/Settings'))
+const Schedule = lazy(() => import('./pages/Schedule'))
+const Schedules = lazy(() => import('./pages/Schedules'))
+const Dashboard = lazy(() => import('./pages/Dashboard'))
+const Privacy = lazy(() => import('./pages/Privacy'))
+const Terms = lazy(() => import('./pages/Terms'))
+const Security = lazy(() => import('./pages/Security'))
+const About = lazy(() => import('./pages/About'))
+const PricingPage = lazy(() => import('./pages/Pricing'))
+const InviteAccept = lazy(() => import('./pages/InviteAccept'))
+const MySchedule = lazy(() => import('./pages/MySchedule'))
+const Invite = lazy(() => import('./pages/Invite'))
+const VerifyEmail = lazy(() => import('./pages/VerifyEmail'))
+const VerifyEmailToken = lazy(() => import('./pages/VerifyEmailToken'))
+const ForgotPassword = lazy(() => import('./pages/ForgotPassword'))
+const Profile = lazy(() => import('./pages/Profile'))
+const AdminUsers = lazy(() => import('./pages/AdminUsers'))
+const NotFound = lazy(() => import('./pages/NotFound'))
 import { I18nProvider, useI18n } from './i18n'
 import { isAdminUid } from './utils/admin'
 import { getUserTier } from './utils/tier'
@@ -154,6 +159,9 @@ function AppShell() {
           </div>
         </nav>
 
+        <SeoManager />
+
+        <Suspense fallback={<div className="route-fallback" role="status" aria-live="polite" />}>
         <Routes>
   <Route path="/" element={<Landing />} />
   <Route path="/signup" element={<SignUp />} />
@@ -180,7 +188,10 @@ function AppShell() {
   <Route path="/my-availability" element={<ProtectedRoute><Availability /></ProtectedRoute>} />
   <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
   <Route path="/admin/users" element={<ProtectedRoute><AdminUsers /></ProtectedRoute>} />
+
+  <Route path="*" element={<NotFound />} />
 </Routes>
+        </Suspense>
 
 <Footer />
       </div>

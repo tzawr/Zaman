@@ -6,10 +6,11 @@
   "scripts": {
     "dev": "vite",
     "dev:vercel": "vercel dev",
-    "build": "vite build",
+    "build": "vite build && node scripts/generate-seo-pages.js",
     "lint": "eslint .",
     "test:tier": "node --test src/utils/tier.test.js",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "seo": "node scripts/generate-seo-pages.js"
   },
   "dependencies": {
     "firebase": "^12.12.1",

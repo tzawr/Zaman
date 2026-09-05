@@ -1,0 +1,44 @@
+<!doctype html>
+<html><head><meta charset="utf-8">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { width:1200px; height:630px; background:#030816; font-family:Inter,system-ui,sans-serif; color:#EAF2FF; overflow:hidden; position:relative; }
+  .glow-a { position:absolute; top:-220px; left:-160px; width:760px; height:620px; background:radial-gradient(circle, rgba(96,165,250,0.30), transparent 68%); filter:blur(20px); }
+  .glow-b { position:absolute; bottom:-300px; right:-160px; width:820px; height:680px; background:radial-gradient(circle, rgba(99,102,241,0.26), transparent 66%); filter:blur(20px); }
+  .grid { position:absolute; inset:0; background-image:linear-gradient(rgba(148,163,184,0.055) 1px, transparent 1px), linear-gradient(90deg, rgba(148,163,184,0.055) 1px, transparent 1px); background-size:60px 60px; mask-image:linear-gradient(to bottom, black, transparent 78%); }
+  .wrap { position:relative; padding:74px 80px; height:100%; display:flex; flex-direction:column; justify-content:space-between; }
+  .brand { display:flex; align-items:center; gap:16px; }
+  .brand svg { color:#60A5FA; }
+  .brand span { font-size:38px; font-weight:700; letter-spacing:-0.03em; }
+  h1 { font-size:78px; line-height:1.03; font-weight:800; letter-spacing:-0.038em; max-width:22ch; }
+  h1 em { font-style:normal; background:linear-gradient(100deg,#60A5FA,#818CF8); -webkit-background-clip:text; -webkit-text-fill-color:transparent; }
+  p { margin-top:26px; font-size:29px; line-height:1.42; color:#AAB6CB; max-width:44ch; font-weight:400; }
+  .chips { display:flex; gap:14px; }
+  .chip { display:flex; align-items:center; gap:11px; padding:14px 22px; border:1px solid rgba(148,163,184,0.20); border-radius:999px; background:rgba(11,23,48,0.72); font-size:22px; font-weight:500; color:#C9D6EA; }
+  .dot { width:10px; height:10px; border-radius:50%; background:linear-gradient(135deg,#60A5FA,#818CF8); }
+</style></head>
+<body>
+  <div class="glow-a"></div><div class="glow-b"></div><div class="grid"></div>
+  <div class="wrap">
+    <div class="brand">
+      <svg viewBox="0 0 120 120" width="54" height="54"><path d="M 30 90 L 30 30 Q 30 25 35 25 L 60 25 Q 90 25 90 60 Q 90 90 60 90 Q 45 90 45 75 Q 45 60 60 60" fill="none" stroke="currentColor" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/><circle cx="68" cy="65" r="5.5" fill="currentColor"/></svg>
+      <span>hengam</span>
+    </div>
+    <div>
+      <h1>Build the week your <em>team can actually work.</em></h1>
+      <p>Plain-English rules in. A checked shift schedule out.</p>
+    </div>
+    <div class="chips">
+      <div class="chip"><span class="dot"></span>AI rule parsing</div>
+      <div class="chip"><span class="dot"></span>Deterministic engine</div>
+      <div class="chip"><span class="dot"></span>Explained gaps</div>
+    </div>
+  </div>
+</body></html>
+<!--
+Source for public/og.png (the 1200x630 social share card). Regenerate with:
+"/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" --headless --disable-gpu \
+  --hide-scrollbars --force-device-scale-factor=1 --window-size=1200,630 \
+  --virtual-time-budget=4000 --screenshot=public/og.png scripts/assets/og-image.html
+-->

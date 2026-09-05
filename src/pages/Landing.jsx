@@ -714,22 +714,12 @@ function TrustSection() {
 // ========== REVIEWS SECTION ==========
 function ReviewsSection() {
   const { t } = useI18n()
+  // Scenarios, not testimonials. Nothing here is attributed to a named
+  // customer until there are real customers to quote.
   const reviews = [
-    {
-      name: t('reviewName1'),
-      role: t('reviewRole1'),
-      quote: t('reviewQuote1'),
-    },
-    {
-      name: t('reviewName2'),
-      role: t('reviewRole2'),
-      quote: t('reviewQuote2'),
-    },
-    {
-      name: t('reviewName3'),
-      role: t('reviewRole3'),
-      quote: t('reviewQuote3'),
-    },
+    { role: t('reviewRole1'), quote: t('reviewQuote1') },
+    { role: t('reviewRole2'), quote: t('reviewQuote2') },
+    { role: t('reviewRole3'), quote: t('reviewQuote3') },
   ]
 
   return (
@@ -743,25 +733,16 @@ function ReviewsSection() {
       <div className="reviews-grid">
         {reviews.map((review, index) => (
           <motion.article
-            key={review.name}
+            key={review.role}
             className="review-card"
             initial={{ opacity: 0, y: 24 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true, margin: '-70px' }}
             transition={{ duration: 0.55, delay: index * 0.08, ease: [0.16, 1, 0.3, 1] }}
           >
-            <div className="review-stars" aria-hidden="true">
-              {Array.from({ length: 5 }).map((_, starIndex) => (
-                <span key={starIndex}>★</span>
-              ))}
-            </div>
             <p>{review.quote}</p>
             <div className="review-person">
-              <span>{review.name.slice(0, 1)}</span>
-              <div>
-                <strong>{review.name}</strong>
-                <small>{review.role}</small>
-              </div>
+              <strong>{review.role}</strong>
             </div>
           </motion.article>
         ))}

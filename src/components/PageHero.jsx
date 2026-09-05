@@ -1,4 +1,5 @@
 import { motion as Motion } from 'framer-motion'
+import Breadcrumbs from './Breadcrumbs'
 
 function PageHero({ eyebrow, title, subtitle, children }) {
   return (
@@ -10,6 +11,7 @@ function PageHero({ eyebrow, title, subtitle, children }) {
     >
       <div className="page-hero-glow" aria-hidden />
       <div className="page-hero-content">
+        <Breadcrumbs />
         {eyebrow && (
           <div className="page-hero-eyebrow">{eyebrow}</div>
         )}

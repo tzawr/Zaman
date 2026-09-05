@@ -2,16 +2,140 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <meta name="description" content="Build weekly schedules that actually fit your team" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <title>Hengam — AI shift scheduling for cafes, restaurants, and retail</title>
+    <meta name="description" content="Hengam turns plain-English coverage rules, availability, and target hours into a checked weekly shift schedule — and explains any week that cannot work." />
+    <link rel="canonical" href="https://hengam.app/" />
+    <meta name="robots" content="index, follow, max-image-preview:large" />
+    <meta name="theme-color" content="#0A0A0B" />
+
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="apple-touch-icon" href="/favicon.svg" />
+    <link rel="manifest" href="/site.webmanifest" />
+
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Hengam" />
+    <meta property="og:title" content="Hengam — AI shift scheduling for cafes, restaurants, and retail" />
+    <meta property="og:description" content="Hengam turns plain-English coverage rules, availability, and target hours into a checked weekly shift schedule — and explains any week that cannot work." />
+    <meta property="og:url" content="https://hengam.app/" />
+    <meta property="og:image" content="https://hengam.app/og.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="Hengam — shift scheduling that checks itself" />
+    <meta property="og:locale" content="en_US" />
+    <meta property="og:locale:alternate" content="fa_IR" />
+
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:site" content="@hengamapp" />
+    <meta name="twitter:title" content="Hengam — AI shift scheduling for cafes, restaurants, and retail" />
+    <meta name="twitter:description" content="Hengam turns plain-English coverage rules, availability, and target hours into a checked weekly shift schedule — and explains any week that cannot work." />
+    <meta name="twitter:image" content="https://hengam.app/og.png" />
+
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    <title>Hengam</title>
+
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@graph": [
+        {
+          "@type": "Organization",
+          "@id": "https://hengam.app/#organization",
+          "name": "Hengam",
+          "url": "https://hengam.app/",
+          "logo": "https://hengam.app/logo-full.svg",
+          "email": "aliseyfiazadsa6@gmail.com",
+          "description": "Hengam builds constraint-based shift scheduling software for cafes, restaurants, retail teams, and shift managers.",
+          "sameAs": [
+            "https://x.com/hengamapp",
+            "https://linkedin.com/company/hengamapp",
+            "https://github.com/hengamapp"
+          ],
+          "contactPoint": [
+            {
+              "@type": "ContactPoint",
+              "contactType": "customer support",
+              "email": "aliseyfiazadsa6@gmail.com",
+              "availableLanguage": ["English", "Persian"]
+            }
+          ]
+        },
+        {
+          "@type": "WebSite",
+          "@id": "https://hengam.app/#website",
+          "url": "https://hengam.app/",
+          "name": "Hengam",
+          "publisher": { "@id": "https://hengam.app/#organization" },
+          "inLanguage": ["en", "fa"]
+        },
+        {
+          "@type": "SoftwareApplication",
+          "@id": "https://hengam.app/#app",
+          "name": "Hengam",
+          "applicationCategory": "BusinessApplication",
+          "applicationSubCategory": "Employee Scheduling Software",
+          "operatingSystem": "Web browser",
+          "url": "https://hengam.app/",
+          "publisher": { "@id": "https://hengam.app/#organization" },
+          "description": "Hengam turns plain-English coverage rules, availability, time off, and target hours into a checked weekly shift schedule, and explains the tradeoffs when a week cannot work.",
+          "featureList": [
+            "AI parsing of plain-English scheduling rules",
+            "Deterministic constraint-based schedule generation",
+            "Availability and time-off tracking",
+            "Explained coverage gaps for impossible weeks",
+            "CSV, PNG, and PDF schedule exports",
+            "Team invites and per-employee schedule views"
+          ],
+          "offers": [
+            {
+              "@type": "Offer",
+              "name": "Free",
+              "price": "0",
+              "priceCurrency": "USD",
+              "category": "free",
+              "url": "https://hengam.app/pricing",
+              "availability": "https://schema.org/InStock"
+            },
+            {
+              "@type": "Offer",
+              "name": "Pro",
+              "price": "29",
+              "priceCurrency": "USD",
+              "url": "https://hengam.app/pricing",
+              "availability": "https://schema.org/InStock",
+              "priceSpecification": {
+                "@type": "UnitPriceSpecification",
+                "price": "29",
+                "priceCurrency": "USD",
+                "billingDuration": 1,
+                "billingIncrement": 1,
+                "unitCode": "MON"
+              }
+            }
+          ]
+        }
+      ]
+    }
+    </script>
   </head>
   <body>
     <div id="root"></div>
+    <noscript>
+      <div style="max-width:40rem;margin:4rem auto;padding:0 1.5rem;font-family:Inter,system-ui,sans-serif;line-height:1.6;">
+        <h1>Hengam — shift scheduling that checks itself</h1>
+        <p>Hengam turns plain-English coverage rules, availability, time off, and target hours into a weekly shift schedule that is checked against every constraint — and tells you clearly when a week cannot work.</p>
+        <p>Hengam needs JavaScript enabled. Please turn it on and reload the page.</p>
+        <ul>
+          <li><a href="/about">About Hengam</a></li>
+          <li><a href="/pricing">Pricing</a></li>
+          <li><a href="/security">Security</a></li>
+          <li><a href="/privacy">Privacy policy</a></li>
+          <li><a href="/terms">Terms of service</a></li>
+        </ul>
+      </div>
+    </noscript>
     <script type="module" src="/src/main.jsx"></script>
   </body>
 </html>
