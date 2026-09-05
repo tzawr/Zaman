@@ -5,6 +5,11 @@
 // This script writes a real HTML file per public route — same app bundle, but
 // with that route's head tags baked in — plus sitemap.xml and 404.html.
 // Vercel's `cleanUrls` serves /about from about.html before the SPA rewrite.
+//
+// vercel.json rewrites only the signed-in app routes to the SPA shell, so a URL
+// that matches neither a generated page nor an app route falls through to
+// 404.html with a real 404 status. When you add a route to App.jsx, add it here
+// (public) or to that rewrite list (signed-in) — otherwise it will 404.
 
 import { readFileSync, writeFileSync, existsSync } from 'node:fs'
 import { join, dirname } from 'node:path'
