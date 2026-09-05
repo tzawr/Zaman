@@ -10,7 +10,8 @@
     "lint": "eslint .",
     "test:tier": "node --test src/utils/tier.test.js",
     "preview": "vite preview",
-    "seo": "node scripts/generate-seo-pages.js"
+    "seo": "node scripts/generate-seo-pages.js",
+    "test": "node --test \"src/utils/*.test.js\""
   },
   "dependencies": {
     "firebase": "^12.12.1",

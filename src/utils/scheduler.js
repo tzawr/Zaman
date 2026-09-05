@@ -18,14 +18,28 @@ function snapHalf(mins) {
   return Math.round(mins / 30) * 30
 }
 
+// Shifts land on half hours, but rounding a boundary the wrong way would put
+// someone on the floor before they are available or after they have left, so
+// each bound is snapped inward.
+function ceilHalf(mins) {
+  return Math.ceil(mins / 30) * 30
+}
+
+function floorHalf(mins) {
+  return Math.floor(mins / 30) * 30
+}
+
 function getDateForDay(weekStart, idx) {
   const d = new Date(weekStart + 'T12:00:00')
+  // A malformed weekStart should not take the whole generation down; callers
+  // treat an empty date as "no calendar date for this day".
+  if (Number.isNaN(d.getTime())) return ''
   d.setDate(d.getDate() + idx)
   return d.toISOString().split('T')[0]
 }
 
 function isTimeOffDate(emp, date) {
-  if (!emp.timeOff?.length) return false
+  if (!date || !emp.timeOff?.length) return false
   const day = new Date(date + 'T12:00:00').getTime()
   return emp.timeOff.some(to => {
     const s = new Date(to.start + 'T00:00:00').getTime()
@@ -45,7 +59,7 @@ function isTimeOffDate(emp, date) {
 //   preferWindows: { "Isabel": { start: "04:00", end: "12:00" } },
 //   shiftHoursByEmployee: { "Amir": 4 },
 //   trainingPairs: [{ trainee: "New Hire", mentorRole: "Shift Supervisor" }],
-//   minimumStaff: [{from, to, count}],
+//   minimumStaff: [{from, to, count, days?}],  // days omitted = every open day
 // }
 
 function computeShift(emp, dayKey, slotStartMins, slotEndMins, opStartMins, opEndMins, totals, dayIdx, idx, dailyBudget, preferWindows, anchor = 'start', options = {}) {
@@ -84,12 +98,12 @@ function computeShift(emp, dayKey, slotStartMins, slotEndMins, opStartMins, opEn
   let end
 
   if (anchor === 'end') {
-    end = snapHalf(Math.min(effEnd, avEnd, opEndMins))
-    start = snapHalf(Math.max(effStart, avStart, opStartMins, end - todayMaxHours * 60))
+    end = floorHalf(Math.min(effEnd, avEnd, opEndMins))
+    start = ceilHalf(Math.max(effStart, avStart, opStartMins, end - todayMaxHours * 60))
     if (end - start > 8.5 * 60) start = end - 8.5 * 60
   } else {
-    start = snapHalf(Math.max(effStart, avStart, opStartMins))
-    end = snapHalf(Math.min(effEnd, avEnd, opEndMins, start + todayMaxHours * 60))
+    start = ceilHalf(Math.max(effStart, avStart, opStartMins))
+    end = floorHalf(Math.min(effEnd, avEnd, opEndMins, start + todayMaxHours * 60))
     if (end - start > 8.5 * 60) end = start + 8.5 * 60
   }
 
@@ -154,11 +168,40 @@ function futureCapacity(emp, dayIdx, operatingHours, dailyBudget, weekStart) {
     }, 0)
 }
 
-function needsFlexShiftToday(emp, dayIdx, operatingHours, totals, dailyBudget, weekStart) {
+function needsFlexShiftToday(emp, dayIdx, operatingHours, totals, dailyBudget, weekStart, plannedDays) {
   if (emp.targetHours == null) return false
   const remaining = emp.targetHours - (totals[emp.name] || 0)
   if (remaining < 4) return false
-  return remaining > futureCapacity(emp, dayIdx, operatingHours, dailyBudget, weekStart) + 0.05
+  // Today is the last chance to fit the hours in.
+  if (remaining > futureCapacity(emp, dayIdx, operatingHours, dailyBudget, weekStart) + 0.05) return true
+  // Otherwise work the days planned for this person. Without this the schedule
+  // only fills a day once it becomes unavoidable, which leaves the start of the
+  // week empty and stacks every shift onto the last few days.
+  return plannedDays?.has(dayIdx) === true
+}
+
+// Spread an employee's expected working days evenly over the days they are
+// actually available, so a five-day target lands Mon/Tue/Wed/Fri/Sat rather
+// than Wed through Sun.
+function planFlexDays(emp, operatingHours, weekStart, dailyBudget) {
+  const openIdxs = DAYS.reduce((acc, dayKey, idx) => {
+    const av = emp.availability?.[dayKey]
+    if (!av || av.available === false) return acc
+    if (!operatingHours?.[dayKey]?.open) return acc
+    if (isTimeOffDate(emp, getDateForDay(weekStart, idx))) return acc
+    acc.push(idx)
+    return acc
+  }, [])
+
+  const target = Number(emp.targetHours) || 0
+  const budget = dailyBudget[emp.name] || 8
+  const needed = Math.min(openIdxs.length, Math.max(0, Math.ceil(target / budget)))
+
+  const chosen = new Set()
+  for (let k = 0; k < needed; k++) {
+    chosen.add(openIdxs[Math.floor((k * openIdxs.length) / needed)])
+  }
+  return chosen
 }
 
 function activeInWindow(shift, fromMins, toMins) {
@@ -286,6 +329,12 @@ export function runScheduler(employees, settings, weekStart, constraints = {}) {
       : (fixedShiftHours || Math.min(8.5, target))
   })
 
+  const plannedFlexDays = {}
+  employees.forEach(emp => {
+    if (emp.targetHours == null) return
+    plannedFlexDays[emp.name] = planFlexDays(emp, operatingHours, weekStart, dailyBudget)
+  })
+
   const result = { weekStart, days: {}, summary: [], issues: [], recommendations: [] }
 
   DAYS.forEach((dayKey, dayIdx) => {
@@ -316,7 +365,8 @@ export function runScheduler(employees, settings, weekStart, constraints = {}) {
     daySlots.forEach(slot => {
       const count = slot.count || 1
       const slotStart = timeToMins(slot.start)
-      const slotEnd = timeToMins(slot.end)
+      // "18:00 to 00:00" means until midnight, not a zero-length window.
+      const slotEnd = timeToMins(slot.end, true)
 
       for (let i = 0; i < count; i++) {
         const eligible = employees
@@ -357,7 +407,13 @@ export function runScheduler(employees, settings, weekStart, constraints = {}) {
     })
 
     // Phase 2: fill minimum-staff windows that are still short after role slots.
-    minimumStaff.forEach(({ from, to, count }) => {
+    // Entries without `days` come from parsed rules and apply to every open day;
+    // per-day workspace minimums name the day they belong to.
+    const dayMinimums = minimumStaff.filter(m =>
+      !m.days || m.days === 'all' || (Array.isArray(m.days) && m.days.includes(dayKey))
+    )
+
+    dayMinimums.forEach(({ from, to, count }) => {
       const fromMins = timeToMins(from)
       const toMins = timeToMins(to, true)
       let active = shifts.filter(shift => activeInWindow(shift, fromMins, toMins)).length
@@ -412,7 +468,7 @@ export function runScheduler(employees, settings, weekStart, constraints = {}) {
     const remaining = employees
       .filter(emp =>
         !assignedToday.has(emp.name) &&
-        needsFlexShiftToday(emp, dayIdx, operatingHours, totals, dailyBudget, weekStart) &&
+        needsFlexShiftToday(emp, dayIdx, operatingHours, totals, dailyBudget, weekStart, plannedFlexDays[emp.name]) &&
         isEligible(
           emp, dayKey, dayIdx, opStartMins, opEndMins, opDayWithDate, totals, assignedToday, lastClose,
           preventClopening, minHoursBetweenShifts, null,
@@ -433,6 +489,15 @@ export function runScheduler(employees, settings, weekStart, constraints = {}) {
       })
 
     remaining.forEach(emp => {
+      // Eligibility above was computed before anyone in this phase was assigned.
+      // Re-check it here: avoidTogether depends on who is already working today,
+      // so a snapshot would let both halves of a keep-apart pair through.
+      if (!isEligible(
+        emp, dayKey, dayIdx, opStartMins, opEndMins, opDayWithDate, totals, assignedToday, lastClose,
+        preventClopening, minHoursBetweenShifts, null,
+        avoid, maxDays, daysWorked, maxCloses, closes, opEndMins
+      )) return
+
       const flex = chooseFlexWindow(emp, dayKey, opStartMins, opEndMins, totals, dailyBudget, shiftHoursByEmployee?.[emp.name])
       if (!flex) return
       const shift = computeShift(emp, dayKey, flex.start, flex.end, opStartMins, opEndMins, totals, dayIdx, shiftIdx, dailyBudget, preferWindows, 'start', {
