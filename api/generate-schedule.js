@@ -16,28 +16,90 @@ const TASK_LIMITS = {
 }
 const DEFAULT_MAX_TOKENS = 1024
 
-// A signed-in account is not a blank cheque. Normal use is about ten calls a
-// day; this stops a stuck loop or a scripted account from running up a bill.
-const MAX_CALLS_PER_DAY = 50
+// Claude Opus 5, USD per token.
+const INPUT_PER_TOKEN = 5 / 1_000_000
+const OUTPUT_PER_TOKEN = 25 / 1_000_000
 
-async function checkAndCountUsage(uid) {
+// A call cap cannot bound spend, because one call can cost 25x another. What
+// actually protects the margin on a $20 plan is a spend cap: at realistic usage
+// a heavy manager spends under $2 a month, so $5 leaves generous headroom while
+// making the worst case a rounding error instead of a $180 loss.
+const MONTHLY_BUDGET_USD = 5
+// Secondary guard so a runaway burns the budget over days, not in one minute.
+const MAX_CALLS_PER_DAY = 40
+
+function monthKey() {
+  return new Date().toISOString().slice(0, 7)
+}
+
+function dayKey() {
+  return new Date().toISOString().slice(0, 10)
+}
+
+// Checked before the call, since the cost is not known until after it returns.
+// One call may overshoot the budget by its own cost, which is capped by
+// TASK_LIMITS at a few cents.
+async function checkBudget(uid) {
   const db = getFirestore()
-  const today = new Date().toISOString().slice(0, 10)
-  const ref = db.collection('aiUsage').doc(`${uid}_${today}`)
+  const [monthSnap, daySnap] = await Promise.all([
+    db.collection('aiUsage').doc(`${uid}_${monthKey()}`).get(),
+    db.collection('aiUsage').doc(`${uid}_${dayKey()}`).get(),
+  ])
 
-  return db.runTransaction(async (tx) => {
-    const snap = await tx.get(ref)
-    const used = snap.exists ? Number(snap.data().calls) || 0 : 0
-    if (used >= MAX_CALLS_PER_DAY) return { blocked: true, used }
+  const spent = monthSnap.exists ? Number(monthSnap.data().spendUsd) || 0 : 0
+  const callsToday = daySnap.exists ? Number(daySnap.data().calls) || 0 : 0
 
-    tx.set(ref, {
+  if (spent >= MONTHLY_BUDGET_USD) return { blocked: true, reason: 'month' }
+  if (callsToday >= MAX_CALLS_PER_DAY) return { blocked: true, reason: 'day' }
+  return { blocked: false }
+}
+
+// Records what the call actually cost, from the usage the API reports.
+async function recordUsage(uid, usage) {
+  const db = getFirestore()
+  const input = Number(usage?.input_tokens) || 0
+  const output = Number(usage?.output_tokens) || 0
+  const cost = input * INPUT_PER_TOKEN + output * OUTPUT_PER_TOKEN
+
+  await Promise.all([
+    db.collection('aiUsage').doc(`${uid}_${monthKey()}`).set({
       uid,
-      day: today,
+      period: monthKey(),
+      spendUsd: FieldValue.increment(cost),
+      inputTokens: FieldValue.increment(input),
+      outputTokens: FieldValue.increment(output),
       calls: FieldValue.increment(1),
       updatedAt: FieldValue.serverTimestamp(),
-    }, { merge: true })
-    return { blocked: false, used: used + 1 }
-  })
+    }, { merge: true }),
+    db.collection('aiUsage').doc(`${uid}_${dayKey()}`).set({
+      uid,
+      period: dayKey(),
+      calls: FieldValue.increment(1),
+      updatedAt: FieldValue.serverTimestamp(),
+    }, { merge: true }),
+  ])
+}
+
+// The Pro gate lived only in the browser, so a free account calling this
+// endpoint directly still spent money. Resolved here the same way the client
+// resolves it: an active override wins, otherwise the user's own tier.
+async function isProUser(uid) {
+  const db = getFirestore()
+  const [userSnap, overrideSnap] = await Promise.all([
+    db.collection('users').doc(uid).get(),
+    db.collection('adminOverrides').doc(uid).get(),
+  ])
+
+  const override = overrideSnap.exists ? overrideSnap.data() : null
+  if (override?.tier) {
+    const expiresAt = override.expiresAt?.toMillis?.() ?? null
+    if (!expiresAt || expiresAt > Date.now()) {
+      return String(override.tier).trim().toLowerCase() === 'pro'
+    }
+  }
+
+  const tier = String(userSnap.exists ? userSnap.data().tier || '' : '').trim().toLowerCase()
+  return tier === 'pro' || tier === 'business'
 }
 
 export default async function handler(req, res) {
@@ -68,11 +130,20 @@ export default async function handler(req, res) {
       return res.status(413).json({ error: 'Prompt is too long' })
     }
 
-    const usage = await checkAndCountUsage(uid)
-    if (usage.blocked) {
+    if (!(await isProUser(uid))) {
+      return res.status(403).json({
+        error: 'Pro required',
+        message: 'AI rule parsing is available on Pro.',
+      })
+    }
+
+    const budget = await checkBudget(uid)
+    if (budget.blocked) {
       return res.status(429).json({
-        error: 'Daily limit reached',
-        message: 'You have reached today’s schedule generation limit. It resets tomorrow.',
+        error: 'Limit reached',
+        message: budget.reason === 'month'
+          ? 'You have reached this month’s AI usage limit. It resets at the start of next month.'
+          : 'You have reached today’s schedule generation limit. It resets tomorrow.',
       })
     }
 
@@ -102,6 +173,10 @@ export default async function handler(req, res) {
     }
 
     const data = await response.json()
+    // Charge what the call actually cost. Failures above never reach here, so a
+    // failed call is not billed to the user's budget.
+    await recordUsage(uid, data.usage).catch(err => console.error('usage record failed:', err))
+
     // With thinking on, the response carries thinking blocks before the text.
     const scheduleText = (data.content || []).find(block => block.type === 'text')?.text || ''
     return res.status(200).json({ scheduleText })
