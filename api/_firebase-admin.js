@@ -149,7 +149,15 @@ export async function requireServerAdmin(req) {
     error.status = 401
     throw error
   }
-  const decoded = await adminAuth().verifyIdToken(token)
+  let decoded
+  try {
+    decoded = await adminAuth().verifyIdToken(token)
+  } catch (err) {
+    if (err?.code === 'firebase_admin_config') throw err
+    const error = new Error('Invalid or expired session. Sign in again.')
+    error.status = 401
+    throw error
+  }
   if (!serverAdminUids().includes(decoded.uid)) {
     const error = new Error('Admin access required')
     error.status = 403
@@ -166,7 +174,16 @@ export async function requireSignedIn(req) {
     error.status = 401
     throw error
   }
-  return adminAuth().verifyIdToken(token)
+  try {
+    return await adminAuth().verifyIdToken(token)
+  } catch (err) {
+    // A malformed or expired token is a rejected caller, not a server fault.
+    // Reported as 401 without echoing the verifier's internals.
+    if (err?.code === 'firebase_admin_config') throw err
+    const error = new Error('Invalid or expired session. Sign in again.')
+    error.status = 401
+    throw error
+  }
 }
 
 export function sendError(res, err, fallback = 'Server error') {
