@@ -118,9 +118,23 @@ function isAdmin() {
         );
     }
 
+    // The document being updated is the promo code itself, so it validates
+    // against resource.data directly — no lookup, and no reference to the
+    // match wildcard, which is not in scope inside a top-level function.
     function isPromoUseIncrement() {
       return signedIn() &&
-        validPromoCode(code) &&
+        resource.data.tier == 'pro' &&
+        resource.data.active == true &&
+        (
+          !('expiresAt' in resource.data) ||
+          resource.data.expiresAt == null ||
+          resource.data.expiresAt > request.time
+        ) &&
+        (
+          !('maxUses' in resource.data) ||
+          resource.data.maxUses == null ||
+          resource.data.usedCount < resource.data.maxUses
+        ) &&
         request.resource.data.diff(resource.data).changedKeys().hasOnly(['usedCount']) &&
         request.resource.data.usedCount == resource.data.usedCount + 1;
     }
