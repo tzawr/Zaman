@@ -12,6 +12,16 @@ function normalizePrivateKey(value) {
     .replace(/\\\\n/g, '\n')
     .replace(/\\n/g, '\n')
     .replace(/\r\n/g, '\n')
+  // A PEM key pasted into a single-line form loses its line breaks, which makes
+  // it invalid even though every character is present. Rebuild the wrapping
+  // from the body rather than making the operator paste it a different way.
+  const pem = key.match(/-----BEGIN ([A-Z ]+)-----([\s\S]*?)-----END \1-----/)
+  if (pem) {
+    const body = pem[2].replace(/\s+/g, '')
+    const wrapped = body.match(/.{1,64}/g)?.join('\n') ?? ''
+    return `-----BEGIN ${pem[1]}-----\n${wrapped}\n-----END ${pem[1]}-----\n`
+  }
+
   if (!key.includes('BEGIN PRIVATE KEY')) {
     try {
       const decoded = Buffer.from(key, 'base64').toString('utf8').trim()
