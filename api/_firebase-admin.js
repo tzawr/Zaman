@@ -30,11 +30,36 @@ function normalizePrivateKey(value) {
           .replace(/\\\\n/g, '\n')
           .replace(/\\n/g, '\n')
           .replace(/\r\n/g, '\n')
+        return normalizePrivateKey(key)
+      }
+      // The whole service-account JSON pasted into the key field.
+      if (decoded.includes('"private_key"')) {
+        const parsed = JSON.parse(decoded)
+        if (parsed.private_key) return normalizePrivateKey(parsed.private_key)
       }
     } catch {
       // Keep the original value so Firebase Admin can report the credential issue.
     }
   }
+
+  // The service-account JSON pasted in directly, not base64.
+  if (key.startsWith('{')) {
+    try {
+      const parsed = JSON.parse(key)
+      if (parsed.private_key) return normalizePrivateKey(parsed.private_key)
+    } catch {
+      // Fall through and let Firebase Admin report it.
+    }
+  }
+
+  // Just the key body, with the BEGIN/END lines left behind when it was copied.
+  // Everything needed is there, so put the envelope back.
+  if (!key.includes('BEGIN') && /^[A-Za-z0-9+/=\s]+$/.test(key) && key.replace(/\s+/g, '').length > 600) {
+    const body = key.replace(/\s+/g, '')
+    const wrapped = body.match(/.{1,64}/g)?.join('\n') ?? ''
+    return `-----BEGIN PRIVATE KEY-----\n${wrapped}\n-----END PRIVATE KEY-----\n`
+  }
+
   return key
 }
 
