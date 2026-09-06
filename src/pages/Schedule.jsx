@@ -766,7 +766,7 @@ function findShiftDay(schedule, targetShift) {
   return ''
 }
 
-async function callGenerateAPI(prompt) {
+async function callGenerateAPI(prompt, task) {
   // The endpoint spends money per call, so it only answers signed-in callers.
   const token = await auth.currentUser?.getIdToken()
   if (!token) throw new Error('Sign in to generate a schedule.')
@@ -777,11 +777,12 @@ async function callGenerateAPI(prompt) {
       'Content-Type': 'application/json',
       Authorization: `Bearer ${token}`,
     },
-    body: JSON.stringify({ prompt }),
+    // The task picks the output ceiling on the server.
+    body: JSON.stringify({ prompt, task }),
   })
   if (!resp.ok) {
-    const err = await resp.json()
-    throw new Error(err.error || 'Schedule generation failed')
+    const err = await resp.json().catch(() => ({}))
+    throw new Error(err.message || err.error || 'Schedule generation failed')
   }
   const data = await resp.json()
   return data.scheduleText || ''
@@ -811,7 +812,7 @@ TEAM:
 ${employees.map(emp => `${emp.name} | ${emp.role || 'No role'} | target ${emp.targetHours ?? 0}h`).join('\n')}`
 
   try {
-    const text = await callGenerateAPI(prompt)
+    const text = await callGenerateAPI(prompt, 'recommendations')
     let clean = text.trim()
     if (clean.startsWith('```json')) clean = clean.replace(/^```json\n?/, '').replace(/\n?```$/, '')
     else if (clean.startsWith('```')) clean = clean.replace(/^```\n?/, '').replace(/\n?```$/, '')
@@ -1000,7 +1001,7 @@ Field meanings:
 - All times in 24-hour HH:MM format`
 
   try {
-    const text = await callGenerateAPI(aiPrompt)
+    const text = await callGenerateAPI(aiPrompt, 'rules')
     let clean = text.trim()
     if (clean.startsWith('```json')) clean = clean.replace(/^```json\n?/, '').replace(/\n?```$/, '')
     else if (clean.startsWith('```')) clean = clean.replace(/^```\n?/, '').replace(/\n?```$/, '')

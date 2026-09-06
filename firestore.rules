@@ -179,6 +179,13 @@ function isAdmin() {
         (resource.data.managerId == request.auth.uid || isAdmin());
     }
 
+    // Written only by the server (Admin SDK bypasses rules). Readable by the
+    // owner so the app can show remaining generations if we ever surface it.
+    match /aiUsage/{docId} {
+      allow read: if isAdmin() || (signedIn() && docId.split('_')[0] == request.auth.uid);
+      allow write: if false;
+    }
+
     match /users/{uid} {
       allow read: if signedIn() && (request.auth.uid == uid || isAdmin());
 
