@@ -131,6 +131,11 @@ export default async function handler(req, res) {
     if (prompt.length > MAX_PROMPT_CHARS) {
       return res.status(413).json({ error: 'Prompt is too long' })
     }
+    // Only the two known tasks have a measured ceiling. An unrecognised one is a
+    // client bug, and answering it with the default limit hides that.
+    if (task != null && !Object.hasOwn(TASK_LIMITS, task)) {
+      return res.status(400).json({ error: 'Unknown task' })
+    }
 
     if (!(await isProUser(uid))) {
       return res.status(403).json({
@@ -170,8 +175,16 @@ export default async function handler(req, res) {
 
     if (!response.ok) {
       const err = await response.text()
-      console.error('Anthropic error:', err)
-      return res.status(response.status).json({ error: 'Anthropic API error', details: err })
+      // The upstream body names the model, the account and sometimes the key
+      // prefix. It belongs in the log, not in a browser.
+      console.error('Anthropic error:', response.status, err)
+      const status = response.status === 429 || response.status === 529 ? 503 : 502
+      return res.status(status).json({
+        error: 'Schedule generation is unavailable',
+        message: status === 503
+          ? 'The scheduling service is busy right now. Try again in a moment.'
+          : 'Schedule generation failed. Try again in a moment.',
+      })
     }
 
     const data = await response.json()
@@ -185,6 +198,9 @@ export default async function handler(req, res) {
 
   } catch (error) {
     console.error('Server error:', error)
-    return res.status(500).json({ error: 'Server error', details: error.message })
+    return res.status(500).json({
+      error: 'Server error',
+      message: 'Something went wrong on our end. Try again in a moment.',
+    })
   }
 }

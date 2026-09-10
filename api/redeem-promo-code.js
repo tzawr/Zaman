@@ -1,5 +1,6 @@
 import { FieldValue, Timestamp, getFirestore } from 'firebase-admin/firestore'
-import { initAdmin, requireSignedIn } from './_firebase-admin.js'
+import { initAdmin, requireSignedIn, sendError } from './_firebase-admin.js'
+import { consumeRateLimit, sendRateLimited } from './_rate-limit.js'
 
 function block(res, status, reason, message) {
   return res.status(status).json({ blocked: true, reason, message })
@@ -15,12 +16,31 @@ function timestampMs(value) {
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' })
 
+  let userId
   try {
     initAdmin()
     const decoded = await requireSignedIn(req)
-    const userId = decoded.uid
+    userId = decoded.uid
+  } catch (err) {
+    // Previously this fell into the catch-all below, so an expired session came
+    // back as a 500 and the client could not tell it just needed to sign in.
+    return sendError(res, err, 'Sign in to redeem a promo code.')
+  }
+
+  try {
     const cleanCode = String(req.body?.code || '').trim().toUpperCase()
     if (!cleanCode) return block(res, 400, 'promo_invalid', 'Enter a promo code.')
+    // A promo code is a bearer secret and a wrong guess is cheap, so without a
+    // limit the endpoint is a namespace to walk. Ten an hour leaves room for
+    // fat fingers and none for a dictionary.
+    const limit = await consumeRateLimit('promo', userId, 10, 60 * 60)
+    if (!limit.allowed) {
+      return sendRateLimited(
+        res,
+        limit.retryAfterSeconds,
+        'Too many promo code attempts. Try again in a little while.'
+      )
+    }
 
     const db = getFirestore()
     const promoRef = db.collection('promoCodes').doc(cleanCode)
@@ -60,6 +80,6 @@ export default async function handler(req, res) {
     return res.status(200).json(result)
   } catch (err) {
     console.error('Promo redemption failed:', err)
-    return res.status(500).json({ blocked: true, reason: 'server_error', message: 'Promo redemption is not configured yet.' })
+    return res.status(500).json({ blocked: true, reason: 'server_error', message: 'Something went wrong on our end. Try again in a moment.' })
   }
 }

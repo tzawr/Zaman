@@ -1,4 +1,17 @@
-import { requireSignedIn, sendError } from './_firebase-admin.js'
+import { initAdmin, requireSignedIn, sendError } from './_firebase-admin.js'
+import { consumeRateLimit, sendRateLimited } from './_rate-limit.js'
+
+// The address comes from a verified token, so this is belt and braces — but it
+// is interpolated into HTML, and HTML interpolation without escaping is how the
+// next one of these becomes a real bug.
+function escapeHtml(value) {
+  return String(value)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;')
+}
 
 // The link in the email must point at Hengam and nowhere else. Taking it from
 // the request body would let anyone send a Hengam-branded email whose button
@@ -18,9 +31,22 @@ export default async function handler(req, res) {
   // to any address anyone named, on the owner's Resend account.
   let decoded
   try {
+    initAdmin()
     decoded = await requireSignedIn(req)
   } catch (err) {
     return sendError(res, err, 'Sign in to request a verification email.')
+  }
+
+  // The resend button has a client-side cooldown, which stops an impatient user
+  // and nobody else. Five an hour is well past what any real person needs and
+  // well short of a usable mail bomb.
+  const limit = await consumeRateLimit('verify-email', decoded.uid, 5, 60 * 60)
+  if (!limit.allowed) {
+    return sendRateLimited(
+      res,
+      limit.retryAfterSeconds,
+      'Too many verification emails requested. Try again in a little while.'
+    )
   }
 
   const { token } = req.body || {}
@@ -90,7 +116,7 @@ export default async function handler(req, res) {
           <td style="padding:20px 40px;border-top:1px solid rgba(255,255,255,0.06);">
             <p style="margin:0;font-size:12px;color:#4b5563;">
               © 2026 Hengam · Built in Irvine, CA<br>
-              <span style="color:#374151;">You're receiving this because you created a Hengam account with ${email}</span>
+              <span style="color:#374151;">You're receiving this because you created a Hengam account with ${escapeHtml(email)}</span>
             </p>
           </td>
         </tr>

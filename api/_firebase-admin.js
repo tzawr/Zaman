@@ -186,6 +186,9 @@ export async function requireSignedIn(req) {
   }
 }
 
+// A 4xx tells the caller something they can act on, so its message is theirs to
+// read. A 5xx is our problem: the text describes our credentials and internals,
+// so it goes to the server log and the caller gets a fixed sentence.
 export function sendError(res, err, fallback = 'Server error') {
   const status = err.status || 500
   const reason = err.code === 'firebase_admin_config'
@@ -195,10 +198,19 @@ export function sendError(res, err, fallback = 'Server error') {
       : status === 401
         ? 'auth_required'
         : 'server_error'
+
+  if (status >= 500) {
+    console.error(`[${reason}]`, err.message, err.detail || '')
+    return res.status(status).json({
+      blocked: true,
+      reason,
+      message: 'Something went wrong on our end. Try again in a moment.',
+    })
+  }
+
   return res.status(status).json({
     blocked: true,
     reason,
     message: err.message || fallback,
-    detail: err.detail || undefined,
   })
 }

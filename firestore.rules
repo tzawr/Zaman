@@ -200,6 +200,13 @@ function isAdmin() {
       allow write: if false;
     }
 
+    // Server-side abuse counters. Written only by the Admin SDK, which bypasses
+    // rules; a client that could read them would learn how close it is to a
+    // limit, and one that could write them would erase the limit.
+    match /rateLimits/{docId} {
+      allow read, write: if false;
+    }
+
     match /users/{uid} {
       allow read: if signedIn() && (request.auth.uid == uid || isAdmin());
 
