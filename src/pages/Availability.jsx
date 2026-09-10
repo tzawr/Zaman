@@ -7,6 +7,7 @@ import { useAuth } from '../AuthContext'
 import { useToast } from '../components/Toast'
 import PageHero from '../components/PageHero'
 import Section from '../components/Section'
+import TimeSelect from '../components/TimeSelect'
 import { useI18n } from '../i18n'
 
 const DAYS = [
@@ -41,43 +42,6 @@ function freshestRecord(records, field, timestampField) {
   return records
     .filter(record => hasValue(record, field))
     .sort((a, b) => timestampMs(b[timestampField]) - timestampMs(a[timestampField]))[0]
-}
-
-const MINUTES = ['00', '15', '30', '45']
-
-function TimeSelect({ value, disabled, onChange }) {
-  const [rawH = '09', rawM = '00'] = (value || '09:00').split(':')
-  const totalH = parseInt(rawH, 10)
-  const period = totalH < 12 ? 'AM' : 'PM'
-  const h12 = totalH === 0 ? 12 : totalH > 12 ? totalH - 12 : totalH
-  const m = MINUTES.includes(rawM) ? rawM : '00'
-
-  function emit(newH12, newM, newPeriod) {
-    let h24
-    if (newPeriod === 'AM') h24 = newH12 === 12 ? 0 : newH12
-    else h24 = newH12 === 12 ? 12 : newH12 + 12
-    onChange(`${String(h24).padStart(2, '0')}:${newM}`)
-  }
-
-  return (
-    <div className={`time-select${disabled ? ' disabled' : ''}`}>
-      <select className="time-select-hour" value={h12} disabled={disabled}
-        onChange={e => emit(parseInt(e.target.value, 10), m, period)}>
-        {[12, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11].map(h => (
-          <option key={h} value={h}>{h}</option>
-        ))}
-      </select>
-      <span className="time-select-colon">:</span>
-      <select className="time-select-min" value={m} disabled={disabled}
-        onChange={e => emit(h12, e.target.value, period)}>
-        {MINUTES.map(min => <option key={min} value={min}>{min}</option>)}
-      </select>
-      <button type="button" className="time-select-ampm" disabled={disabled}
-        onClick={() => emit(h12, m, period === 'AM' ? 'PM' : 'AM')}>
-        {period}
-      </button>
-    </div>
-  )
 }
 
 function Availability() {
@@ -512,8 +476,9 @@ function Availability() {
         <div className="timeoff-form">
           <div className="timeoff-form-row">
             <div className="employee-form-field">
-              <label className="form-label">{t('from')}</label>
+              <label htmlFor="availability-from" className="form-label">{t('from')}</label>
               <input
+                id="availability-from"
                 type="date"
                 className="input"
                 value={newTimeOffStart}
@@ -522,8 +487,9 @@ function Availability() {
               />
             </div>
             <div className="employee-form-field">
-              <label className="form-label">{t('to')}</label>
+              <label htmlFor="availability-to" className="form-label">{t('to')}</label>
               <input
+                id="availability-to"
                 type="date"
                 className="input"
                 value={newTimeOffEnd}
@@ -532,8 +498,9 @@ function Availability() {
               />
             </div>
             <div className="employee-form-field" style={{ flex: 2 }}>
-              <label className="form-label">{t('reasonOptional')}</label>
+              <label htmlFor="availability-reasonOptional" className="form-label">{t('reasonOptional')}</label>
               <input
+                id="availability-reasonOptional"
                 type="text"
                 className="input"
                 placeholder={t('vacationPlaceholder')}

@@ -286,6 +286,7 @@ function Settings() {
                   <input
                     type="text"
                     className="input role-edit-input"
+                    aria-label={t('a11yRoleName')}
                     value={editingRoleName}
                     onChange={(e) => setEditingRoleName(e.target.value)}
                     onKeyDown={(e) => {
@@ -327,6 +328,7 @@ function Settings() {
             type="text"
             className="input"
             placeholder={t('rolePlaceholder')}
+            aria-label={t('rolePlaceholder')}
             value={newRoleName}
             onChange={(e) => setNewRoleName(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && addRole()}
@@ -398,6 +400,7 @@ function Settings() {
                       min="1"
                       max="20"
                       className="time-input coverage-input"
+                      aria-label={`${t('a11yPeopleNeeded')} — ${t(day.labelKey)}`}
                       value={c}
                       onChange={(e) => updateCoverage(day.key, e.target.value)}
                     />
@@ -440,6 +443,7 @@ function Settings() {
             className="input ai-instr-textarea"
             rows={5}
             placeholder={t('coverageRulesPlaceholder')}
+            aria-label={t('coverageRulesPlaceholder')}
             value={coverageRules}
             onChange={(e) => setCoverageRules(e.target.value)}
             onBlur={() => saveToFirebase({ coverageRules })}
@@ -482,6 +486,7 @@ function Settings() {
                 min="6"
                 max="24"
                 className="time-input coverage-input"
+                aria-label={t('a11yMinHoursBetween')}
                 value={minHoursBetweenShifts}
                 onChange={(e) => updateMinHours(e.target.value)}
               />
@@ -550,6 +555,7 @@ function Settings() {
                 type="password"
                 className="input"
                 placeholder={t('currentPassword')}
+                aria-label={t('currentPassword')}
                 value={currentPassword}
                 onChange={(e) => setCurrentPassword(e.target.value)}
                 autoComplete="current-password"
@@ -558,6 +564,7 @@ function Settings() {
                 type="password"
                 className="input"
                 placeholder={t('newPasswordPlaceholder')}
+                aria-label={t('newPasswordPlaceholder')}
                 value={newPassword}
                 onChange={(e) => setNewPassword(e.target.value)}
                 autoComplete="new-password"
@@ -566,6 +573,7 @@ function Settings() {
                 type="password"
                 className="input"
                 placeholder={t('confirmNewPassword')}
+                aria-label={t('confirmNewPassword')}
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 autoComplete="new-password"

@@ -1,18 +1,23 @@
 import { useEffect, useState } from 'react'
-import { Check, Sparkles, Shield, Zap } from 'lucide-react'
+import { Check, Sparkles, Shield, Zap, KeyRound } from 'lucide-react'
 import { motion as Motion } from 'framer-motion'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../AuthContext'
 import PageHero from '../components/PageHero'
 import Section from '../components/Section'
+import { useToast } from '../components/Toast'
 import { useI18n } from '../i18n'
-import { getUserTier } from '../utils/tier'
+import { getUserTier, redeemPromoCode } from '../utils/tier'
 
 function PricingPage() {
   const navigate = useNavigate()
   const { currentUser, userData } = useAuth()
   const { t } = useI18n()
+  const toast = useToast()
   const [resolvedTier, setResolvedTier] = useState('free')
+  const [promoCode, setPromoCode] = useState('')
+  const [redeemingCode, setRedeemingCode] = useState(false)
+  const [tierRefresh, setTierRefresh] = useState(0)
 
   useEffect(() => {
     let active = true
@@ -31,9 +36,32 @@ function PricingPage() {
     return () => {
       active = false
     }
-  }, [currentUser, userData?.tier])
+  }, [currentUser, userData?.tier, tierRefresh])
 
   const isPro = Boolean(currentUser && resolvedTier === 'pro')
+
+  async function handleRedeemCode() {
+    if (!promoCode.trim()) {
+      toast.info(t('promoEnterCode'))
+      return
+    }
+    if (!currentUser) {
+      toast.info(t('promoSignInFirst'))
+      navigate('/signin')
+      return
+    }
+    setRedeemingCode(true)
+    const result = await redeemPromoCode(promoCode)
+    setRedeemingCode(false)
+    if (result.blocked) {
+      toast.error(result.message)
+      return
+    }
+    setPromoCode('')
+    // Reflect the new tier on this page without a reload.
+    setTierRefresh(n => n + 1)
+    toast.success(result.message || t('promoApplied'))
+  }
 
   const plans = [
     {
@@ -153,7 +181,31 @@ function PricingPage() {
 
       <p className="pricing-cancel-note">{t('pricingCancelNote')}</p>
 
-      <Section title={t('pricingIncludesTitle')} icon={Shield} delay={0.05}>
+      <Section
+        title={t('promoTitle')}
+        subtitle={t('promoSubtitle')}
+        icon={KeyRound}
+        delay={0.05}
+      >
+        <div className="promo-redeem-row">
+          <input
+            type="text"
+            className="input"
+            placeholder="FOUNDER50"
+            aria-label="FOUNDER50"
+            value={promoCode}
+            onChange={(e) => setPromoCode(e.target.value.toUpperCase())}
+            onKeyDown={(e) => e.key === 'Enter' && handleRedeemCode()}
+            aria-label={t('promoTitle')}
+          />
+          <button className="add-button" onClick={handleRedeemCode} disabled={redeemingCode}>
+            <KeyRound size={16} />
+            <span>{redeemingCode ? t('promoApplying') : t('promoApply')}</span>
+          </button>
+        </div>
+      </Section>
+
+      <Section title={t('pricingIncludesTitle')} icon={Shield} delay={0.1}>
         <div className="pricing-includes">
           <div>
             <h3>{t('pricingIncludeChecksTitle')}</h3>

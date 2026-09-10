@@ -430,8 +430,9 @@ function EditShiftModal({ editing, employees, roles, onSave, onDelete, onClose, 
         <p className="shift-modal-day">{dayLabel}</p>
 
         <div className="shift-modal-field">
-          <label className="shift-modal-label">{t('employee')}</label>
+          <label htmlFor="scheduletable-employee" className="shift-modal-label">{t('employee')}</label>
           <select
+            id="scheduletable-employee"
             className="input"
             value={shift.employee}
             onChange={(e) => {
@@ -451,8 +452,9 @@ function EditShiftModal({ editing, employees, roles, onSave, onDelete, onClose, 
         </div>
 
         <div className="shift-modal-field">
-          <label className="shift-modal-label">{t('role')}</label>
+          <label htmlFor="scheduletable-role" className="shift-modal-label">{t('role')}</label>
           <select
+            id="scheduletable-role"
             className="input"
             value={shift.role}
             onChange={(e) => setShift({ ...shift, role: e.target.value })}
@@ -466,8 +468,9 @@ function EditShiftModal({ editing, employees, roles, onSave, onDelete, onClose, 
 
         <div className="shift-modal-row">
           <div className="shift-modal-field">
-            <label className="shift-modal-label">{t('start')}</label>
+            <label htmlFor="scheduletable-start" className="shift-modal-label">{t('start')}</label>
             <input
+              id="scheduletable-start"
               type="time"
               className="input"
               value={toWallClock(shift.start)}
@@ -475,8 +478,9 @@ function EditShiftModal({ editing, employees, roles, onSave, onDelete, onClose, 
             />
           </div>
           <div className="shift-modal-field">
-            <label className="shift-modal-label">{t('end')}</label>
+            <label htmlFor="scheduletable-end" className="shift-modal-label">{t('end')}</label>
             <input
+              id="scheduletable-end"
               type="time"
               className="input"
               value={toWallClock(shift.end)}

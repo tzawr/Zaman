@@ -505,8 +505,9 @@ function Onboarding() {
 
               <div className="auth-form">
                 <div className="auth-field">
-                  <label className="form-label">{t('yourName')}</label>
+                  <label htmlFor="onboarding-yourName" className="form-label">{t('yourName')}</label>
                   <input
+                    id="onboarding-yourName"
                     type="text"
                     className="input"
                     placeholder={t('employeeNamePlaceholder')}
@@ -516,8 +517,9 @@ function Onboarding() {
                   />
                 </div>
                 <div className="auth-field">
-                  <label className="form-label">{t('yourRoleQuestion')}</label>
+                  <label htmlFor="onboarding-yourRoleQuestion" className="form-label">{t('yourRoleQuestion')}</label>
                   <input
+                    id="onboarding-yourRoleQuestion"
                     type="text"
                     className="input"
                     placeholder={t('roleExamplePlaceholder')}
@@ -556,6 +558,7 @@ function Onboarding() {
                     type="text"
                     className="input"
                     placeholder={t('baristaPlaceholder')}
+                    aria-label={t('baristaPlaceholder')}
                     value={newRole}
                     onChange={e => setNewRole(e.target.value)}
                     onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), addRole())}
@@ -669,6 +672,7 @@ function Onboarding() {
                             min="1"
                             max="20"
                             className="time-input coverage-input"
+                            aria-label={`${t('a11yPeopleNeeded')} — ${t(day.labelKey)}`}
                             value={c}
                             onChange={e => updateCoverage(day.key, e.target.value)}
                           />
@@ -704,8 +708,9 @@ function Onboarding() {
 
               <div className="setup-team-form">
                 <div className="employee-form-field">
-                  <label className="form-label">{t('name')}</label>
+                  <label htmlFor="onboarding-name" className="form-label">{t('name')}</label>
                   <input
+                    id="onboarding-name"
                     type="text"
                     className="input"
                     placeholder={t('employeeNamePlaceholder')}
@@ -715,9 +720,10 @@ function Onboarding() {
                   />
                 </div>
                 <div className="employee-form-field">
-                  <label className="form-label">{t('role')}</label>
+                  <label htmlFor="onboarding-role" className="form-label">{t('role')}</label>
                   {roles.length > 0 ? (
                     <select
+                      id="onboarding-role"
                       className="input"
                       value={empRole}
                       onChange={e => setEmpRole(e.target.value)}
@@ -732,14 +738,16 @@ function Onboarding() {
                       type="text"
                       className="input"
                       placeholder={t('baristaPlaceholder')}
+                      aria-label={t('baristaPlaceholder')}
                       value={empRole}
                       onChange={e => setEmpRole(e.target.value)}
                     />
                   )}
                 </div>
                 <div className="employee-form-field setup-team-hours">
-                  <label className="form-label">{t('targetHoursWeek')}</label>
+                  <label htmlFor="onboarding-targetHoursWeek" className="form-label">{t('targetHoursWeek')}</label>
                   <input
+                    id="onboarding-targetHoursWeek"
                     type="number"
                     min="0"
                     max="80"

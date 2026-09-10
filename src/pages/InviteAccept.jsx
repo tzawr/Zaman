@@ -185,8 +185,9 @@ function InviteAccept() {
 
         <form onSubmit={handleSubmit} className="auth-form">
           <div className="auth-field">
-            <label className="form-label">{t('email')}</label>
+            <label htmlFor="inviteaccept-email" className="form-label">{t('email')}</label>
             <input
+              id="inviteaccept-email"
               type="email"
               className="input"
               placeholder="you@example.com"
@@ -197,8 +198,9 @@ function InviteAccept() {
             />
           </div>
           <div className="auth-field">
-            <label className="form-label">{t('password')}</label>
+            <label htmlFor="inviteaccept-password" className="form-label">{t('password')}</label>
             <input
+              id="inviteaccept-password"
               type="password"
               className="input"
               placeholder={mode === 'signup' ? t('passwordPlaceholder') : t('yourPassword')}

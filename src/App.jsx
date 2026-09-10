@@ -46,6 +46,19 @@ function ProtectedRoute({ children }) {
   return children
 }
 
+// The admin panel was behind ProtectedRoute alone, so any verified account
+// could open it. The data was never at risk — the API checks ADMIN_UIDS and
+// Firestore rules check it again — but the page rendered, and told whoever
+// asked how admin access is granted and what their own UID is.
+//
+// To a non-admin the route now simply does not exist.
+function AdminRoute({ children }) {
+  const { currentUser } = useAuth()
+  if (!currentUser) return <Navigate to="/signin" replace />
+  if (!isAdminUid(currentUser.uid)) return <NotFound />
+  return children
+}
+
 function App() {
   return (
     <I18nProvider>
@@ -187,7 +200,7 @@ function AppShell() {
   <Route path="/my-schedule" element={<ProtectedRoute><MySchedule /></ProtectedRoute>} />
   <Route path="/my-availability" element={<ProtectedRoute><Availability /></ProtectedRoute>} />
   <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
-  <Route path="/admin/users" element={<ProtectedRoute><AdminUsers /></ProtectedRoute>} />
+  <Route path="/admin/users" element={<ProtectedRoute><AdminRoute><AdminUsers /></AdminRoute></ProtectedRoute>} />
 
   <Route path="*" element={<NotFound />} />
 </Routes>

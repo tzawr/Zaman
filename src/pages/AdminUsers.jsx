@@ -60,18 +60,11 @@ function AdminUsers() {
     loadUsers()
   }, [currentUser, loadUsers])
 
+  // AdminRoute already turns this away, so reaching here means the route guard
+  // was bypassed or removed. Send them home rather than confirming the page is
+  // real or explaining how access is granted.
   if (!currentUser) return <Navigate to="/signin" replace />
-  if (!isAdminUid(currentUser.uid)) {
-    return (
-      <main className="app-page">
-        <div className="empty-state">
-          <p>Add your UID to ADMIN_UIDS to show this admin page link.</p>
-          <p style={{ marginTop: 8, opacity: 0.7 }}>Current UID: {currentUser.uid}</p>
-          <p style={{ marginTop: 8, opacity: 0.7 }}>Server-side admin access is also enforced by ADMIN_UIDS on Vercel.</p>
-        </div>
-      </main>
-    )
-  }
+  if (!isAdminUid(currentUser.uid)) return <Navigate to="/dashboard" replace />
 
   async function grantPro(uid) {
     const duration = window.prompt('Duration: 30, 90, 365, or forever', '30')
@@ -127,15 +120,15 @@ function AdminUsers() {
       <Section title="Create promo code" subtitle="Codes are created through Firestore admin rules." icon={Ticket}>
         <form className="employee-form" onSubmit={createPromoCode}>
           <div className="employee-form-row">
-            <input className="input" placeholder="FOUNDER50" value={promoCode} onChange={e => setPromoCode(e.target.value)} />
-            <select className="input" value={promoDuration} onChange={e => setPromoDuration(e.target.value)}>
+            <input className="input" placeholder="FOUNDER50" aria-label="Promo code" value={promoCode} onChange={e => setPromoCode(e.target.value)} />
+            <select className="input" aria-label="Promo code duration" value={promoDuration} onChange={e => setPromoDuration(e.target.value)}>
               <option value="30">30 days</option>
               <option value="90">90 days</option>
               <option value="365">1 year</option>
               <option value="forever">Forever</option>
             </select>
-            <input className="input" placeholder="Max uses blank = unlimited" value={promoMaxUses} onChange={e => setPromoMaxUses(e.target.value)} />
-            <input className="input" type="date" value={promoExpiresAt} onChange={e => setPromoExpiresAt(e.target.value)} />
+            <input className="input" placeholder="Max uses blank = unlimited" aria-label="Maximum uses" value={promoMaxUses} onChange={e => setPromoMaxUses(e.target.value)} />
+            <input className="input" type="date" aria-label="Promo code expiry date" value={promoExpiresAt} onChange={e => setPromoExpiresAt(e.target.value)} />
           </div>
           <button className="add-button" type="submit">Create code</button>
         </form>

@@ -101,8 +101,9 @@ function SignIn() {
 
         <form onSubmit={handleSubmit} className="auth-form">
           <div className="auth-field">
-            <label className="form-label">{t('email')}</label>
+            <label htmlFor="signin-email" className="form-label">{t('email')}</label>
             <input
+              id="signin-email"
               type="email"
               className="input"
               placeholder="you@example.com"
@@ -114,10 +115,11 @@ function SignIn() {
           </div>
           <div className="auth-field">
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <label className="form-label">{t('password')}</label>
+              <label htmlFor="signin-password" className="form-label">{t('password')}</label>
               <Link to="/forgot-password" className="forgot-password-link">{t('forgotPassword')}</Link>
             </div>
             <input
+              id="signin-password"
               type="password"
               className="input"
               placeholder="••••••••"

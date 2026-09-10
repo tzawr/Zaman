@@ -917,6 +917,19 @@ const translations = {
     promoEnterCode: 'Enter a promo code',
     promoApplied: 'Promo code applied',
     promoSignInFirst: 'Sign in to redeem a promo code.',
+
+    // Accessible names for controls that carry no visible <label>. A screen
+    // reader announces these; nothing on screen changes.
+    a11yHour: 'Hour',
+    a11yMinutes: 'Minutes',
+    a11yToggleAmPm: 'Switch between AM and PM',
+    a11yCountryCode: 'Country calling code',
+    a11yWeekStarting: 'Week starting date',
+    a11yFilterSchedule: 'Filter the schedule',
+    a11yRoleName: 'Role name',
+    a11yPeopleNeeded: 'People needed',
+    a11yMinHoursBetween: 'Minimum hours between shifts',
+    a11yVerificationCode: 'Verification code',
   },
   fa: {
     navAbout: 'درباره',
@@ -1833,6 +1846,18 @@ const translations = {
     promoEnterCode: 'کد تخفیف را وارد کنید',
     promoApplied: 'کد تخفیف اعمال شد',
     promoSignInFirst: 'برای استفاده از کد تخفیف وارد حساب شوید.',
+
+    // نام‌های دسترس‌پذیر برای کنترل‌هایی که برچسب دیداری ندارند.
+    a11yHour: 'ساعت',
+    a11yMinutes: 'دقیقه',
+    a11yToggleAmPm: 'جابه‌جایی بین قبل و بعد از ظهر',
+    a11yCountryCode: 'کد کشور',
+    a11yWeekStarting: 'تاریخ شروع هفته',
+    a11yFilterSchedule: 'فیلتر کردن برنامه',
+    a11yRoleName: 'نام نقش',
+    a11yPeopleNeeded: 'تعداد افراد لازم',
+    a11yMinHoursBetween: 'حداقل ساعت فاصله بین شیفت‌ها',
+    a11yVerificationCode: 'کد تأیید',
   },
 }
 

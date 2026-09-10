@@ -17,7 +17,10 @@
   /* Text */
   --text-primary: #EAF2FF;
   --text-secondary: #AAB6CB;
-  --text-tertiary: #71809A;
+  /* Was #71809A, which read at 4.09:1 on --bg-hover and 4.46:1 on
+     --bg-elevated — under the 4.5:1 body-text floor on the two surfaces this
+     token is most used on. #8391AB clears it on every background here. */
+  --text-tertiary: #8391AB;
   --text-disabled: #46546C;
 
   /* Accent — primary gradient colors */
@@ -7973,7 +7976,10 @@ input[type="time"]::-webkit-calendar-picker-indicator:hover {
 
   --text-primary: #06101F;
   --text-secondary: #42516A;
-  --text-tertiary: #71809A;
+  /* Light mode was the worse of the two: #71809A read at 3.62:1 on
+     --bg-elevated and never cleared 4.5:1 even on pure white. This clears the
+     floor on all four light surfaces, --bg-hover included. */
+  --text-tertiary: #5B6880;
   --text-disabled: #AAB6CB;
 
   --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);

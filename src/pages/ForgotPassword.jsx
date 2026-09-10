@@ -64,8 +64,9 @@ function ForgotPassword() {
 
             <form onSubmit={handleSubmit} className="auth-form">
               <div className="auth-field">
-                <label className="form-label">{t('email')}</label>
+                <label htmlFor="forgotpassword-email" className="form-label">{t('email')}</label>
                 <input
+                  id="forgotpassword-email"
                   type="email"
                   className="input"
                   placeholder="you@example.com"

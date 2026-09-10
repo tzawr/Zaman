@@ -364,8 +364,9 @@ function Profile() {
       <Section title={t('personalInfo')} subtitle={t('personalInfoSubtitle')} icon={User}>
         <div className="profile-edit-grid">
           <div className="auth-field">
-            <label className="form-label">{t('displayName')}</label>
+            <label htmlFor="profile-displayName" className="form-label">{t('displayName')}</label>
             <input
+              id="profile-displayName"
               type="text"
               className="input"
               placeholder={t('yourName')}
@@ -376,8 +377,9 @@ function Profile() {
           </div>
           {!isEmployee && (
             <div className="auth-field">
-              <label className="form-label">{t('businessName')}</label>
+              <label htmlFor="profile-businessName" className="form-label">{t('businessName')}</label>
               <input
+                id="profile-businessName"
                 type="text"
                 className="input"
                 placeholder={t('businessNamePlaceholder')}
@@ -447,6 +449,7 @@ function Profile() {
               type="email"
               className="input"
               placeholder={t('newEmailAddress')}
+              aria-label={t('newEmailAddress')}
               value={newEmail}
               onChange={(e) => setNewEmail(e.target.value)}
             />
@@ -455,6 +458,7 @@ function Profile() {
                 type="password"
                 className="input"
                 placeholder={t('currentPasswordConfirm')}
+                aria-label={t('currentPasswordConfirm')}
                 value={emailReauthPassword}
                 onChange={(e) => setEmailReauthPassword(e.target.value)}
               />
@@ -491,6 +495,7 @@ function Profile() {
             <div className="phone-input-row">
               <select
                 className="input phone-country-select"
+                aria-label={t('a11yCountryCode')}
                 value={countryCode}
                 onChange={(e) => setCountryCode(e.target.value)}
               >
@@ -504,6 +509,7 @@ function Profile() {
                 type="tel"
                 className="input"
                 placeholder="555 000 1234"
+                aria-label={t('phoneNumber')}
                 value={phoneNumber}
                 onChange={(e) => setPhoneNumber(e.target.value)}
                 style={{ flex: 1 }}
@@ -541,6 +547,7 @@ function Profile() {
               type="text"
               className="input"
               placeholder="000000"
+              aria-label={t('a11yVerificationCode')}
               maxLength={6}
               value={phoneCode}
               onChange={(e) => setPhoneCode(e.target.value)}
@@ -586,6 +593,7 @@ function Profile() {
                   type="password"
                   className="input"
                   placeholder={t('currentPassword')}
+                  aria-label={t('currentPassword')}
                   value={currentPassword}
                   onChange={(e) => setCurrentPassword(e.target.value)}
                   autoComplete="current-password"
@@ -594,6 +602,7 @@ function Profile() {
                   type="password"
                   className="input"
                   placeholder={t('newPasswordPlaceholder')}
+                  aria-label={t('newPasswordPlaceholder')}
                   value={newPassword}
                   onChange={(e) => setNewPassword(e.target.value)}
                   autoComplete="new-password"
@@ -602,6 +611,7 @@ function Profile() {
                   type="password"
                   className="input"
                   placeholder={t('confirmNewPassword')}
+                  aria-label={t('confirmNewPassword')}
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
                   autoComplete="new-password"

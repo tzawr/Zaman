@@ -101,8 +101,9 @@ function SignUp() {
 
         <form onSubmit={handleSubmit} className="auth-form">
           <div className="auth-field">
-            <label className="form-label">{t('email')}</label>
+            <label htmlFor="signup-email" className="form-label">{t('email')}</label>
             <input
+              id="signup-email"
               type="email"
               className="input"
               placeholder="you@example.com"
@@ -113,8 +114,9 @@ function SignUp() {
             />
           </div>
           <div className="auth-field">
-            <label className="form-label">{t('password')}</label>
+            <label htmlFor="signup-password" className="form-label">{t('password')}</label>
             <input
+              id="signup-password"
               type="password"
               className="input"
               placeholder={t('passwordPlaceholder')}

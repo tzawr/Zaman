@@ -1,8 +1,11 @@
+import { useI18n } from '../i18n'
+
 const MINUTES = ['00', '15', '30', '45']
 
 // Shared 12-hour time control used for both employee availability and
 // workspace operating hours so the two read identically.
 function TimeSelect({ value, disabled, onChange }) {
+  const { t } = useI18n()
   const [rawH = '09', rawM = '00'] = (value || '09:00').split(':')
   const totalH = parseInt(rawH, 10)
   const period = totalH < 12 ? 'AM' : 'PM'
@@ -18,18 +21,18 @@ function TimeSelect({ value, disabled, onChange }) {
 
   return (
     <div className={`time-select${disabled ? ' disabled' : ''}`}>
-      <select className="time-select-hour" value={h12} disabled={disabled}
+      <select className="time-select-hour" aria-label={t('a11yHour')} value={h12} disabled={disabled}
         onChange={e => emit(parseInt(e.target.value, 10), m, period)}>
         {[12, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11].map(h => (
           <option key={h} value={h}>{h}</option>
         ))}
       </select>
       <span className="time-select-colon">:</span>
-      <select className="time-select-min" value={m} disabled={disabled}
+      <select className="time-select-min" aria-label={t('a11yMinutes')} value={m} disabled={disabled}
         onChange={e => emit(h12, e.target.value, period)}>
         {MINUTES.map(min => <option key={min} value={min}>{min}</option>)}
       </select>
-      <button type="button" className="time-select-ampm" disabled={disabled}
+      <button type="button" className="time-select-ampm" aria-label={t('a11yToggleAmPm')} disabled={disabled}
         onClick={() => emit(h12, m, period === 'AM' ? 'PM' : 'AM')}>
         {period}
       </button>

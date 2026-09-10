@@ -372,6 +372,7 @@ function Schedule() {
     <input
       type="date"
       className="input gen-week-input"
+      aria-label={t('a11yWeekStarting')}
       value={weekStart}
       onChange={(e) => setWeekStart(e.target.value)}
     />
@@ -422,6 +423,7 @@ function Schedule() {
     <textarea
       className="ai-instr-textarea"
       placeholder={t('specialInstructionsPlaceholder')}
+      aria-label={t('specialInstructionsPlaceholder')}
       value={prompt}
       onChange={(e) => setPrompt(e.target.value)}
       rows={4}

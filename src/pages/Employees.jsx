@@ -205,8 +205,9 @@ function Employees() {
           <div className="employee-form">
             <div className="employee-form-row">
               <div className="employee-form-field">
-                <label className="form-label">{t('name')}</label>
+                <label htmlFor="employees-name" className="form-label">{t('name')}</label>
                 <input
+                  id="employees-name"
                   type="text"
                   className="input"
                   placeholder={t('employeeNamePlaceholder')}
@@ -216,8 +217,8 @@ function Employees() {
                 />
               </div>
               <div className="employee-form-field">
-                <label className="form-label">{t('role')}</label>
-                <select 
+                <label htmlFor="employees-role" className="form-label">{t('role')}</label>
+                <select id="employees-role" 
                   className="input"
                   value={role}
                   onChange={(e) => setRole(e.target.value)}
@@ -228,8 +229,9 @@ function Employees() {
                 </select>
               </div>
               <div className="employee-form-field employee-form-field-small">
-                <label className="form-label">{t('targetHoursWeek')}</label>
+                <label htmlFor="employees-targetHoursWeek" className="form-label">{t('targetHoursWeek')}</label>
                 <input
+                  id="employees-targetHoursWeek"
                   type="number"
                   min="0"
                   max="80"

@@ -403,6 +403,7 @@ function Schedules() {
                         </div>
                         <select
                           className="input schedule-filter-select"
+                          aria-label={t('a11yFilterSchedule')}
                           value={filterValue}
                           onChange={(e) => setFilterValue(e.target.value)}
                         >
