@@ -927,6 +927,26 @@
   border: 1px solid #fecaca;
 }
 
+/* Consent line under the sign-up form. Uses --text-tertiary, which now clears
+   4.5:1, so it reads as secondary without dropping below the contrast floor. */
+.auth-consent {
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--text-tertiary);
+  margin: 0 0 16px;
+  text-align: center;
+}
+
+.auth-consent a {
+  color: var(--text-secondary);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.auth-consent a:hover {
+  color: var(--text-primary);
+}
+
 .auth-success {
   background: rgba(16, 185, 129, 0.1);
   color: #10b981;

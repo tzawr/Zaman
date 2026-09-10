@@ -1,4 +1,4 @@
-import { FileText, Users, AlertTriangle, Scale } from 'lucide-react'
+import { FileText, Users, AlertTriangle, Scale, CreditCard, Building2 } from 'lucide-react'
 import PageHero from '../components/PageHero'
 import Section from '../components/Section'
 import { useI18n } from '../i18n'
@@ -47,7 +47,24 @@ function Terms() {
         </div>
       </Section>
 
-      <Section title={t('termsLiabilityTitle')} icon={Scale} delay={0.2}>
+      <Section title={t('termsBillingTitle')} icon={CreditCard} delay={0.2}>
+        <div className="legal-text">
+          <p>{t('termsBillingP1')}</p>
+          <p>{t('termsBillingP2')}</p>
+          <p>{t('termsBillingP3')}</p>
+          <p><strong>{t('termsBillingRefundStrong')}</strong> — {t('termsBillingP4')}</p>
+          <p>{t('termsBillingP5')}</p>
+        </div>
+      </Section>
+
+      <Section title={t('termsBusinessTitle')} icon={Building2} delay={0.25}>
+        <div className="legal-text">
+          <p>{t('termsBusinessP1')}</p>
+          <p>{t('termsBusinessP2')}</p>
+        </div>
+      </Section>
+
+      <Section title={t('termsLiabilityTitle')} icon={Scale} delay={0.3}>
         <div className="legal-text">
           <p>{t('termsLiabilityP1')}</p>
           <p>{t('termsLiabilityP2')}</p>

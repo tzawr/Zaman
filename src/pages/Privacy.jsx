@@ -1,4 +1,4 @@
-import { Shield, Database, User } from 'lucide-react'
+import { Shield, Database, User, Cookie, Building2, Scale } from 'lucide-react'
 import PageHero from '../components/PageHero'
 import Section from '../components/Section'
 import { useI18n } from '../i18n'
@@ -47,7 +47,58 @@ function Privacy() {
         </div>
       </Section>
 
-      <Section title={t('privacyRightsTitle')} icon={User} delay={0.2}>
+      <Section title={t('privacySubprocessorsTitle')} icon={Shield} delay={0.2}>
+        <div className="legal-text">
+          <p>{t('privacySubprocessorsIntro')}</p>
+          <ul>
+            <li>{t('privacySubFirebase')}</li>
+            <li>{t('privacySubVercel')}</li>
+            <li>{t('privacySubAnthropic')}</li>
+            <li>{t('privacySubResend')}</li>
+          </ul>
+          <p>{t('privacySubprocessorsP1')}</p>
+        </div>
+      </Section>
+
+      <Section title={t('privacyCookiesTitle')} icon={Cookie} delay={0.25}>
+        <div className="legal-text">
+          <p>{t('privacyCookiesIntro')}</p>
+          <ul>
+            <li>{t('privacyCookies1')}</li>
+            <li>{t('privacyCookies2')}</li>
+            <li>{t('privacyCookies3')}</li>
+          </ul>
+          <p>{t('privacyCookiesP1')}</p>
+          <p>{t('privacyCookiesP2')}</p>
+        </div>
+      </Section>
+
+      <Section title={t('privacyLawsTitle')} icon={Scale} delay={0.3}>
+        <div className="legal-text">
+          <p>{t('privacyLawsIntro')}</p>
+          <ul>
+            <li>{t('privacyLaws1')}</li>
+            <li>{t('privacyLaws2')}</li>
+            <li>{t('privacyLaws3')}</li>
+            <li>{t('privacyLaws4')}</li>
+            <li>{t('privacyLaws5')}</li>
+          </ul>
+          <p>{t('privacyLawsP1')}</p>
+          <p>{t('privacyLawsP2')}</p>
+        </div>
+      </Section>
+
+      <Section title={t('privacyBusinessTitle')} icon={Building2} delay={0.35}>
+        <div className="legal-text">
+          <p>{t('privacyBusinessP1')}</p>
+          <p>
+            {t('privacyBusinessP2')}{' '}
+            <a href="mailto:aliseyfiazadsa6@gmail.com">aliseyfiazadsa6@gmail.com</a>.
+          </p>
+        </div>
+      </Section>
+
+      <Section title={t('privacyRightsTitle')} icon={User} delay={0.4}>
         <div className="legal-text">
           <p>
             {t('privacyRightsP1')}{' '}

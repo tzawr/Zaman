@@ -130,6 +130,17 @@ function SignUp() {
 
           {error && <div className="auth-error">{error}</div>}
 
+          {/* The form collects a name and an email and creates a binding
+              account, with nothing on screen saying what the user is agreeing
+              to. Stated at the point of submission, where consent belongs. */}
+          <p className="auth-consent">
+            {t('signupConsentBefore')}{' '}
+            <Link to="/terms">{t('terms')}</Link>{' '}
+            {t('signupConsentAnd')}{' '}
+            <Link to="/privacy">{t('privacy')}</Link>
+            {t('signupConsentAfter')}
+          </p>
+
           <button 
             type="submit"
             className="landing-cta-primary auth-submit"

@@ -192,7 +192,6 @@ function PricingPage() {
             type="text"
             className="input"
             placeholder="FOUNDER50"
-            aria-label="FOUNDER50"
             value={promoCode}
             onChange={(e) => setPromoCode(e.target.value.toUpperCase())}
             onKeyDown={(e) => e.key === 'Enter' && handleRedeemCode()}
