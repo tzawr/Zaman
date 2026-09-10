@@ -1,0 +1,17 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "hengam-dev",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev"],
+      "port": 5173
+    },
+    {
+      "name": "csp-check",
+      "runtimeExecutable": "node",
+      "runtimeArgs": ["/private/tmp/claude-501/-Users-aseifiazad-Desktop-Zaman/84bd0289-cc6d-4cc1-b810-9fa43679eaba/scratchpad/csp-server.mjs"],
+      "port": 4178
+    }
+  ]
+}
