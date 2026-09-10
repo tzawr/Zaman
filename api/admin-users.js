@@ -1,5 +1,6 @@
 import { FieldValue, Timestamp } from 'firebase-admin/firestore'
 import { adminDb, requireServerAdmin, sendError } from './_firebase-admin.js'
+import { consumeRateLimit, sendRateLimited } from './_rate-limit.js'
 
 function expiresFromDuration(duration) {
   if (duration === 'forever') return null
@@ -88,6 +89,15 @@ async function createPromo(req, res, adminUid) {
 export default async function handler(req, res) {
   try {
     const decoded = await requireServerAdmin(req)
+
+    // Admin-only, so this is not the front line — but the GET lists every user
+    // and every override in one response, and a leaked admin session should not
+    // also be an unmetered way to pull the whole user table.
+    const limit = await consumeRateLimit('admin-users', decoded.uid, 120, 60 * 60)
+    if (!limit.allowed) {
+      return sendRateLimited(res, limit.retryAfterSeconds, 'Too many admin requests. Try again shortly.')
+    }
+
     if (req.method === 'GET') return listUsers(res)
     if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' })
     const action = req.body?.action
