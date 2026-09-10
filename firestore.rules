@@ -222,6 +222,11 @@ function isAdmin() {
         !changedKeys().hasAny(billingFields()) &&
         (!changedKeys().hasAny(linkFields()) || inviteBacksLink())
       );
+
+      // Erasure is a right, so a user can always remove their own record. The
+      // full delete runs server-side through the Admin SDK, which bypasses
+      // rules; this covers the direct case and makes the right explicit.
+      allow delete: if isAdmin() || (signedIn() && request.auth.uid == uid);
     }
   }
 }

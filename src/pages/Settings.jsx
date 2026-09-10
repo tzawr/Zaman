@@ -1,13 +1,15 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Loader2, ArrowLeft, Check, X, ArrowRight, Pencil, Trash2, Plus, Clock, Shield, Target, Users, Eye, KeyRound, Lock, AlignLeft, Mic, MicOff } from 'lucide-react'
+import { Loader2, ArrowLeft, Check, X, ArrowRight, Pencil, Trash2, Plus, Clock, Shield, Target, Users, Eye, KeyRound, Lock, AlignLeft, Mic, MicOff, AlertTriangle } from 'lucide-react'
 import { doc, onSnapshot, setDoc, serverTimestamp, collection, query, where, getDocs, writeBatch } from 'firebase/firestore'
 import {
   updatePassword,
   reauthenticateWithCredential,
+  reauthenticateWithPopup,
   EmailAuthProvider,
   sendPasswordResetEmail,
 } from 'firebase/auth'
+import { googleProvider } from '../firebase'
 import { db, auth } from '../firebase'
 import { useAuth } from '../AuthContext'
 import { useToast } from '../components/Toast'
@@ -48,7 +50,7 @@ function toMinutes(value, isClosing = true) {
 
 function Settings() {
   const navigate = useNavigate()
-  const { currentUser } = useAuth()
+  const { currentUser, logOut } = useAuth()
   const toast = useToast()
   const { t, tf } = useI18n()
 
@@ -207,6 +209,12 @@ function Settings() {
     toast.success(`${t('deletedPrefix')} "${name}"`)
   }
 
+  const [showDeleteAccount, setShowDeleteAccount] = useState(false)
+  const [deletePassword, setDeletePassword] = useState('')
+  const [deleteConfirmText, setDeleteConfirmText] = useState('')
+  const [deleteLoading, setDeleteLoading] = useState(false)
+  const [deleteMsg, setDeleteMsg] = useState('')
+
   const hasPasswordProvider = currentUser?.providerData?.some(p => p.providerId === 'password')
 
   async function handlePasswordChange() {
@@ -230,6 +238,58 @@ function Settings() {
       }
     } finally {
       setPasswordChangeLoading(false)
+    }
+  }
+
+  // The Terms promised this and the app did not have it. Deleting is done by
+  // the server, which owns the whole erase: a browser loop that gets halfway
+  // through a hundred documents and drops its connection leaves an account
+  // half-erased with nothing recording how far it got.
+  async function handleDeleteAccount() {
+    if (deleteConfirmText.trim().toUpperCase() !== 'DELETE') {
+      setDeleteMsg(t('deleteAccountTypeMismatch'))
+      return
+    }
+    setDeleteLoading(true)
+    setDeleteMsg('')
+    try {
+      // Prove it is really them, right now. The endpoint checks the token's
+      // auth_time and refuses anything older than five minutes, so a session
+      // left open for a week cannot erase an account on its own.
+      if (hasPasswordProvider) {
+        if (!deletePassword) { setDeleteMsg(t('enterCurrentPassword')); setDeleteLoading(false); return }
+        const cred = EmailAuthProvider.credential(currentUser.email, deletePassword)
+        await reauthenticateWithCredential(currentUser, cred)
+      } else {
+        await reauthenticateWithPopup(currentUser, googleProvider)
+      }
+
+      const token = await currentUser.getIdToken(true)
+      const resp = await fetch('/api/delete-account', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      })
+      if (!resp.ok) {
+        const body = await resp.json().catch(() => ({}))
+        setDeleteMsg(body.message || t('deleteAccountFailed'))
+        setDeleteLoading(false)
+        return
+      }
+
+      toast.success(t('deleteAccountDone'))
+      // The auth user is gone, so the session is already void; this clears the
+      // local one and drops them on the landing page.
+      await logOut().catch(() => {})
+      navigate('/', { replace: true })
+    } catch (err) {
+      if (err.code === 'auth/wrong-password' || err.code === 'auth/invalid-credential') {
+        setDeleteMsg(t('deleteAccountWrongPassword'))
+      } else if (err.code === 'auth/popup-closed-by-user' || err.code === 'auth/cancelled-popup-request') {
+        setDeleteMsg(t('deleteAccountReauthFailed'))
+      } else {
+        setDeleteMsg(t('deleteAccountFailed'))
+      }
+      setDeleteLoading(false)
     }
   }
 
@@ -600,6 +660,99 @@ function Settings() {
           )}
         </Section>
       )}
+
+      <Section
+        title={t('deleteAccountTitle')}
+        subtitle={t('deleteAccountSubtitle')}
+        icon={AlertTriangle}
+        delay={0.35}
+      >
+        <div className="danger-zone">
+          <p>{t('deleteAccountIntro')}</p>
+          <ul>
+            <li>{t('deleteAccountItem1')}</li>
+            <li>{t('deleteAccountItem2')}</li>
+            <li>{t('deleteAccountItem3')}</li>
+            <li>{t('deleteAccountItem4')}</li>
+          </ul>
+          <p className="danger-zone-note">{t('deleteAccountEmployeeNote')}</p>
+          <p className="danger-zone-warning">{t('deleteAccountWarning')}</p>
+
+          {!showDeleteAccount ? (
+            <button
+              type="button"
+              className="danger-button"
+              onClick={() => setShowDeleteAccount(true)}
+            >
+              <Trash2 size={14} />
+              <span>{t('deleteAccountButton')}</span>
+            </button>
+          ) : (
+            <div className="danger-zone-confirm">
+              <p className="danger-zone-confirm-title">{t('deleteAccountConfirmTitle')}</p>
+
+              {hasPasswordProvider ? (
+                <>
+                  <label htmlFor="settings-delete-password" className="form-label">
+                    {t('deleteAccountConfirmPassword')}
+                  </label>
+                  <input
+                    id="settings-delete-password"
+                    type="password"
+                    className="input"
+                    value={deletePassword}
+                    onChange={(e) => setDeletePassword(e.target.value)}
+                    autoComplete="current-password"
+                  />
+                </>
+              ) : (
+                <p className="danger-zone-note">{t('deleteAccountConfirmGoogle')}</p>
+              )}
+
+              {/* A typed word, so the last click cannot be a mis-tap. */}
+              <label htmlFor="settings-delete-confirm" className="form-label">
+                {t('deleteAccountTypeToConfirm')}
+              </label>
+              <input
+                id="settings-delete-confirm"
+                type="text"
+                className="input"
+                placeholder={t('deleteAccountTypeWord')}
+                value={deleteConfirmText}
+                onChange={(e) => setDeleteConfirmText(e.target.value)}
+                autoComplete="off"
+              />
+
+              {deleteMsg && <div className="auth-error">{deleteMsg}</div>}
+
+              <div className="danger-zone-actions">
+                <button
+                  type="button"
+                  className="danger-button"
+                  onClick={handleDeleteAccount}
+                  disabled={deleteLoading || deleteConfirmText.trim().toUpperCase() !== 'DELETE'}
+                >
+                  {deleteLoading ? <Loader2 size={14} className="spin" /> : <Trash2 size={14} />}
+                  <span>{deleteLoading ? t('deleteAccountDeleting') : t('deleteAccountConfirmButton')}</span>
+                </button>
+                <button
+                  type="button"
+                  className="link-button"
+                  onClick={() => {
+                    setShowDeleteAccount(false)
+                    setDeletePassword('')
+                    setDeleteConfirmText('')
+                    setDeleteMsg('')
+                  }}
+                  disabled={deleteLoading}
+                >
+                  {t('deleteAccountCancel')}
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      </Section>
 
     </main>
   )

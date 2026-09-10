@@ -927,6 +927,80 @@
   border: 1px solid #fecaca;
 }
 
+/* Account deletion. Styled as a distinct danger zone so it never reads as one
+   more settings row — it is the only irreversible control on the page. */
+.danger-zone {
+  border: 1px solid var(--danger-border, rgba(239, 68, 68, 0.35));
+  background: var(--danger-bg, rgba(239, 68, 68, 0.06));
+  border-radius: 12px;
+  padding: 20px;
+  font-size: 14px;
+  line-height: 1.65;
+  color: var(--text-secondary);
+}
+
+.danger-zone p { margin: 0 0 10px; }
+.danger-zone ul { margin: 0 0 12px; padding-inline-start: 20px; }
+.danger-zone li { margin-bottom: 4px; }
+
+.danger-zone-note {
+  color: var(--text-tertiary);
+  font-size: 13px;
+}
+
+.danger-zone-warning {
+  font-weight: 600;
+  color: var(--danger, #ef4444);
+}
+
+.danger-zone-confirm {
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid var(--danger-border, rgba(239, 68, 68, 0.25));
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.danger-zone-confirm-title {
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 0 0 4px !important;
+}
+
+.danger-zone-actions {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+  margin-top: 6px;
+}
+
+.danger-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  border-radius: 10px;
+  border: 1px solid var(--danger, #ef4444);
+  background: transparent;
+  color: var(--danger, #ef4444);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.danger-button:hover:not(:disabled) {
+  background: var(--danger, #ef4444);
+  color: #fff;
+}
+
+.danger-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 /* Consent line under the sign-up form. Uses --text-tertiary, which now clears
    4.5:1, so it reads as secondary without dropping below the contrast floor. */
 .auth-consent {
