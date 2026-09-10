@@ -1002,6 +1002,10 @@ const translations = {
     deleteAccountTypeMismatch: 'Type DELETE exactly to confirm.',
     deleteAccountFailed: 'We could not delete your account. Email us and we will do it by hand.',
     deleteAccountReauthFailed: 'Confirm it is you, then try again.',
+
+    footerOperator: 'Hengam is run as a sole proprietorship in Irvine, California, USA.',
+    footerRefunds: 'Refunds',
+    footerCookies: 'Cookies',
   },
   fa: {
     navAbout: 'درباره',
@@ -2002,6 +2006,10 @@ const translations = {
     deleteAccountTypeMismatch: 'برای تأیید، دقیقاً DELETE را تایپ کنید.',
     deleteAccountFailed: 'نتوانستیم حساب شما را حذف کنیم. به ما ایمیل بزنید تا دستی انجامش دهیم.',
     deleteAccountReauthFailed: 'هویت خود را تأیید کنید و دوباره تلاش کنید.',
+
+    footerOperator: 'هنگام را یک کسب‌وکار انفرادی در اروین، کالیفرنیا اداره می‌کند.',
+    footerRefunds: 'بازپرداخت',
+    footerCookies: 'کوکی‌ها',
   },
 }
 

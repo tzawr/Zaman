@@ -41,4 +41,3 @@ function TimeSelect({ value, disabled, onChange }) {
 }
 
 export default TimeSelect
-export { MINUTES }

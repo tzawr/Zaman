@@ -51,6 +51,8 @@ function Footer() {
               <ul className="footer-list">
                 <li><Link to="/privacy">{t('privacy')}</Link></li>
                 <li><Link to="/terms">{t('terms')}</Link></li>
+                <li><Link to="/terms">{t('footerRefunds')}</Link></li>
+                <li><Link to="/privacy">{t('footerCookies')}</Link></li>
               </ul>
             </div>
           </div>
@@ -60,6 +62,9 @@ function Footer() {
           <p className="footer-copyright">
             © {year} Hengam. {t('footerRights')}
           </p>
+          {/* Who is behind the site, on every page rather than only in the
+              legal pages nobody opens. */}
+          <p className="footer-operator">{t('footerOperator')}</p>
           <p className="footer-made">
             {t('footerMade')}
           </p>
