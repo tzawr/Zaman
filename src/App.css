@@ -14171,6 +14171,27 @@ input[type="time"]::-webkit-calendar-picker-indicator:hover {
   box-shadow: 0 0 0 6px rgba(96, 165, 250, 0.18);
 }
 
+/* Form controls were left out of the ring above, and several of them set
+   `outline: none` with only a tint in its place — the hour and minute pickers
+   swapped theirs for an 8%-opacity background, which is not a focus indicator
+   anyone can see. Someone navigating by keyboard has to be able to tell which
+   field they are in.
+
+   Scoped to :focus-visible, so a mouse click still gets the quieter styling
+   each control defines for itself. */
+.app input:focus-visible,
+.app select:focus-visible,
+.app textarea:focus-visible,
+.app .input:focus-visible,
+.app .time-input:focus-visible,
+.app .time-select-hour:focus-visible,
+.app .time-select-min:focus-visible,
+.app .prompt-textarea:focus-visible,
+.app .ai-instr-textarea:focus-visible {
+  outline: 2px solid rgba(147, 197, 253, 0.82);
+  outline-offset: 2px;
+}
+
 .app .navbar-icon-button:not(:disabled):hover,
 .app .navbar-language-button:not(:disabled):hover,
 .app .theme-toggle-btn:not(:disabled):hover,
