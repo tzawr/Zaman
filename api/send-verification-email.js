@@ -13,6 +13,31 @@ function escapeHtml(value) {
     .replace(/'/g, '&#39;')
 }
 
+// Resend's onboarding@resend.dev is a sandbox sender shared with every other
+// project on the platform, so its reputation is not ours and mail from it lands
+// in spam often enough to quietly break signups — and this email gates every
+// new account, since ProtectedRoute bounces anyone unverified.
+//
+// Requires hengam.app to be verified in Resend first. Sending from an
+// unverified domain is rejected outright, so verify before deploying this.
+function mailFrom() {
+  const configured = (process.env.MAIL_FROM || '').trim()
+  // Either "Name <user@domain>" or a bare address; anything else is a
+  // misconfiguration that would be rejected by the API anyway.
+  if (/^[^<>]*<[^@<>\s]+@[\w.-]+\.[a-z]{2,}>$/i.test(configured) ||
+      /^[^@<>\s]+@[\w.-]+\.[a-z]{2,}$/i.test(configured)) {
+    return configured
+  }
+  return 'Hengam <noreply@hengam.app>'
+}
+
+// Verification mail is no-reply, but people reply to it anyway. Point those at
+// an address a human reads instead of letting them vanish.
+function replyTo() {
+  const configured = (process.env.MAIL_REPLY_TO || '').trim()
+  return /^[^@<>\s]+@[\w.-]+\.[a-z]{2,}$/i.test(configured) ? configured : 'hello@hengam.app'
+}
+
 // The link in the email must point at Hengam and nowhere else. Taking it from
 // the request body would let anyone send a Hengam-branded email whose button
 // goes to a site they control.
@@ -135,7 +160,8 @@ export default async function handler(req, res) {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        from: 'Hengam <onboarding@resend.dev>',
+        from: mailFrom(),
+        reply_to: replyTo(),
         to: [email],
         subject: 'Verify your Hengam account',
         html,
