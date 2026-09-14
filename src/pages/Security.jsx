@@ -41,7 +41,7 @@ function Security() {
         <div className="legal-text">
           <p>
             {t('securityDisclosureP1')}{' '}
-            <a href="mailto:aliseyfiazadsa6@gmail.com">aliseyfiazadsa6@gmail.com</a>{' '}
+            <a href="mailto:hello@hengam.app">hello@hengam.app</a>{' '}
             {t('securityDisclosureP1Tail')}
           </p>
           <p>{t('securityDisclosureP2')}</p>

@@ -93,7 +93,7 @@ function Privacy() {
           <p>{t('privacyBusinessP1')}</p>
           <p>
             {t('privacyBusinessP2')}{' '}
-            <a href="mailto:aliseyfiazadsa6@gmail.com">aliseyfiazadsa6@gmail.com</a>.
+            <a href="mailto:hello@hengam.app">hello@hengam.app</a>.
           </p>
         </div>
       </Section>
@@ -102,7 +102,7 @@ function Privacy() {
         <div className="legal-text">
           <p>
             {t('privacyRightsP1')}{' '}
-            <a href="mailto:aliseyfiazadsa6@gmail.com">aliseyfiazadsa6@gmail.com</a>.
+            <a href="mailto:hello@hengam.app">hello@hengam.app</a>.
           </p>
           <p>{t('privacyRightsP2')}</p>
         </div>

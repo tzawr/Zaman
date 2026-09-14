@@ -71,7 +71,7 @@ function Terms() {
           <p>{t('termsLiabilityP3')}</p>
           <p>
             {t('termsLiabilityP4')}{' '}
-            <a href="mailto:aliseyfiazadsa6@gmail.com">aliseyfiazadsa6@gmail.com</a>.
+            <a href="mailto:hello@hengam.app">hello@hengam.app</a>.
           </p>
         </div>
       </Section>

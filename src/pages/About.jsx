@@ -33,7 +33,7 @@ function About() {
         <div className="legal-text">
           <p>
             {t('aboutContactP1')}{' '}
-            <a href="mailto:aliseyfiazadsa6@gmail.com">aliseyfiazadsa6@gmail.com</a>.
+            <a href="mailto:hello@hengam.app">hello@hengam.app</a>.
           </p>
         </div>
       </Section>

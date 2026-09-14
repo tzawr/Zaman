@@ -40,7 +40,7 @@ function Footer() {
             <div className="footer-col">
               <h4 className="footer-col-title">{t('company')}</h4>
               <ul className="footer-list">
-                <li><a href="mailto:aliseyfiazadsa6@gmail.com">{t('contact')}</a></li>
+                <li><a href="mailto:hello@hengam.app">{t('contact')}</a></li>
                 <li><Link to="/about">{t('navAbout')}</Link></li>
                 <li><Link to="/security">{t('navSecurity')}</Link></li>
               </ul>
