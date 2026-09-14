@@ -28,7 +28,6 @@ const InviteAccept = lazy(() => import('./pages/InviteAccept'))
 const MySchedule = lazy(() => import('./pages/MySchedule'))
 const Invite = lazy(() => import('./pages/Invite'))
 const VerifyEmail = lazy(() => import('./pages/VerifyEmail'))
-const VerifyEmailToken = lazy(() => import('./pages/VerifyEmailToken'))
 const ForgotPassword = lazy(() => import('./pages/ForgotPassword'))
 const Profile = lazy(() => import('./pages/Profile'))
 const AdminUsers = lazy(() => import('./pages/AdminUsers'))
@@ -180,7 +179,6 @@ function AppShell() {
   <Route path="/signup" element={<SignUp />} />
   <Route path="/signin" element={<SignIn />} />
   <Route path="/verify-email" element={<VerifyEmail />} />
-  <Route path="/verify-email/:token" element={<VerifyEmailToken />} />
   <Route path="/forgot-password" element={<ForgotPassword />} />
   <Route path="/invite/:token" element={<InviteAccept />} />
   <Route path="/privacy" element={<Privacy />} />
