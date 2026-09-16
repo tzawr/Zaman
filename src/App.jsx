@@ -32,6 +32,7 @@ const ForgotPassword = lazy(() => import('./pages/ForgotPassword'))
 const Profile = lazy(() => import('./pages/Profile'))
 const AdminUsers = lazy(() => import('./pages/AdminUsers'))
 const NotFound = lazy(() => import('./pages/NotFound'))
+const LandingCinematic = lazy(() => import('./pages/LandingCinematic'))
 import { I18nProvider, useI18n } from './i18n'
 import { isAdminUid } from './utils/admin'
 import { getUserTier } from './utils/tier'
@@ -186,6 +187,7 @@ function AppShell() {
   <Route path="/security" element={<Security />} />
   <Route path="/about" element={<About />} />
   <Route path="/pricing" element={<PricingPage />} />
+  <Route path="/preview/cinematic" element={<LandingCinematic />} />
 
   <Route path="/onboarding" element={<ProtectedRoute><Onboarding /></ProtectedRoute>} />
   <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />

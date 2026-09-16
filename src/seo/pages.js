@@ -95,6 +95,7 @@ export const PRIVATE_PAGES = {
   '/admin/users': 'Admin — users',
   '/verify-email': 'Verify your email',
   '/forgot-password': 'Reset your password',
+  '/preview/cinematic': 'Landing preview',
 }
 
 export function metaForPath(pathname) {
