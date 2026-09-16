@@ -37,6 +37,18 @@
 }
 .scroll-clock canvas { display: block; }
 
+/* Local darkening behind the copy so text stays readable without shrinking the clock. */
+.cine-shade {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(90deg, rgba(3, 8, 22, 0.62) 0%, rgba(3, 8, 22, 0.28) 28%, rgba(3, 8, 22, 0) 52%),
+    linear-gradient(0deg, rgba(3, 8, 22, 0.70) 0%, rgba(3, 8, 22, 0.18) 30%, rgba(3, 8, 22, 0) 48%),
+    linear-gradient(180deg, rgba(3, 8, 22, 0.55) 0%, rgba(3, 8, 22, 0) 22%);
+}
+
 .cine-content { position: relative; z-index: 1; }
 
 /* Sections */
