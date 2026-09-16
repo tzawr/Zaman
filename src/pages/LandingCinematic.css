@@ -26,8 +26,8 @@
 @media (min-width: 640px)  { .cine { --cine-px: 32px; } }
 @media (min-width: 768px)  { .cine { --cine-px: 48px; } }
 
-/* Fixed background layer */
-.scroll-clock {
+/* Fixed scroll-scrubbed video layer: poster → video → canvas crossfades */
+.scroll-video {
   position: fixed;
   inset: 0;
   z-index: 0;
@@ -35,7 +35,17 @@
   pointer-events: none;
   background: #030816;
 }
-.scroll-clock canvas { display: block; }
+.scroll-video-layer {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  opacity: 1;
+  transition: opacity 500ms ease;
+}
+.scroll-video-layer.is-hidden { opacity: 0; }
 
 /* Local darkening behind the copy so text stays readable without shrinking the clock. */
 .cine-shade {
@@ -61,6 +71,10 @@
   box-sizing: border-box;
 }
 @supports (height: 100svh) { .cine-section { min-height: 100svh; } }
+.cine-content main > .cine-section:first-child {
+  min-height: calc(100vh - 84px);
+  min-height: calc(100svh - 84px);
+}
 @media (min-width: 640px) { .cine-section { padding-top: 112px; } }
 @media (min-width: 768px) { .cine-section { padding-bottom: 64px; } }
 

@@ -1,13 +1,13 @@
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { ChevronRight } from 'lucide-react'
-import ScrollClock from '../components/ScrollClock'
+import ScrollVideo from '../components/ScrollVideo'
 import { useAuth } from '../AuthContext'
 import { useI18n } from '../i18n'
 import './LandingCinematic.css'
 
 /**
- * Cinematic landing: two editorial sections over a scroll-driven clock.
+ * Cinematic landing: two editorial sections over a scroll-scrubbed video.
  * Copy is English-only for now; the layout uses logical properties so the
  * Persian direction flips correctly once the strings are wired into i18n.
  */
@@ -22,7 +22,7 @@ export default function LandingCinematic() {
 
   return (
     <div className="cine" dir={isRtl ? 'rtl' : 'ltr'}>
-      <ScrollClock startHour={10} startMinute={8} sweepMinutes={120} />
+      <ScrollVideo src="/hero.mp4" poster="/hero-poster.jpg" />
       <div className="cine-shade" aria-hidden="true" />
       <div className="cine-content">
         <main>
