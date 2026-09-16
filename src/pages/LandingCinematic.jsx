@@ -22,7 +22,7 @@ export default function LandingCinematic() {
 
   return (
     <div className="cine" dir={isRtl ? 'rtl' : 'ltr'}>
-      <ScrollClock startHour={9} sweepMinutes={120} />
+      <ScrollClock startHour={10} startMinute={8} sweepMinutes={120} />
       <div className="cine-content">
         <main>
           <SectionOne onCTA={handleCTA} />

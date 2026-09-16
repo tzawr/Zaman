@@ -1,19 +1,19 @@
 import { useEffect, useRef } from 'react'
 
 /**
- * Full-bleed, fixed canvas that draws a lit analogue clock.
+ * Full-bleed, fixed canvas that draws a holographic clock: nested glowing
+ * dials sitting in a slow particle vortex, in Hengam's blue.
  *
- * The hour and minute hands are driven by page scroll (smoothed with the same
- * lerp the NovaAI scroll-video uses), the seconds hand ticks in real time, and
- * the whole face tilts a few degrees toward the pointer so the bezel and hand
- * shadows read as depth. Nothing loops or autoplays: with no scroll and no
- * pointer the only motion is the one-per-second tick.
+ * Hour and minute hands follow smoothed page scroll, the seconds hand ticks
+ * live, and the dials and vortex counter-rotate at different rates so the
+ * scene has depth. The pointer nudges each layer by a different amount for
+ * parallax. Nothing loops on its own beyond the tick and a very slow drift.
  *
  * Props:
- *   startHour   hour the hands show at scroll 0            (default 9)
- *   sweepMinutes how far the hands travel over the page   (default 120)
+ *   startHour, startMinute   time shown at scroll 0   (default 10:08)
+ *   sweepMinutes             how far the hands travel over the page (120)
  */
-export default function ScrollClock({ startHour = 9, sweepMinutes = 120 }) {
+export default function ScrollClock({ startHour = 10, startMinute = 8, sweepMinutes = 120 }) {
   const canvasRef = useRef(null)
 
   useEffect(() => {
@@ -25,21 +25,20 @@ export default function ScrollClock({ startHour = 9, sweepMinutes = 120 }) {
     let width = 0
     let height = 0
     let dpr = 1
-    let face = null            // offscreen static face (bezel, dial, ticks)
-    let faceRadius = 0
+    let base = 0                 // min(width, height)
+    let dials = []               // pre-rendered rings, outermost first
     let raf = 0
 
-    // Scroll → progress, smoothed.
     let target = 0
     let smoothed = 0
-    // Pointer parallax, normalised to [-1, 1], smoothed.
     let pointerX = 0
     let pointerY = 0
-    let tiltX = 0
-    let tiltY = 0
+    let px = 0
+    let py = 0
 
-    // Bokeh particles, seeded so a reload looks the same.
-    const particles = makeParticles(34)
+    const particles = makeParticles(560)
+    const softDot = makeSprite(64, [125, 211, 252], 0.9)
+    const sharpDot = makeSprite(16, [224, 247, 255], 1)
 
     function readScroll() {
       const max = document.documentElement.scrollHeight - window.innerHeight
@@ -60,50 +59,57 @@ export default function ScrollClock({ startHour = 9, sweepMinutes = 120 }) {
       canvas.height = Math.round(height * dpr)
       canvas.style.width = `${width}px`
       canvas.style.height = `${height}px`
-      faceRadius = Math.min(width, height) * (width < 640 ? 0.36 : 0.30)
-      face = renderFace(faceRadius, dpr)
+      base = Math.min(width, height)
+      const phone = width < 640
+      dials = [
+        // Big outer ring that runs off the edges, soft and out of focus.
+        { r: base * (phone ? 0.95 : 0.82), spin: -0.10, alpha: 0.55, blur: 2.2, parallax: 26, dx: -0.06, dy: -0.04,
+          canvas: renderDial(base * (phone ? 0.95 : 0.82), dpr, { numerals: true, numeralSize: 0.13, tickLen: 0.05, glow: 1.4, lineW: 0.006 }) },
+        { r: base * 0.40, spin: 0.22, alpha: 0.9, blur: 0.6, parallax: 12, dx: 0, dy: 0,
+          canvas: renderDial(base * 0.40, dpr, { numerals: true, numeralSize: 0.1, tickLen: 0.06, glow: 1.2, lineW: 0.007 }) },
+        { r: base * 0.215, spin: -0.36, alpha: 1, blur: 0, parallax: 5, dx: 0.01, dy: 0.005,
+          canvas: renderDial(base * 0.215, dpr, { numerals: true, numeralSize: 0.11, tickLen: 0.07, glow: 1, lineW: 0.009 }) },
+        { r: base * 0.11, spin: 0.55, alpha: 0.85, blur: 0, parallax: 2, dx: 0, dy: 0,
+          canvas: renderDial(base * 0.11, dpr, { numerals: false, tickLen: 0.1, glow: 0.8, lineW: 0.012 }) },
+      ]
       readScroll()
     }
 
     function frame(now) {
       smoothed += (target - smoothed) * 0.12
-      tiltX += (pointerX - tiltX) * 0.06
-      tiltY += (pointerY - tiltY) * 0.06
+      px += (pointerX - px) * 0.05
+      py += (pointerY - py) * 0.05
+      const t = now / 1000
 
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
-      drawBackground(ctx, width, height, particles, now, smoothed)
+      ctx.globalCompositeOperation = 'source-over'
+      drawBackground(ctx, width, height, smoothed)
 
-      // Where the clock sits. Slightly right of centre on wide screens so the
-      // headline on the left has room, dead centre on phones.
-      const cx = width * (width >= 1024 ? 0.58 : 0.5) + tiltX * 10
-      const cy = height * 0.5 + tiltY * 8
-      const zoom = 1 + smoothed * 0.08
+      const cx = width * (width >= 1024 ? 0.58 : 0.5)
+      const cy = height * 0.5
 
-      ctx.save()
-      ctx.translate(cx, cy)
-      // Faux perspective: rotate a touch toward the pointer and squash the
-      // axis that is tilting away.
-      ctx.rotate(tiltX * 0.035)
-      ctx.scale(zoom * (1 - Math.abs(tiltX) * 0.03), zoom * (1 - Math.abs(tiltY) * 0.04))
+      ctx.globalCompositeOperation = 'lighter'
+      drawVortex(ctx, particles, cx + px * 18, cy + py * 14, base * 0.5, t, smoothed, softDot, sharpDot, reduceMotion)
 
-      // Drop shadow under the whole object, offset away from the light.
-      ctx.save()
-      ctx.shadowColor = 'rgba(0,0,0,0.6)'
-      ctx.shadowBlur = faceRadius * 0.5
-      ctx.shadowOffsetX = faceRadius * 0.08
-      ctx.shadowOffsetY = faceRadius * 0.14
-      ctx.fillStyle = '#0a0a0a'
-      ctx.beginPath()
-      ctx.arc(0, 0, faceRadius, 0, Math.PI * 2)
-      ctx.fill()
-      ctx.restore()
+      for (const d of dials) {
+        const rot = smoothed * d.spin * Math.PI * 2 * 0.5 + (reduceMotion ? 0 : t * d.spin * 0.02)
+        const x = cx + d.dx * base + px * d.parallax
+        const y = cy + d.dy * base + py * d.parallax
+        ctx.save()
+        ctx.translate(x, y)
+        ctx.rotate(rot)
+        ctx.globalAlpha = d.alpha
+        const s = d.canvas.width / dpr
+        ctx.drawImage(d.canvas, -s / 2, -s / 2, s, s)
+        ctx.restore()
+      }
+      ctx.globalAlpha = 1
 
-      ctx.drawImage(face, -faceRadius * 1.15, -faceRadius * 1.15, faceRadius * 2.3, faceRadius * 2.3)
+      const time = computeTime(smoothed, startHour, startMinute, sweepMinutes, reduceMotion)
+      drawHands(ctx, cx + px * 6, cy + py * 5, base, time)
+      drawCore(ctx, cx + px * 6, cy + py * 5, base, t, reduceMotion)
 
-      drawHands(ctx, faceRadius, computeTime(now, smoothed, startHour, sweepMinutes, reduceMotion))
-      drawGlass(ctx, faceRadius)
-      ctx.restore()
-
+      ctx.globalCompositeOperation = 'source-over'
       raf = requestAnimationFrame(frame)
     }
 
@@ -119,7 +125,7 @@ export default function ScrollClock({ startHour = 9, sweepMinutes = 120 }) {
       window.removeEventListener('scroll', readScroll)
       window.removeEventListener('pointermove', onPointer)
     }
-  }, [startHour, sweepMinutes])
+  }, [startHour, startMinute, sweepMinutes])
 
   return (
     <div className="scroll-clock" aria-hidden="true">
@@ -129,6 +135,11 @@ export default function ScrollClock({ startHour = 9, sweepMinutes = 120 }) {
 }
 
 /* ------------------------------------------------------------------ */
+
+const CYAN = '125, 211, 252'     // sky-300, sits between accent-1 and the reference's cyan
+const BLUE = '96, 165, 250'      // --accent-1
+const INDIGO = '99, 102, 241'    // --accent-2
+const WHITE = '224, 247, 255'
 
 function clamp(v, lo, hi) {
   return Math.max(lo, Math.min(hi, v))
@@ -144,89 +155,139 @@ function mulberry32(seed) {
   }
 }
 
-function makeParticles(n) {
-  const rand = mulberry32(1402)
-  return Array.from({ length: n }, () => ({
-    x: rand(),
-    y: rand(),
-    r: 1.5 + rand() * 5,
-    speed: 0.004 + rand() * 0.01,
-    phase: rand() * Math.PI * 2,
-    warm: rand() < 0.3,
-    alpha: 0.08 + rand() * 0.22,
-  }))
+function makeSprite(size, rgb, peak) {
+  const c = document.createElement('canvas')
+  c.width = size
+  c.height = size
+  const g = c.getContext('2d')
+  const grad = g.createRadialGradient(size / 2, size / 2, 0, size / 2, size / 2, size / 2)
+  grad.addColorStop(0, `rgba(${rgb}, ${peak})`)
+  grad.addColorStop(0.35, `rgba(${rgb}, ${peak * 0.35})`)
+  grad.addColorStop(1, `rgba(${rgb}, 0)`)
+  g.fillStyle = grad
+  g.fillRect(0, 0, size, size)
+  return c
 }
 
-function computeTime(now, progress, startHour, sweepMinutes, reduceMotion) {
-  const minutes = startHour * 60 + progress * sweepMinutes
+/** Three spiral arms of dust, denser toward the middle, a few big bokeh. */
+function makeParticles(n) {
+  const rand = mulberry32(7)
+  const out = []
+  for (let i = 0; i < n; i++) {
+    const arm = i % 3
+    const r = 0.06 + Math.pow(rand(), 0.7) * 1.4
+    const bokeh = rand() < 0.08
+    out.push({
+      r,
+      a0: (arm * Math.PI * 2) / 3 + r * 3.2 + (rand() - 0.5) * 0.9,
+      size: bokeh ? 6 + rand() * 12 : 0.7 + rand() * 2.2,
+      alpha: bokeh ? 0.05 + rand() * 0.12 : 0.15 + rand() * 0.75,
+      bokeh,
+      streak: !bokeh && rand() < 0.45,
+      wobble: rand() * Math.PI * 2,
+    })
+  }
+  return out
+}
+
+function computeTime(progress, startHour, startMinute, sweepMinutes, reduceMotion) {
+  const minutes = startHour * 60 + startMinute + progress * sweepMinutes
   const minuteAngle = ((minutes % 60) / 60) * Math.PI * 2
   const hourAngle = ((minutes % 720) / 720) * Math.PI * 2
 
-  // Live seconds with a short mechanical tick: the hand jumps, overshoots a
-  // hair, and settles inside ~180ms. Reduced motion just steps.
   const d = new Date()
   const sec = d.getSeconds()
   const ms = d.getMilliseconds()
   let tick = 1
-  if (!reduceMotion && ms < 180) {
-    const t = ms / 180
-    tick = 1 + Math.sin(t * Math.PI) * 0.35 * (1 - t) // small overshoot that decays
-    tick = t < 0.5 ? easeOut(t * 2) * tick : tick
+  if (!reduceMotion && ms < 220) {
+    const t = ms / 220
+    tick = easeOutBack(t)
   }
   const secondAngle = ((sec - 1 + tick) / 60) * Math.PI * 2
-  void now
   return { hourAngle, minuteAngle, secondAngle }
 }
 
-function easeOut(t) {
-  return 1 - Math.pow(1 - t, 3)
+function easeOutBack(t) {
+  const c1 = 1.70158
+  const c3 = c1 + 1
+  return 1 + c3 * Math.pow(t - 1, 3) + c1 * Math.pow(t - 1, 2)
 }
 
 /* ------------------------------------------------------------------ */
 
-function drawBackground(ctx, w, h, particles, now, progress) {
-  ctx.fillStyle = '#0a0a0a'
+function drawBackground(ctx, w, h, progress) {
+  ctx.fillStyle = '#030816'
   ctx.fillRect(0, 0, w, h)
 
-  // Blue-grey mist that drifts up as you scroll.
-  const mist = ctx.createRadialGradient(w * 0.62, h * (0.75 - progress * 0.35), 0, w * 0.62, h * 0.5, Math.max(w, h) * 0.75)
-  mist.addColorStop(0, 'rgba(84, 98, 122, 0.30)')
-  mist.addColorStop(0.5, 'rgba(46, 54, 70, 0.14)')
-  mist.addColorStop(1, 'rgba(10, 10, 10, 0)')
-  ctx.fillStyle = mist
+  const cx = w * (w >= 1024 ? 0.58 : 0.5)
+  const cy = h * 0.5
+  const R = Math.max(w, h)
+
+  // Blue nebula around the clock, drifting up as the page scrolls.
+  const neb = ctx.createRadialGradient(cx, cy + h * 0.1 - progress * h * 0.2, 0, cx, cy, R * 0.75)
+  neb.addColorStop(0, `rgba(${BLUE}, 0.30)`)
+  neb.addColorStop(0.35, `rgba(37, 99, 235, 0.16)`)
+  neb.addColorStop(0.7, `rgba(${INDIGO}, 0.06)`)
+  neb.addColorStop(1, 'rgba(3, 8, 22, 0)')
+  ctx.fillStyle = neb
   ctx.fillRect(0, 0, w, h)
 
-  // Warm floor glow from the clock's own light, low and right.
-  const warm = ctx.createRadialGradient(w * 0.7, h * 1.05, 0, w * 0.7, h * 1.05, h * 0.9)
-  warm.addColorStop(0, 'rgba(232, 180, 90, 0.10)')
-  warm.addColorStop(1, 'rgba(232, 180, 90, 0)')
-  ctx.fillStyle = warm
+  // Secondary indigo pool low-left for asymmetry.
+  const pool = ctx.createRadialGradient(w * 0.15, h * 0.95, 0, w * 0.15, h * 0.95, R * 0.6)
+  pool.addColorStop(0, `rgba(${INDIGO}, 0.18)`)
+  pool.addColorStop(1, `rgba(${INDIGO}, 0)`)
+  ctx.fillStyle = pool
   ctx.fillRect(0, 0, w, h)
 
-  // Bokeh.
-  const t = now / 1000
+  // Vignette.
+  const vig = ctx.createRadialGradient(cx, cy, R * 0.35, cx, cy, R * 0.85)
+  vig.addColorStop(0, 'rgba(3, 8, 22, 0)')
+  vig.addColorStop(1, 'rgba(3, 8, 22, 0.75)')
+  ctx.fillStyle = vig
+  ctx.fillRect(0, 0, w, h)
+}
+
+function drawVortex(ctx, particles, cx, cy, R, t, progress, softDot, sharpDot, reduceMotion) {
+  const spin = progress * 1.1 + (reduceMotion ? 0 : t * 0.025)
   for (const p of particles) {
-    const y = ((p.y - t * p.speed - progress * 0.15) % 1 + 1) % 1
-    const x = p.x + Math.sin(t * 0.3 + p.phase) * 0.01
-    const px = x * w
-    const py = y * h
-    const g = ctx.createRadialGradient(px, py, 0, px, py, p.r * 3)
-    const col = p.warm ? '232, 180, 90' : '200, 210, 230'
-    g.addColorStop(0, `rgba(${col}, ${p.alpha})`)
-    g.addColorStop(1, `rgba(${col}, 0)`)
-    ctx.fillStyle = g
-    ctx.beginPath()
-    ctx.arc(px, py, p.r * 3, 0, Math.PI * 2)
-    ctx.fill()
+    // Inner dust orbits faster than outer, which is what makes it read as a vortex.
+    const a = p.a0 + spin * (0.5 + 0.9 / (p.r + 0.35))
+    const wob = reduceMotion ? 0 : Math.sin(t * 0.6 + p.wobble) * 0.012
+    const r = (p.r + wob) * R
+    const x = cx + Math.cos(a) * r
+    const y = cy + Math.sin(a) * r
+
+    ctx.globalAlpha = p.alpha
+    if (p.bokeh) {
+      const s = p.size * 2.4
+      ctx.drawImage(softDot, x - s / 2, y - s / 2, s, s)
+      continue
+    }
+    if (p.streak) {
+      ctx.strokeStyle = `rgba(${CYAN}, ${p.alpha * 0.55})`
+      ctx.lineWidth = p.size * 0.6
+      ctx.lineCap = 'round'
+      ctx.beginPath()
+      ctx.arc(cx, cy, r, a - 0.045 - 0.02 / p.r * 0.2, a)
+      ctx.stroke()
+    }
+    const s = p.size * 3
+    ctx.drawImage(softDot, x - s / 2, y - s / 2, s, s)
+    if (p.alpha > 0.6) {
+      const k = p.size * 1.1
+      ctx.drawImage(sharpDot, x - k / 2, y - k / 2, k, k)
+    }
   }
+  ctx.globalAlpha = 1
 }
 
 /**
- * Pre-renders the parts of the clock that do not move: the brushed bezel,
- * the recessed dial and the tick marks. Light comes from the upper-left.
+ * One glowing ring: 60 ticks (12 major) and optional numerals 1..12.
+ * Rendered once into an offscreen canvas. Glow is baked in with shadowBlur,
+ * and an optional blur pass takes the ring out of focus.
  */
-function renderFace(r, dpr) {
-  const pad = r * 1.15
+function renderDial(r, dpr, { numerals, numeralSize = 0.1, tickLen, glow, lineW }) {
+  const pad = r * 1.3
   const size = Math.ceil(pad * 2 * dpr)
   const c = document.createElement('canvas')
   c.width = size
@@ -234,178 +295,115 @@ function renderFace(r, dpr) {
   const ctx = c.getContext('2d')
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
   ctx.translate(pad, pad)
+  ctx.lineCap = 'round'
 
-  // Bezel — brushed metal, lit top-left, darker bottom-right.
-  const bezelOuter = r
-  const bezelInner = r * 0.9
-  const metal = ctx.createLinearGradient(-r, -r, r, r)
-  metal.addColorStop(0, '#f4f4f2')
-  metal.addColorStop(0.18, '#c9c9c6')
-  metal.addColorStop(0.42, '#6d6e70')
-  metal.addColorStop(0.6, '#8f9093')
-  metal.addColorStop(0.82, '#3a3b3e')
-  metal.addColorStop(1, '#1c1c1e')
-  ctx.beginPath()
-  ctx.arc(0, 0, bezelOuter, 0, Math.PI * 2)
-  ctx.fillStyle = metal
-  ctx.fill()
-
-  // Fine bevel lines on the bezel to sell the machined edge.
-  ctx.lineWidth = r * 0.006
-  ctx.strokeStyle = 'rgba(255,255,255,0.35)'
-  ctx.beginPath()
-  ctx.arc(0, 0, bezelOuter - r * 0.012, 0, Math.PI * 2)
-  ctx.stroke()
-  ctx.strokeStyle = 'rgba(0,0,0,0.55)'
-  ctx.beginPath()
-  ctx.arc(0, 0, bezelInner + r * 0.01, 0, Math.PI * 2)
-  ctx.stroke()
-
-  // Dial — dark graphite, recessed: darker rim, inner shadow along the top.
-  const dial = ctx.createRadialGradient(-r * 0.2, -r * 0.25, r * 0.1, 0, 0, bezelInner)
-  dial.addColorStop(0, '#1d1f24')
-  dial.addColorStop(0.7, '#111216')
-  dial.addColorStop(1, '#090a0c')
-  ctx.beginPath()
-  ctx.arc(0, 0, bezelInner, 0, Math.PI * 2)
-  ctx.fillStyle = dial
-  ctx.fill()
-
-  ctx.save()
-  ctx.beginPath()
-  ctx.arc(0, 0, bezelInner, 0, Math.PI * 2)
-  ctx.clip()
-  const inner = ctx.createRadialGradient(0, r * 0.15, bezelInner * 0.75, 0, 0, bezelInner)
-  inner.addColorStop(0, 'rgba(0,0,0,0)')
-  inner.addColorStop(1, 'rgba(0,0,0,0.65)')
-  ctx.fillStyle = inner
-  ctx.fillRect(-r, -r, r * 2, r * 2)
-  ctx.restore()
-
-  // Ticks.
-  for (let i = 0; i < 60; i++) {
-    const a = (i / 60) * Math.PI * 2
-    const hour = i % 5 === 0
-    const len = hour ? r * 0.075 : r * 0.03
-    const outer = bezelInner - r * 0.045
-    ctx.beginPath()
-    ctx.moveTo(Math.sin(a) * (outer - len), -Math.cos(a) * (outer - len))
-    ctx.lineTo(Math.sin(a) * outer, -Math.cos(a) * outer)
-    ctx.lineWidth = hour ? r * 0.012 : r * 0.004
-    ctx.lineCap = 'round'
-    ctx.strokeStyle = hour ? 'rgba(255,255,255,0.9)' : 'rgba(255,255,255,0.32)'
-    ctx.stroke()
+  const draw = (shadow) => {
+    ctx.shadowColor = `rgba(${CYAN}, ${shadow ? 0.9 : 0})`
+    ctx.shadowBlur = shadow ? r * 0.06 * glow : 0
+    for (let i = 0; i < 60; i++) {
+      const a = (i / 60) * Math.PI * 2
+      const major = i % 5 === 0
+      const len = r * tickLen * (major ? 1 : 0.45)
+      const outer = r
+      ctx.strokeStyle = major ? `rgba(${WHITE}, 0.95)` : `rgba(${CYAN}, 0.7)`
+      ctx.lineWidth = r * lineW * (major ? 1 : 0.55)
+      ctx.beginPath()
+      ctx.moveTo(Math.sin(a) * (outer - len), -Math.cos(a) * (outer - len))
+      ctx.lineTo(Math.sin(a) * outer, -Math.cos(a) * outer)
+      ctx.stroke()
+    }
+    if (numerals) {
+      const fs = r * numeralSize
+      ctx.font = `700 ${fs}px Inter, system-ui, sans-serif`
+      ctx.textAlign = 'center'
+      ctx.textBaseline = 'middle'
+      ctx.fillStyle = `rgba(${WHITE}, 0.95)`
+      const nr = r * 1.13
+      for (let i = 1; i <= 12; i++) {
+        const a = (i / 12) * Math.PI * 2
+        ctx.fillText(String(i), Math.sin(a) * nr, -Math.cos(a) * nr + fs * 0.05)
+      }
+    }
   }
+  draw(true)   // glow pass
+  draw(true)   // second pass thickens the bloom
+  draw(false)  // crisp core
 
-  // Quarter markers as small mono numerals.
-  ctx.fillStyle = 'rgba(255,255,255,0.55)'
-  ctx.font = `500 ${Math.round(r * 0.075)}px Inter, system-ui, sans-serif`
-  ctx.textAlign = 'center'
-  ctx.textBaseline = 'middle'
-  const numR = bezelInner - r * 0.2
-  ctx.fillText('12', 0, -numR)
-  ctx.fillText('3', numR, 0)
-  ctx.fillText('6', 0, numR)
-  ctx.fillText('9', -numR, 0)
+  // Faint ring line behind the ticks.
+  ctx.shadowBlur = 0
+  ctx.strokeStyle = `rgba(${CYAN}, 0.18)`
+  ctx.lineWidth = r * 0.004
+  ctx.beginPath()
+  ctx.arc(0, 0, r - r * tickLen * 0.5, 0, Math.PI * 2)
+  ctx.stroke()
 
   return c
 }
 
-function drawHands(ctx, r, { hourAngle, minuteAngle, secondAngle }) {
-  // Shadows first, offset away from the top-left light, growing with the
-  // hand's height above the dial.
-  hand(ctx, hourAngle, r * 0.5, r * 0.055, 'rgba(0,0,0,0.55)', r * 0.03, r * 0.045, true)
-  hand(ctx, minuteAngle, r * 0.74, r * 0.04, 'rgba(0,0,0,0.5)', r * 0.045, r * 0.065, true)
-
-  hand(ctx, hourAngle, r * 0.5, r * 0.055, '#f3f3f1', 0, 0, false)
-  hand(ctx, minuteAngle, r * 0.74, r * 0.04, '#ffffff', 0, 0, false)
-
-  // Seconds — thin, warm, with a glowing tip and a short counterweight.
+function drawHands(ctx, cx, cy, base, { hourAngle, minuteAngle, secondAngle }) {
+  ctx.save()
+  ctx.translate(cx, cy)
+  beam(ctx, hourAngle, base * 0.19, base * 0.013, base * 0.028)
+  beam(ctx, minuteAngle, base * 0.31, base * 0.011, base * 0.032)
+  // Seconds — thinner, longer, less bloom.
   ctx.save()
   ctx.rotate(secondAngle)
-  ctx.shadowColor = 'rgba(0,0,0,0.5)'
-  ctx.shadowBlur = r * 0.03
-  ctx.shadowOffsetX = r * 0.04
-  ctx.shadowOffsetY = r * 0.06
-  ctx.strokeStyle = '#e8b45a'
-  ctx.lineWidth = r * 0.012
   ctx.lineCap = 'round'
+  ctx.shadowColor = `rgba(${CYAN}, 0.9)`
+  ctx.shadowBlur = base * 0.015
+  ctx.strokeStyle = `rgba(${CYAN}, 0.75)`
+  ctx.lineWidth = base * 0.003
   ctx.beginPath()
-  ctx.moveTo(0, r * 0.18)
-  ctx.lineTo(0, -r * 0.8)
+  ctx.moveTo(0, base * 0.03)
+  ctx.lineTo(0, -base * 0.37)
   ctx.stroke()
-  ctx.shadowColor = 'rgba(255, 196, 110, 0.9)'
-  ctx.shadowBlur = r * 0.08
-  ctx.shadowOffsetX = 0
-  ctx.shadowOffsetY = 0
-  ctx.fillStyle = '#ffd98a'
-  ctx.beginPath()
-  ctx.arc(0, -r * 0.8, r * 0.022, 0, Math.PI * 2)
-  ctx.fill()
   ctx.restore()
-
-  // Centre cap.
-  const cap = ctx.createRadialGradient(-r * 0.01, -r * 0.01, 0, 0, 0, r * 0.05)
-  cap.addColorStop(0, '#ffffff')
-  cap.addColorStop(0.6, '#b8b8b6')
-  cap.addColorStop(1, '#2a2a2c')
-  ctx.beginPath()
-  ctx.arc(0, 0, r * 0.05, 0, Math.PI * 2)
-  ctx.fillStyle = cap
-  ctx.fill()
-  ctx.beginPath()
-  ctx.arc(0, 0, r * 0.018, 0, Math.PI * 2)
-  ctx.fillStyle = '#e8b45a'
-  ctx.fill()
+  ctx.restore()
 }
 
-function hand(ctx, angle, length, width, color, dx, dy, isShadow) {
+/** A glowing hand: wide soft bloom, a bright cyan body and a white core. */
+function beam(ctx, angle, length, width, bloom) {
   ctx.save()
-  ctx.translate(dx, dy)
   ctx.rotate(angle)
-  if (isShadow) {
-    ctx.filter = 'blur(2px)'
-  }
-  ctx.fillStyle = color
+  ctx.lineCap = 'round'
+
+  ctx.shadowColor = `rgba(${BLUE}, 1)`
+  ctx.shadowBlur = bloom
+  ctx.strokeStyle = `rgba(${CYAN}, 0.55)`
+  ctx.lineWidth = width * 1.8
   ctx.beginPath()
-  // Tapered baton: wide at the hub, narrowing to a rounded tip.
-  ctx.moveTo(-width * 0.5, length * 0.18)
-  ctx.lineTo(-width * 0.5, -length * 0.85)
-  ctx.quadraticCurveTo(0, -length, width * 0.5, -length * 0.85)
-  ctx.lineTo(width * 0.5, length * 0.18)
-  ctx.arc(0, length * 0.18, width * 0.5, 0, Math.PI)
-  ctx.closePath()
-  ctx.fill()
-  if (!isShadow) {
-    // Light edge on the side facing the light source.
-    ctx.strokeStyle = 'rgba(255,255,255,0.6)'
-    ctx.lineWidth = Math.max(0.8, width * 0.12)
-    ctx.beginPath()
-    ctx.moveTo(-width * 0.5, length * 0.1)
-    ctx.lineTo(-width * 0.5, -length * 0.85)
-    ctx.stroke()
-  }
+  ctx.moveTo(0, 0)
+  ctx.lineTo(0, -length)
+  ctx.stroke()
+
+  ctx.shadowBlur = bloom * 0.4
+  ctx.strokeStyle = `rgba(${CYAN}, 0.95)`
+  ctx.lineWidth = width
+  ctx.beginPath()
+  ctx.moveTo(0, 0)
+  ctx.lineTo(0, -length)
+  ctx.stroke()
+
+  ctx.shadowBlur = 0
+  ctx.strokeStyle = `rgba(${WHITE}, 0.95)`
+  ctx.lineWidth = width * 0.35
+  ctx.beginPath()
+  ctx.moveTo(0, -length * 0.04)
+  ctx.lineTo(0, -length * 0.97)
+  ctx.stroke()
   ctx.restore()
 }
 
-function drawGlass(ctx, r) {
-  const inner = r * 0.9
-  ctx.save()
+function drawCore(ctx, cx, cy, base, t, reduceMotion) {
+  const pulse = reduceMotion ? 1 : 1 + Math.sin(t * 2.2) * 0.06
+  const R = base * 0.075 * pulse
+  const g = ctx.createRadialGradient(cx, cy, 0, cx, cy, R)
+  g.addColorStop(0, 'rgba(255, 255, 255, 1)')
+  g.addColorStop(0.12, `rgba(${WHITE}, 0.9)`)
+  g.addColorStop(0.35, `rgba(${CYAN}, 0.45)`)
+  g.addColorStop(1, `rgba(${BLUE}, 0)`)
+  ctx.fillStyle = g
   ctx.beginPath()
-  ctx.arc(0, 0, inner, 0, Math.PI * 2)
-  ctx.clip()
-  // Broad sheen across the upper-left of the crystal.
-  const sheen = ctx.createLinearGradient(-inner, -inner, inner * 0.3, inner * 0.5)
-  sheen.addColorStop(0, 'rgba(255,255,255,0.14)')
-  sheen.addColorStop(0.45, 'rgba(255,255,255,0.04)')
-  sheen.addColorStop(0.5, 'rgba(255,255,255,0)')
-  ctx.fillStyle = sheen
-  ctx.fillRect(-r, -r, r * 2, r * 2)
-  // Tight rim reflection.
-  ctx.strokeStyle = 'rgba(255,255,255,0.10)'
-  ctx.lineWidth = r * 0.02
-  ctx.beginPath()
-  ctx.arc(0, 0, inner - r * 0.02, Math.PI * 1.05, Math.PI * 1.6)
-  ctx.stroke()
-  ctx.restore()
+  ctx.arc(cx, cy, R, 0, Math.PI * 2)
+  ctx.fill()
 }

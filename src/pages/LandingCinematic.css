@@ -15,7 +15,7 @@
   --cine-px: 20px;
 
   position: relative;
-  background: #0a0a0a;
+  background: #030816;
   color: var(--cine-text);
   font-family: 'Inter', system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
@@ -33,7 +33,7 @@
   z-index: 0;
   overflow: hidden;
   pointer-events: none;
-  background: #0a0a0a;
+  background: #030816;
 }
 .scroll-clock canvas { display: block; }
 
@@ -100,7 +100,7 @@
 
 .cine-badge {
   display: inline-block;
-  border-inline-start: 2px solid #fff;
+  border-inline-start: 2px solid #7DD3FC;
   background: var(--cine-glass);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
@@ -185,8 +185,8 @@
   height: 96px;
   border-radius: 8px;
   background:
-    radial-gradient(circle at 35% 30%, rgba(255,255,255,0.10), transparent 60%),
-    linear-gradient(160deg, #24262b, #0d0e10);
+    radial-gradient(circle at 50% 50%, rgba(125,211,252,0.25), transparent 60%),
+    linear-gradient(160deg, #0B1730, #030816);
   border: 1px solid rgba(255, 255, 255, 0.12);
   overflow: hidden;
   flex: none;
@@ -196,8 +196,8 @@
   position: absolute;
   inset: 16px 8px;
   border-radius: 50%;
-  border: 2px solid rgba(255, 255, 255, 0.55);
-  box-shadow: inset 0 2px 6px rgba(0,0,0,0.6);
+  border: 2px solid rgba(125, 211, 252, 0.7); box-shadow: 0 0 12px rgba(125,211,252,0.5);
+  
 }
 .cine-card-clock-hand {
   position: absolute;
@@ -208,8 +208,8 @@
   border-radius: 2px;
   transform-origin: 50% 100%;
 }
-.cine-card-clock-hand--hour { height: 16px; margin-top: -16px; transform: rotate(300deg); }
-.cine-card-clock-hand--minute { height: 24px; margin-top: -24px; transform: rotate(0deg); background: #e8b45a; animation: cine-minute 60s linear infinite; }
+.cine-card-clock-hand--hour { height: 16px; margin-top: -16px; transform: rotate(300deg); box-shadow: 0 0 6px #fff; }
+.cine-card-clock-hand--minute { height: 24px; margin-top: -24px; transform: rotate(0deg); background: #7DD3FC; box-shadow: 0 0 6px #7DD3FC; animation: cine-minute 60s linear infinite; }
 @keyframes cine-minute { to { transform: rotate(360deg); } }
 @media (prefers-reduced-motion: reduce) { .cine-card-clock-hand--minute { animation: none; } }
 
