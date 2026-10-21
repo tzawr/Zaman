@@ -44,6 +44,7 @@ export default {
       'expo-status-bar',
       'expo-localization',
       'expo-apple-authentication',
+      'expo-notifications',
       // The Google plugin refuses to build without the iOS URL scheme from
       // the Firebase console, so it is added only once that is configured.
       ...(googleIosUrlScheme
@@ -51,5 +52,7 @@ export default {
         : []),
     ],
     experiments: { typedRoutes: false },
+    // The EAS project, which Expo's push service needs to address this app.
+    extra: { eas: { projectId: process.env.EXPO_PUBLIC_EAS_PROJECT_ID || undefined } },
   },
 }

@@ -4,6 +4,9 @@ import { consumeRateLimit, sendRateLimited } from '../_rate-limit.js'
 import { TeamsError, applyCors, clientIp, readBody } from '../_teams-http.js'
 import * as availability from '../_teams-availability.js'
 import * as hengam from '../_teams-hengam.js'
+import { calendarFeed } from '../_teams-calendar.js'
+import { deliver, markAllRead } from '../_teams-notify.js'
+import { drainPushQueue } from '../_teams-push.js'
 import * as marketplace from '../_teams-marketplace.js'
 import * as schedules from '../_teams-schedules.js'
 import * as workspaces from '../_teams-workspaces.js'
@@ -49,6 +52,8 @@ const ACTIONS = {
   updatePolicies: { run: availability.updatePolicies, limit: [120, 60 * 60] },
   hengamConnect: { run: hengam.hengamConnect, limit: [10, 60 * 60] },
   hengamPublish: { run: hengam.hengamPublish, limit: [120, 60 * 60] },
+  markAllNotificationsRead: { run: markAllRead, limit: [120, 60 * 60] },
+  calendarFeed: { run: calendarFeed, limit: [30, 60 * 60] },
 }
 
 export default async function handler(req, res) {
@@ -74,13 +79,24 @@ export default async function handler(req, res) {
   }
 
   try {
-    const result = await action.run({
-      db: getFirestore(),
+    const db = getFirestore()
+    const { notify, ...result } = await action.run({
+      db,
       uid: token?.uid || null,
       token,
       input: readBody(req),
       now: new Date(),
     })
+    // The change is committed; telling people about it must not turn a
+    // success into an error. A failure here is logged and the notifications
+    // are simply missing, never duplicated.
+    if (notify?.length) {
+      await deliver(db, notify)
+        // Send the pushes this change queued now, rather than at the next
+        // daily run. Anything that fails waits in the queue for that run.
+        .then(({ queued }) => drainPushQueue(db, { ids: queued }))
+        .catch(err => console.error('notification delivery failed:', err))
+    }
     return res.status(200).json(result)
   } catch (err) {
     if (err instanceof TeamsError) {

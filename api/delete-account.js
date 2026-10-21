@@ -34,7 +34,7 @@ async function deleteQueryInBatches(db, query) {
 // aiUsage and rateLimits documents are keyed `<uid>_<period>`, but both also
 // carry the owner in a field, so they are found by field rather than by
 // picking apart document ids.
-const OWNER_FIELD = { aiUsage: 'uid', rateLimits: 'key' }
+const OWNER_FIELD = { aiUsage: 'uid', rateLimits: 'key', calendarFeeds: 'uid', pushQueue: 'uid' }
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' })

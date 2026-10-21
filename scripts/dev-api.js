@@ -15,11 +15,17 @@ process.env.FIREBASE_AUTH_EMULATOR_HOST ||= '127.0.0.1:9099'
 process.env.GCLOUD_PROJECT ||= 'demo-hengam'
 
 const PORT = Number(process.env.PORT || 3001)
+// Links the API hands out (calendar feeds) point back at this server.
+process.env.APP_URL ||= `http://127.0.0.1:${PORT}`
 const root = resolve(import.meta.dirname, '..')
 
 function route(pathname) {
   const teams = pathname.match(/^\/api\/teams\/([A-Za-z]+)$/)
   if (teams) return { file: resolve(root, 'api/teams/[action].js'), query: { action: teams[1] } }
+  const calendar = pathname.match(/^\/api\/calendar\/([^/]+)$/)
+  if (calendar) return { file: resolve(root, 'api/calendar/[token].js'), query: { token: calendar[1] } }
+  const cron = pathname.match(/^\/api\/cron\/([a-z]+)$/)
+  if (cron && existsSync(resolve(root, `api/cron/${cron[1]}.js`))) return { file: resolve(root, `api/cron/${cron[1]}.js`), query: {} }
   const plain = pathname.match(/^\/api\/([a-z-]+)$/)
   if (plain && existsSync(resolve(root, `api/${plain[1]}.js`))) return { file: resolve(root, `api/${plain[1]}.js`), query: {} }
   return null
@@ -28,6 +34,7 @@ function route(pathname) {
 // The few pieces of Vercel's request and response helpers the handlers use.
 function adapt(res) {
   res.status = (code) => { res.statusCode = code; return res }
+  res.send = (body) => { res.end(typeof body === 'string' ? body : JSON.stringify(body)); return res }
   res.json = (body) => {
     if (!res.getHeader('Content-Type')) res.setHeader('Content-Type', 'application/json')
     res.end(JSON.stringify(body))

@@ -1,8 +1,9 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useRouter } from 'expo-router'
 import { View } from 'react-native'
 import WorkplaceHeader from '../../components/WorkplaceHeader'
 import { ApiError, callTeams } from '../../lib/api'
+import { enablePush, pushStatus, pushSupported } from '../../lib/push'
 import { needsVerification, useAuth } from '../../state/auth'
 import { useWorkspace } from '../../state/workspace'
 import {
@@ -96,6 +97,15 @@ export default function Profile() {
           <ListRow icon="plus" title="Create a workspace" onPress={() => router.push('/create-workspace')} />
         </Card>
 
+        <SectionTitle>Notifications and calendar</SectionTitle>
+        <Card style={{ paddingVertical: 6 }}>
+          {pushSupported ? <PushRow uid={user?.uid} /> : null}
+          {pushSupported ? <Divider /> : null}
+          <ListRow icon="bell" title="Notifications" onPress={() => router.push('/notifications')} />
+          <Divider />
+          <ListRow icon="calendar" title="Calendar sync" subtitle="Your shifts in Apple, Google or Outlook calendar" onPress={() => router.push('/calendar-sync')} />
+        </Card>
+
         <SectionTitle>Appearance</SectionTitle>
         <Segmented
           accessibilityLabel="Appearance"
@@ -112,5 +122,29 @@ export default function Profile() {
         </Text>
       </Screen>
     </View>
+  )
+}
+
+// Push on this phone: off until the person turns it on, so the system
+// prompt comes when they ask for it rather than at first launch.
+function PushRow({ uid }) {
+  const [status, setStatus] = useState(null)
+  const [busy, setBusy] = useState(false)
+  useEffect(() => { pushStatus().then(setStatus).catch(() => setStatus('unsupported')) }, [])
+  const subtitle = {
+    on: 'On for this phone',
+    off: 'Get alerts for schedules, swaps and requests',
+    blocked: 'Blocked. Turn them on for Hengam Teams in your phone’s Settings.',
+    unsupported: 'Not available in this build',
+  }[status] || ''
+  async function turnOn() {
+    setBusy(true)
+    const r = await enablePush(uid).catch(() => ({ ok: false }))
+    setStatus(r.ok ? 'on' : r.reason === 'denied' ? 'blocked' : 'unsupported')
+    setBusy(false)
+  }
+  return (
+    <ListRow icon="smartphone" title="Push notifications" subtitle={subtitle}
+      right={status === 'off' ? <Button title="Turn on" variant="secondary" loading={busy} onPress={turnOn} style={{ minHeight: 38, paddingHorizontal: 12 }} /> : <View />} />
   )
 }

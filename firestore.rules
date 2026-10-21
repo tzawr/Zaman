@@ -459,6 +459,11 @@ function isAdmin() {
       allow read, write: if false;
     }
 
+    // Pushes waiting to be sent. Written and read only by the server.
+    match /pushQueue/{id} {
+      allow read, write: if false;
+    }
+
     // Calendar subscription tokens. The token is the secret in the feed URL,
     // and only the server resolves it.
     match /calendarFeeds/{token} {

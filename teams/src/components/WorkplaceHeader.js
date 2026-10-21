@@ -3,6 +3,7 @@ import { Pressable, View } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Feather } from '@expo/vector-icons'
 import { useAuth } from '../state/auth'
+import { useNotifications } from '../state/notifications'
 import { useWorkspace } from '../state/workspace'
 import { Avatar, Badge, Skeleton, Text } from '../ui/components'
 import { useTheme } from '../ui/theme'
@@ -16,6 +17,7 @@ export default function WorkplaceHeader({ title }) {
   const insets = useSafeAreaInsets()
   const { active, role, workplaces, loading } = useWorkspace()
   const { user } = useAuth()
+  const { unread } = useNotifications()
 
   return (
     <View style={{ paddingTop: insets.top + 12, paddingHorizontal: 20, paddingBottom: 4, backgroundColor: t.color.bg }}>
@@ -35,9 +37,22 @@ export default function WorkplaceHeader({ title }) {
         ) : null}
         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
           <Text variant="title" accessibilityRole="header">{title}</Text>
-          <Pressable onPress={() => router.push('/profile')} accessibilityRole="button" accessibilityLabel="Profile and settings" hitSlop={8}>
-            <Avatar name={user?.displayName || user?.email} size={36} />
-          </Pressable>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+            <Pressable onPress={() => router.push('/notifications')} accessibilityRole="button" hitSlop={8}
+              accessibilityLabel={unread ? `Notifications, ${unread} unread` : 'Notifications'}
+              style={{ width: 36, height: 36, alignItems: 'center', justifyContent: 'center' }}>
+              <Feather name="bell" size={22} color={t.color.text} />
+              {unread ? (
+                <View style={{ position: 'absolute', top: 2, right: 0, minWidth: 18, height: 18, borderRadius: 9, paddingHorizontal: 4,
+                  backgroundColor: t.color.danger, alignItems: 'center', justifyContent: 'center' }}>
+                  <Text style={{ color: '#fff', fontSize: 11, fontWeight: '700' }}>{unread > 9 ? '9+' : unread}</Text>
+                </View>
+              ) : null}
+            </Pressable>
+            <Pressable onPress={() => router.push('/profile')} accessibilityRole="button" accessibilityLabel="Profile and settings" hitSlop={8}>
+              <Avatar name={user?.displayName || user?.email} size={36} />
+            </Pressable>
+          </View>
         </View>
       </View>
     </View>

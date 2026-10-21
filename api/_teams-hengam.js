@@ -157,6 +157,19 @@ export async function hengamPublish({ db, uid, input, now }) {
 
     let created = 0
     let updated = 0
+    // Who to tell: on the first publish of a week, everyone on it; after
+    // that, everyone whose shifts changed, gained or lost.
+    const shiftCounts = {}
+    const affected = new Set()
+    for (const p of plan) {
+      const a = uidByStaff.get(p.desired.staffId)
+      if (a) shiftCounts[a] = (shiftCounts[a] || 0) + 1
+      if (p.kind !== 'keep') {
+        if (a) affected.add(a)
+        if (p.current?.assigneeUid) affected.add(p.current.assigneeUid)
+      }
+    }
+    cancels.forEach(s => s.assigneeUid && affected.add(s.assigneeUid))
     for (const p of plan) {
       const ref = db.doc(paths.shift(bizId, p.desired.id))
       const assigneeUid = uidByStaff.get(p.desired.staffId) ?? null
@@ -195,6 +208,10 @@ export async function hengamPublish({ db, uid, input, now }) {
     audit(tx, db, bizId, uid, 'hengam.published', {
       scheduleId, weekStart, created, updated, cancelled: cancels.length,
     }, now)
-    return { unchanged: false, weekStart, created, updated, cancelled: cancels.length }
+    const version = (teamsSchedule?.version || 0) + 1
+    const notify = teamsSchedule
+      ? [...affected].map(to => ({ kind: 'scheduleChanged', bizId, to, params: { weekStart, version } }))
+      : Object.entries(shiftCounts).map(([to, shiftCount]) => ({ kind: 'schedulePublished', bizId, to, params: { weekStart, version, shiftCount } }))
+    return { unchanged: false, weekStart, created, updated, cancelled: cancels.length, notify }
   })
 }

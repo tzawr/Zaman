@@ -71,7 +71,11 @@ export async function offerShift({ db, uid, input, now }) {
     })
     tx.update(db.doc(paths.shift(bizId, shiftId)), { openOfferId: ref.id })
     audit(tx, db, bizId, uid, 'offer.created', { offerId: ref.id, shiftId }, now)
-    return { offerId: ref.id }
+    return {
+      offerId: ref.id,
+      notify: [{ kind: 'shiftOffered', bizId, to: 'members', exclude: [uid],
+        params: { offerId: ref.id, offeredByName: shift.staffName || actor.displayName, shift } }],
+    }
   })
 }
 
@@ -177,13 +181,21 @@ export async function claimOffer({ db, uid, input, now }) {
         action: 'offer.picked_up', details: { offerId }, hengam,
       })
       hengam.flush(now)
-      return { status: 'approved' }
+      return {
+        status: 'approved',
+        notify: [{ kind: 'pickupDecided', bizId, to: ctx.offer.offeredByUid,
+          params: { offerId, approved: true, shift: ctx.shift, forUid: ctx.offer.offeredByUid, role: 'offerer' } }],
+      }
     }
 
     tx.set(claimRef, { uid, name: ctx.person.name, staffId: ctx.person.staffId, note: note || null, status: 'pending', createdAt: at })
     tx.update(offerRef, { status: 'pending', claimantUids: FieldValue.arrayUnion(uid), updatedAt: at })
     audit(tx, db, bizId, uid, 'claim.created', { offerId, shiftId: ctx.shift.id }, now)
-    return { status: 'pending' }
+    return {
+      status: 'pending',
+      notify: [{ kind: 'pickupRequested', bizId, to: 'managers', exclude: [uid],
+        params: { offerId, claimantUid: uid, claimantName: ctx.person.name, offeredByName: ctx.offer.offeredByName, shift: ctx.shift } }],
+    }
   })
 }
 
@@ -232,7 +244,11 @@ export async function decideClaim({ db, uid, input, now }) {
         updatedAt: at,
       })
       audit(tx, db, bizId, uid, 'claim.rejected', { offerId, claimantUid }, now)
-      return { status: 'rejected' }
+      return {
+        status: 'rejected',
+        notify: [{ kind: 'pickupDecided', bizId, to: claimantUid,
+          params: { offerId, approved: false, shift: offer.shift, forUid: claimantUid, role: 'claimant' } }],
+      }
     }
 
     // Judged again now: the claimant's week may have filled up since they asked.
@@ -253,7 +269,16 @@ export async function decideClaim({ db, uid, input, now }) {
       action: 'offer.approved', details: { offerId }, hengam,
     })
     hengam.flush(now)
-    return { status: 'approved' }
+    const decided = (to, role, approved) => ({ kind: 'pickupDecided', bizId, to,
+      params: { offerId, approved, shift: ctx.shift, forUid: to, role } })
+    return {
+      status: 'approved',
+      notify: [
+        decided(claimantUid, 'claimant', true),
+        decided(ctx.offer.offeredByUid, 'offerer', true),
+        ...pending.docs.filter(d => d.id !== claimantUid).map(d => decided(d.id, 'superseded', false)),
+      ],
+    }
   })
 }
 
@@ -348,7 +373,11 @@ export async function requestSwap({ db, uid, input, now }) {
     tx.update(db.doc(paths.shift(bizId, myShiftId)), { swapId: ref.id })
     tx.update(db.doc(paths.shift(bizId, theirShiftId)), { swapId: ref.id })
     audit(tx, db, bizId, uid, 'swap.requested', { swapId: ref.id, shiftA: myShiftId, shiftB: theirShiftId }, now)
-    return { swapId: ref.id }
+    return {
+      swapId: ref.id,
+      notify: [{ kind: 'swapRequested', bizId, to: shiftB.assigneeUid,
+        params: { swapId: ref.id, requesterName: sideA.person.name, give: shiftA, get: shiftB } }],
+    }
   })
 }
 
@@ -389,6 +418,13 @@ async function prepareHengam(tx, db, ctx) {
   return hengam
 }
 
+// Both people in a swap hear how it ended.
+function swapDecided(bizId, swapId, swap, status) {
+  return [swap.requesterUid, swap.counterpartyUid].map(to => ({
+    kind: 'swapDecided', bizId, to, params: { swapId, status, forUid: to },
+  }))
+}
+
 function refuseIfClosed(ctx, statuses, now) {
   if (!statuses.includes(ctx.swap.status)) throw conflict('closed', 'This swap request has already been decided or cancelled.')
   if (ctx.swap.expiresAt.toDate() <= now) throw conflict('expired', 'It is too close to the shifts to swap them now.')
@@ -405,12 +441,16 @@ export async function respondSwap({ db, uid, input, now }) {
     if (!accept) {
       writeSwapClosed(tx, db, bizId, swapId, ctx, 'declined', {}, now)
       audit(tx, db, bizId, uid, 'swap.declined', { swapId }, now)
-      return { status: 'declined' }
+      return { status: 'declined', notify: [{ kind: 'swapDecided', bizId, to: ctx.swap.requesterUid, params: { swapId, status: 'declined', forUid: ctx.swap.requesterUid } }] }
     }
     // Closing it is the outcome, not an error: a throw would roll the close back.
     if (ctx.stale) {
       writeSwapClosed(tx, db, bizId, swapId, ctx, 'cancelled', { cancelReason: 'shift_changed' }, now)
-      return { status: 'cancelled', message: 'One of these shifts changed after the swap was asked for, so the request was closed.' }
+      return {
+        status: 'cancelled',
+        message: 'One of these shifts changed after the swap was asked for, so the request was closed.',
+        notify: [{ kind: 'swapDecided', bizId, to: ctx.swap.requesterUid, params: { swapId, status: 'cancelled', forUid: ctx.swap.requesterUid } }],
+      }
     }
     const [sideA, sideB] = await Promise.all([readSwapSide(tx, db, bizId, ctx.shiftA), readSwapSide(tx, db, bizId, ctx.shiftB)])
     // From the accepting side's point of view: they are B, taking A's shift.
@@ -420,11 +460,15 @@ export async function respondSwap({ db, uid, input, now }) {
     if (ctx.swap.requiresApproval) {
       tx.update(db.doc(paths.swap(bizId, swapId)), { status: 'pending_manager', acceptedAt: Timestamp.fromDate(now), updatedAt: Timestamp.fromDate(now) })
       audit(tx, db, bizId, uid, 'swap.accepted', { swapId }, now)
-      return { status: 'pending_manager' }
+      return {
+        status: 'pending_manager',
+        notify: [{ kind: 'swapNeedsApproval', bizId, to: 'managers', exclude: [ctx.swap.requesterUid, uid],
+          params: { swapId, requesterName: ctx.swap.requesterName, counterpartyName: ctx.swap.counterpartyName } }],
+      }
     }
     const hengam = await prepareHengam(tx, db, ctx)
     writeSwapDone(tx, db, bizId, swapId, ctx, sideA, sideB, uid, now, hengam)
-    return { status: 'completed' }
+    return { status: 'completed', notify: swapDecided(bizId, swapId, ctx.swap, 'completed') }
   })
 }
 
@@ -439,7 +483,7 @@ export async function decideSwap({ db, uid, input, now }) {
     if (!approve) {
       writeSwapClosed(tx, db, bizId, swapId, ctx, 'rejected', { decidedBy: uid, managerNote: cleanNote(input.note) || null }, now)
       audit(tx, db, bizId, uid, 'swap.rejected', { swapId }, now)
-      return { status: 'rejected' }
+      return { status: 'rejected', notify: swapDecided(bizId, swapId, ctx.swap, 'rejected') }
     }
     if (ctx.stale) throw conflict('changed', 'One of these shifts changed after the swap was agreed. Reject it and ask them to request again.')
     const [sideA, sideB] = await Promise.all([readSwapSide(tx, db, bizId, ctx.shiftA), readSwapSide(tx, db, bizId, ctx.shiftB)])
@@ -447,7 +491,7 @@ export async function decideSwap({ db, uid, input, now }) {
     if (!result.ok) throw ineligible(result.problems)
     const hengam = await prepareHengam(tx, db, ctx)
     writeSwapDone(tx, db, bizId, swapId, ctx, sideA, sideB, uid, now, hengam)
-    return { status: 'completed' }
+    return { status: 'completed', notify: swapDecided(bizId, swapId, ctx.swap, 'completed') }
   })
 }
 

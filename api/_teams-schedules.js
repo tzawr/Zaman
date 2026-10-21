@@ -131,7 +131,17 @@ export async function saveShift({ db, uid, input, now }) {
       before: existing ? { staffId: existing.staffId, date: existing.date, start: existing.startLocal, end: existing.endLocal } : null,
       after: { staffId, date: times.date, start: times.startLocal, end: times.endLocal },
     }, now)
-    return { shiftId: ref.id, scheduleId: weekStart, published, version: shift.version }
+    // Once a week is published, the people on a changed shift hear about it:
+    // whoever works it now, and whoever it was taken from.
+    const notify = []
+    if (published && shift.assigneeUid) {
+      notify.push({ kind: 'shiftChanged', bizId, to: shift.assigneeUid, params: { shift: { id: ref.id, ...shift } } })
+    }
+    if (published && existing?.assigneeUid && existing.assigneeUid !== shift.assigneeUid) {
+      notify.push({ kind: 'shiftChanged', bizId, to: existing.assigneeUid,
+        params: { shift: { id: ref.id, ...existing, status: 'cancelled', version: shift.version } } })
+    }
+    return { shiftId: ref.id, scheduleId: weekStart, published, version: shift.version, notify }
   })
 }
 
@@ -160,7 +170,10 @@ export async function deleteShift({ db, uid, input, now }) {
     audit(tx, db, bizId, uid, 'shift.removed', {
       shiftId, scheduleId: shift.scheduleId, staffId: shift.staffId, published: shift.published,
     }, now)
-    return { ok: true }
+    const notify = shift.published && shift.assigneeUid
+      ? [{ kind: 'shiftChanged', bizId, to: shift.assigneeUid, params: { shift: { id: shiftId, ...shift, status: 'cancelled', version: shift.version + 1 } } }]
+      : []
+    return { ok: true, notify }
   })
 }
 
@@ -194,6 +207,15 @@ export async function publishSchedule({ db, uid, input, now }) {
       status: 'published', publishedAt: at, publishedBy: uid, updatedAt: at, version: (schedule.version || 0) + 1,
     })
     audit(tx, db, bizId, uid, 'schedule.published', { scheduleId: weekStart, shifts: live.length }, now)
-    return { ok: true, published: live.length }
+    const counts = {}
+    live.forEach(d => { const a = d.data().assigneeUid; if (a) counts[a] = (counts[a] || 0) + 1 })
+    const version = (schedule.version || 0) + 1
+    return {
+      ok: true,
+      published: live.length,
+      notify: Object.entries(counts).map(([to, shiftCount]) => ({
+        kind: 'schedulePublished', bizId, to, params: { weekStart, version, shiftCount },
+      })),
+    }
   })
 }

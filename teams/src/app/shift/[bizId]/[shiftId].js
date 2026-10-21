@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useLocalSearchParams, useRouter } from 'expo-router'
-import { View } from 'react-native'
+import { Linking, Platform, View } from 'react-native'
 import { Feather } from '@expo/vector-icons'
 import { doc, onSnapshot } from 'firebase/firestore'
 import { ApiError, callTeams } from '../../../lib/api'
@@ -9,6 +9,7 @@ import { useAuth } from '../../../state/auth'
 import { useNow } from '../../../state/shifts'
 import { useWorkspace } from '../../../state/workspace'
 import { formatDateLong, formatDuration, formatShiftRange } from '../../../../../shared/teams/time'
+import { buildCalendar, googleCalendarLink, shiftEvent } from '../../../../../shared/teams/ics'
 import { Badge, Banner, Button, Card, Divider, Screen, SkeletonCard, Text, TextField } from '../../../ui/components'
 import { useTheme } from '../../../ui/theme'
 
@@ -48,6 +49,7 @@ export default function ShiftDetail() {
         {shift.notes ? <><Divider /><Row icon="file-text" label="Notes" value={shift.notes} /></> : null}
       </Card>
       <TradeActions bizId={bizId} shiftId={shiftId} shift={shift} onOpenOffer={() => setActive(bizId)} />
+      {shift.status !== 'cancelled' ? <AddToCalendar bizId={bizId} shiftId={shiftId} shift={shift} workplaceName={workplace?.name || 'Shift'} /> : null}
       <Text variant="caption" tone="faint">
         Times are in the workplace’s time zone.
       </Text>
@@ -133,6 +135,30 @@ function TradeActions({ bizId, shiftId, shift, onOpenOffer }) {
             onPress={() => router.push({ pathname: '/swap-new', params: { bizId, shiftId } })} />
         </>
       )}
+    </View>
+  )
+}
+
+// One shift into a calendar by hand. For every shift, kept up to date,
+// Profile → Calendar sync is the better way.
+function AddToCalendar({ bizId, shiftId, shift, workplaceName }) {
+  const event = shiftEvent({ ...shift, id: shiftId, startAt: shift.startAt.toDate(), endAt: shift.endAt.toDate() }, { bizId, workplaceName })
+  function download() {
+    const blob = new Blob([buildCalendar({ name: workplaceName, events: [event] })], { type: 'text/calendar' })
+    const a = document.createElement('a')
+    a.href = URL.createObjectURL(blob)
+    a.download = `shift-${shift.date}.ics`
+    a.click()
+    URL.revokeObjectURL(a.href)
+  }
+  return (
+    <View style={{ flexDirection: 'row', gap: 8 }}>
+      <Button title="Google Calendar" icon="calendar" variant="ghost" style={{ flex: 1 }}
+        onPress={() => Linking.openURL(googleCalendarLink(event))} accessibilityHint="Opens Google Calendar with this shift filled in" />
+      {Platform.OS === 'web' ? (
+        <Button title="Download .ics" icon="download" variant="ghost" style={{ flex: 1 }} onPress={download}
+          accessibilityHint="For Apple Calendar, Outlook and others" />
+      ) : null}
     </View>
   )
 }

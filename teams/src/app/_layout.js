@@ -2,6 +2,7 @@ import { Stack } from 'expo-router'
 import { StatusBar } from 'expo-status-bar'
 import { ActivityIndicator, View } from 'react-native'
 import { SafeAreaProvider } from 'react-native-safe-area-context'
+import { usePushNavigation } from '../lib/push'
 import { AuthProvider, useAuth } from '../state/auth'
 import { WorkspaceProvider } from '../state/workspace'
 import { ThemeProvider, useTheme } from '../ui/theme'
@@ -23,6 +24,7 @@ export default function RootLayout() {
 function Navigator() {
   const t = useTheme()
   const { user, loading } = useAuth()
+  usePushNavigation()
 
   if (loading) {
     return (
@@ -61,6 +63,8 @@ function Navigator() {
           <Stack.Screen name="swap-new" options={{ ...modal, title: 'Swap a shift' }} />
           <Stack.Screen name="availability" options={{ ...modal, title: 'Availability' }} />
           <Stack.Screen name="timeoff-new" options={{ ...modal, title: 'Time off' }} />
+          <Stack.Screen name="notifications" options={{ ...modal, title: 'Notifications' }} />
+          <Stack.Screen name="calendar-sync" options={{ ...modal, title: 'Calendar sync' }} />
           <Stack.Screen name="verify-email" options={{ ...modal, title: 'Verify your email' }} />
         </Stack.Protected>
         {/* Reachable signed in or out: an invite link opened before signing in. */}

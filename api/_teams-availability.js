@@ -197,7 +197,12 @@ export async function requestTimeOff({ db, uid, input, now }) {
       status: 'pending', createdAt: at, updatedAt: at,
     })
     audit(tx, db, bizId, uid, 'time_off.requested', { timeOffId: ref.id, startDate: r.startDate, endDate: r.endDate, category: r.category }, now)
-    return { id: ref.id, status: 'pending' }
+    return {
+      id: ref.id,
+      status: 'pending',
+      notify: [{ kind: 'timeOffRequested', bizId, to: 'managers', exclude: [uid],
+        params: { request: { id: ref.id, staffName: staffSnap.data()?.name || actor.displayName, ...r } } }],
+    }
   })
 }
 
@@ -250,6 +255,8 @@ export async function decideTimeOff({ db, uid, input, now }) {
     audit(tx, db, bizId, uid, approve ? 'time_off.approved' : 'time_off.rejected', { timeOffId: id }, now)
     return {
       status: next,
+      notify: [{ kind: 'timeOffDecided', bizId, to: r.uid,
+        params: { request: { id, ...r, managerNote: note || null }, approved: approve } }],
       clashingShifts: approve ? clashing.map(s => ({ id: s.id, date: s.date, startLocal: s.startLocal, endLocal: s.endLocal, overnight: Boolean(s.overnight) })) : [],
     }
   })

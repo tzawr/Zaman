@@ -133,8 +133,8 @@ Pending Teams time off appears on the Hengam Dashboard, to approve or decline th
 | 6 | Validation engine, marketplace, swaps, approvals, audit log | Done |
 | 7 | Availability, time off, business policies | Done |
 | 8 | Hengam sync | Done |
-| 9 | Notifications, push, reminders, calendar feed and export | Next |
-| 9b | Standalone imports: manual, CSV, Excel, PDF and image via Claude with mandatory review | |
+| 9 | Notifications, push, reminders, calendar feed and export | Done |
+| 9b | Standalone imports: manual, CSV, Excel, PDF and image via Claude with mandatory review | Next |
 | 10 | Performance, accessibility, monitoring, store submission | |
 
 ## Workspaces and invites (Phase 4)
@@ -222,6 +222,40 @@ Approved time off is a hard rule for trades: `checkAssignment` refuses a pickup 
 
 `businesses/{bizId}/settings/policies`, edited from Manage → Settings through `updatePolicies`: whether pickups and swaps need approval, whether employees see the full schedule or set their own availability, weekly and daily hour limits, minimum rest, the trading cut-off, and which kinds of time off are offered, including the business's own. Every change is audited with its before and after values.
 
+## Notifications and calendars (Phase 9)
+
+### In-app notifications
+
+Workflows return `notify`, a list of intents (`{ kind, bizId, to, params }`, where `to` is a uid, `managers` or `members`), from the transaction attempt that committed. The router delivers them after the commit (`api/_teams-notify.js`): it resolves recipients, words each message (`shared/teams/notifications.js`), and writes `users/{uid}/notifications/{key}`. The key identifies the event (for example a shift and its version), so delivering twice writes one notification, and a redelivery never marks a read one unread. Delivery failing does not fail the request; the change is already committed.
+
+| Event | Who hears |
+|---|---|
+| Week published (Teams or Hengam) | Everyone with a shift in it, with their count |
+| Published shift changed, added or removed; Hengam republish | The people whose shifts changed |
+| Shift offered | Everyone else in the business |
+| Pickup asked for | Managers |
+| Pickup decided | The claimant, the person who offered it, and anyone else who asked |
+| Swap asked for / agreed / decided | The other person / managers / both |
+| Time off asked for / decided | Managers / the person |
+| Shift tomorrow | The person working it |
+
+The app shows them behind a bell in every tab's header, with an unread count. Opening one marks it read and goes to what it is about.
+
+### Push
+
+Every notification also queues a push in `pushQueue` (server-only), sent through Expo's push service to each device under `users/{uid}/devices`. The request that caused it sends its own pushes straight away; the daily job sends anything left. Devices Expo reports as uninstalled are removed. People turn push on from Profile, so the system prompt comes when they ask. Push needs a development build and `EXPO_PUBLIC_EAS_PROJECT_ID`; it is not available on the web, where the bell is the notification.
+
+### The daily job
+
+`/api/cron/daily`, run by Vercel Cron at 01:00 UTC and refused without `CRON_SECRET`: reminds people of shifts in the next 36 hours, closes offers and swaps whose deadline passed (freeing their shifts), and drains the push queue. Every part is safe to run twice. Vercel's Hobby plan allows one cron run a day, so reminders say "Tomorrow" rather than "in two hours"; an hourly schedule on Pro needs no code change.
+
+### Calendars
+
+- **Subscription feed.** Profile → Calendar sync gives a private URL, `/api/calendar/{token}.ics`, for Apple Calendar, Google Calendar or Outlook. It lists every published shift the person works, from a month back, in every workplace they still belong to; a shift removed in the last two weeks stays in as cancelled so calendars drop it. The token is 48 hex characters, held in `calendarFeeds` (server-only), and can be replaced, which kills the old URL.
+- **One shift.** A shift's screen has "Google Calendar" (a prefilled event) and, on the web, "Download .ics".
+
+`shared/teams/ics.js` writes RFC 5545: UTC times, escaped text, lines folded at 75 bytes without splitting characters.
+
 ## Running Teams locally
 
 Everything runs against the Firebase emulators under the `demo-hengam` project, so nothing touches production.
@@ -245,7 +279,7 @@ cd teams && npx expo start --web
 
 ## Risks
 
-- **Vercel Hobby allows 12 functions.** `api/teams/*` is one router function, not one file per endpoint.
+- **Vercel Hobby allows 12 functions and one cron run a day.** `api/teams/*` is one router function; Teams adds `api/calendar/[token]` and `api/cron/daily`, eight functions in all.
 - **Firebase Storage needs the Blaze plan.** Imports are processed in the request and discarded, within Vercel's 4.5 MB request body limit; larger files would need direct Blob uploads.
 - **Imported names are ambiguous.** Matches to the roster are suggestions on the review screen, never applied silently.
 - **Swaps show coworkers' shifts.** Choosing a shift to swap for lists coworkers' upcoming shifts (name, time, position) even when the business has the full-schedule view off. Swapping cannot work without it; the list comes from the server and only for the next four weeks.

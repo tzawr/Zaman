@@ -116,6 +116,7 @@ export const NOTIFICATION_TYPES = [
   'pickup_decided',
   'swap_requested',
   'swap_decided',
+  'time_off_requested',
   'time_off_decided',
   'shift_reminder',
 ]
