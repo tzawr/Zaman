@@ -6,6 +6,7 @@ import {
 } from '../shared/teams/time.js'
 import { conflict, invalid, notFound } from './_teams-http.js'
 import { audit, readManager, requireId } from './_teams-common.js'
+import { clearBusyBlock, readLocks, writeBusyBlock, writeReleaseLocks } from './_teams-assignments.js'
 
 // The manager's schedule for a standalone business: one schedule document per
 // week, keyed by its Monday, and one document per shift. A week starts as a
@@ -17,8 +18,8 @@ const MINUTE = 60 * 1000
 const POSITION_MAX = 40
 const NOTES_MAX = 280
 // A week's shifts are published in one transaction, which Firestore caps at
-// 500 writes.
-const MAX_SHIFTS_PER_WEEK = 480
+// 500 writes; each shift takes two (itself and its busy-index entry).
+const MAX_SHIFTS_PER_WEEK = 240
 
 function scheduleRef(db, bizId, weekStart) {
   return db.doc(paths.schedule(bizId, weekStart))
@@ -72,7 +73,10 @@ export async function saveShift({ db, uid, input, now }) {
     }
 
     const weekStart = weekStartOf(times.date)
-    const scheduleSnap = await tx.get(scheduleRef(db, bizId, weekStart))
+    const [scheduleSnap, locks] = await Promise.all([
+      tx.get(scheduleRef(db, bizId, weekStart)),
+      existing ? readLocks(tx, db, bizId, { id: shiftId, ...existing }) : null,
+    ])
     const at = Timestamp.fromDate(now)
     const published = scheduleSnap.exists && scheduleSnap.data().status === 'published'
 
@@ -101,12 +105,18 @@ export async function saveShift({ db, uid, input, now }) {
       notes: notes || null,
       published,
       status: 'scheduled',
+      // An edit closes any offer or swap made against the old shift.
+      openOfferId: null,
+      swapId: null,
       origin: existing?.origin || 'manual',
       version: (existing?.version || 0) + 1,
       updatedAt: at,
       createdAt: existing?.createdAt || at,
     }
     tx.set(ref, shift)
+    if (locks) writeReleaseLocks(tx, db, bizId, locks, now, 'shift_changed')
+    if (existing?.assigneeUid && existing.assigneeUid !== shift.assigneeUid) clearBusyBlock(tx, db, bizId, ref.id, existing.assigneeUid)
+    writeBusyBlock(tx, db, bizId, ref.id, shift)
     audit(tx, db, bizId, uid, shiftId ? 'shift.updated' : 'shift.created', {
       shiftId: ref.id, scheduleId: weekStart, staffId,
       before: existing ? { staffId: existing.staffId, date: existing.date, start: existing.startLocal, end: existing.endLocal } : null,
@@ -128,9 +138,15 @@ export async function deleteShift({ db, uid, input, now }) {
     if (!snap.exists || snap.data().status === 'cancelled') return { ok: true }
     const shift = snap.data()
     if (!canTransition('shift', shift.status, 'cancelled')) throw conflict('shift_locked', 'This shift cannot be removed.')
+    const locks = await readLocks(tx, db, bizId, { id: shiftId, ...shift })
     const at = Timestamp.fromDate(now)
-    if (shift.published) tx.update(ref, { status: 'cancelled', cancelledAt: at, version: shift.version + 1, updatedAt: at })
-    else tx.delete(ref)
+    if (shift.published) {
+      tx.update(ref, { status: 'cancelled', cancelledAt: at, version: shift.version + 1, updatedAt: at, openOfferId: null, swapId: null })
+    } else {
+      tx.delete(ref)
+    }
+    writeReleaseLocks(tx, db, bizId, locks, now, 'shift_removed')
+    clearBusyBlock(tx, db, bizId, shiftId, shift.assigneeUid)
     audit(tx, db, bizId, uid, 'shift.removed', {
       shiftId, scheduleId: shift.scheduleId, staffId: shift.staffId, published: shift.published,
     }, now)
@@ -159,7 +175,10 @@ export async function publishSchedule({ db, uid, input, now }) {
     if (live.length > MAX_SHIFTS_PER_WEEK) throw invalid(`A week can have at most ${MAX_SHIFTS_PER_WEEK} shifts.`)
 
     const at = Timestamp.fromDate(now)
-    live.forEach(d => tx.update(d.ref, { published: true, updatedAt: at }))
+    live.forEach(d => {
+      tx.update(d.ref, { published: true, updatedAt: at })
+      writeBusyBlock(tx, db, bizId, d.id, { ...d.data(), published: true })
+    })
     tx.update(ref, {
       status: 'published', publishedAt: at, publishedBy: uid, updatedAt: at, version: (schedule.version || 0) + 1,
     })

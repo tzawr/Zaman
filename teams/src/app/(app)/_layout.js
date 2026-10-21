@@ -1,14 +1,14 @@
 import { Tabs } from 'expo-router'
 import { ActivityIndicator, View } from 'react-native'
 import { Feather } from '@expo/vector-icons'
+import { useRequestCount } from '../../state/requests'
 import { useWorkspace } from '../../state/workspace'
 import { useTheme } from '../../ui/theme'
 
-// Tabs arrive with the phases that fill them: Marketplace and Requests join
-// as those features land.
 export default function AppTabs() {
   const t = useTheme()
   const { isManager, loading, roleKnown } = useWorkspace()
+  const badge = useRequestCount()
   // Which tabs exist depends on the role, so the navigator waits for it.
   // Rendering first and hiding a tab later would bounce a deep link to that
   // tab back to Home.
@@ -32,10 +32,12 @@ export default function AppTabs() {
     }}>
       <Tabs.Screen name="index" options={{ title: 'Home', tabBarIcon: icon('home') }} />
       <Tabs.Screen name="calendar" options={{ title: 'Calendar', tabBarIcon: icon('calendar') }} />
-      {/* Only managers run the schedule and the team; for everyone else these tabs are not there. */}
-      <Tabs.Screen name="schedule" options={{ title: 'Schedule', tabBarIcon: icon('grid'), href: isManager ? undefined : null }} />
-      <Tabs.Screen name="team" options={{ title: 'Team', tabBarIcon: icon('users'), href: isManager ? undefined : null }} />
-      <Tabs.Screen name="profile" options={{ title: 'Profile', tabBarIcon: icon('user') }} />
+      <Tabs.Screen name="marketplace" options={{ title: 'Marketplace', tabBarIcon: icon('repeat') }} />
+      <Tabs.Screen name="requests" options={{ title: 'Requests', tabBarIcon: icon('inbox'), tabBarBadge: badge || undefined }} />
+      {/* Five tabs at most. Managers get Manage in place of Profile, which
+          they reach from the avatar in the header like everyone else. */}
+      <Tabs.Screen name="manage" options={{ title: 'Manage', tabBarIcon: icon('grid'), href: isManager ? undefined : null }} />
+      <Tabs.Screen name="profile" options={{ title: 'Profile', tabBarIcon: icon('user'), href: isManager ? null : undefined }} />
     </Tabs>
   )
 }

@@ -57,6 +57,8 @@ function Navigator() {
           <Stack.Screen name="member/[uid]" options={{ ...modal, title: 'Team member' }} />
           <Stack.Screen name="shift-edit" options={{ ...modal, title: 'Shift' }} />
           <Stack.Screen name="shift/[bizId]/[shiftId]" options={{ ...modal, title: 'Shift' }} />
+          <Stack.Screen name="offer/[offerId]" options={{ ...modal, title: 'Shift on offer' }} />
+          <Stack.Screen name="swap-new" options={{ ...modal, title: 'Swap a shift' }} />
           <Stack.Screen name="verify-email" options={{ ...modal, title: 'Verify your email' }} />
         </Stack.Protected>
         {/* Reachable signed in or out: an invite link opened before signing in. */}

@@ -1,19 +1,22 @@
 import { useEffect, useState } from 'react'
-import { useLocalSearchParams } from 'expo-router'
+import { useLocalSearchParams, useRouter } from 'expo-router'
 import { View } from 'react-native'
 import { Feather } from '@expo/vector-icons'
 import { doc, onSnapshot } from 'firebase/firestore'
+import { ApiError, callTeams } from '../../../lib/api'
 import { db } from '../../../lib/firebase'
+import { useAuth } from '../../../state/auth'
+import { useNow } from '../../../state/shifts'
 import { useWorkspace } from '../../../state/workspace'
 import { formatDateLong, formatDuration, formatShiftRange } from '../../../../../shared/teams/time'
-import { Badge, Banner, Card, Divider, Screen, SkeletonCard, Text } from '../../../ui/components'
+import { Badge, Banner, Button, Card, Divider, Screen, SkeletonCard, Text, TextField } from '../../../ui/components'
 import { useTheme } from '../../../ui/theme'
 
 export default function ShiftDetail() {
   const params = useLocalSearchParams()
   const bizId = String(params.bizId)
   const shiftId = String(params.shiftId)
-  const { workplaces } = useWorkspace()
+  const { workplaces, setActive } = useWorkspace()
   const workplace = workplaces?.find(w => w.id === bizId)
   const [state, setState] = useState({ key: null, shift: undefined })
   const key = `${bizId}/${shiftId}`
@@ -44,6 +47,7 @@ export default function ShiftDetail() {
         {shift.positionName ? <><Divider /><Row icon="tag" label="Position" value={shift.positionName} /></> : null}
         {shift.notes ? <><Divider /><Row icon="file-text" label="Notes" value={shift.notes} /></> : null}
       </Card>
+      <TradeActions bizId={bizId} shiftId={shiftId} shift={shift} onOpenOffer={() => setActive(bizId)} />
       <Text variant="caption" tone="faint">
         Times are in the workplace’s time zone.
       </Text>
@@ -61,6 +65,74 @@ function Row({ icon, label, value }) {
         <Text variant="caption" tone="muted">{label}</Text>
         <Text>{value}</Text>
       </View>
+    </View>
+  )
+}
+
+// Offering or swapping, for the person working the shift. Shown only while
+// the shift is still theirs to trade; the server has the final say.
+function TradeActions({ bizId, shiftId, shift, onOpenOffer }) {
+  const router = useRouter()
+  const { user } = useAuth()
+  const now = useNow()
+  const [offering, setOffering] = useState(false)
+  const [note, setNote] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState(null)
+
+  const mine = shift.assigneeUid === user?.uid
+  const future = shift.startAt?.toMillis?.() > now
+  if (!mine || !shift.published || shift.status === 'cancelled' || !future) return null
+
+  if (shift.openOfferId) {
+    return (
+      <Card>
+        <Text variant="label">On the marketplace</Text>
+        <Text tone="muted">It stays yours until someone picks it up.</Text>
+        <Button title="See the offer" variant="secondary" onPress={() => { onOpenOffer(); router.push(`/offer/${shift.openOfferId}`) }} />
+      </Card>
+    )
+  }
+  if (shift.swapId) {
+    return (
+      <Card>
+        <Text variant="label">Part of a swap request</Text>
+        <Text tone="muted">You’ll find it under Requests.</Text>
+        <Button title="Open Requests" variant="secondary" onPress={() => { onOpenOffer(); router.push('/requests') }} />
+      </Card>
+    )
+  }
+
+  async function offer() {
+    setBusy(true)
+    setError(null)
+    try {
+      await callTeams('offerShift', { bizId, shiftId, note })
+      setOffering(false)
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Could not offer this shift.')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <View style={{ gap: 10 }}>
+      <Banner message={error} />
+      {offering ? (
+        <Card>
+          <Text>Your coworkers will see it on the marketplace. It stays yours until someone picks it up.</Text>
+          <TextField label="Note (optional)" value={note} onChangeText={setNote} placeholder="Why you need it covered" />
+          <Button title="Offer it" loading={busy} onPress={offer} />
+          <Button title="Never mind" variant="ghost" onPress={() => setOffering(false)} />
+        </Card>
+      ) : (
+        <>
+          <Button title="Offer on the marketplace" icon="repeat" onPress={() => setOffering(true)} />
+          <Button title="Swap with a coworker" icon="shuffle" variant="secondary"
+            onPress={() => router.push({ pathname: '/swap-new', params: { bizId, shiftId } })} />
+        </>
+      )}
     </View>
   )
 }

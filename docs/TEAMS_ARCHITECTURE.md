@@ -106,8 +106,8 @@ A removed member (`status: removed`) loses every read immediately. Someone who w
 | 3 | Schema, rules, rules tests | Done |
 | 4 | Expo scaffold, sign-in (email, Google, Apple), workspaces, single-use invites, workplace switcher | Done |
 | 5 | Home, calendar (day, week, month), upcoming shifts, manual scheduling and publishing | Done |
-| 6 | Validation engine, marketplace, swaps, approvals, audit log | Next |
-| 7 | Availability and time off | |
+| 6 | Validation engine, marketplace, swaps, approvals, audit log | Done |
+| 7 | Availability and time off | Next |
 | 8 | Hengam sync | |
 | 9 | Notifications, push, reminders, calendar feed and export | |
 | 9b | Standalone imports: manual, CSV, Excel, PDF and image via Claude with mandatory review | |
@@ -145,6 +145,39 @@ A shift stores the business-local date and times people read (`date`, `startLoca
 
 Employees read their own published shifts from every workplace with one query per workplace, merged and coloured by workplace on Home and Calendar. The queries need the composite indexes in `firestore.indexes.json`, which also keeps Hengam's two existing indexes so a deploy does not drop them.
 
+## Marketplace and swaps (Phase 6)
+
+### Validation
+
+`shared/teams/validation.js` decides whether a person can take a shift: it has not started and is outside the business's cut-off, no overlap with their other shifts here or at any other workplace, the business's minimum rest between shifts, daily and weekly hour limits, and position or location where both the shift and the person name one. It is pure; the server gathers the facts and calls it when a request is made and again inside the transaction that approves it, so a week that filled up in between is caught.
+
+Problems are worded for whoever reads them. The person asking hears "You have a shift at another workplace at the same time"; their manager hears only "Ana has another commitment at that time".
+
+### Cross-workplace conflicts
+
+`userBusy/{uid}/blocks/{bizId}_{shiftId}` holds the start and end of every published, live shift a person works, anywhere. Rules deny it to every client. It is written in the same transaction as every change that affects it: saving, removing or publishing a shift, an approved transfer, someone joining (their existing shifts), and someone leaving or being removed.
+
+### Workflows
+
+| Action | Who | What happens |
+|---|---|---|
+| `offerShift` | The shift's assignee | Opens an offer and marks the shift with it. Offering twice returns the same offer. |
+| `claimOffer` | Any other member | Validated. With approval required, a pending claim (document id = claimant, so no duplicates). Without, the first eligible claimant gets the shift in that transaction. |
+| `decideClaim` | Manager | Re-validates, moves the shift, closes the other claims. Rejecting the last claim puts the offer back on the market. |
+| `previewClaim` | Member; manager for anyone | The same check without acting, so the app shows the answer before anyone taps. |
+| `requestSwap` | Assignee of shift A | Validates both directions and locks both shifts against offers and other swaps. |
+| `respondSwap` | Assignee of shift B | Declining frees both. Accepting completes the swap, or waits for a manager if the business requires it. |
+| `decideSwap` | Manager | Re-validates both directions and moves both shifts in one transaction. |
+| `cancelOffer`, `withdrawClaim`, `cancelSwap`, `listSwapCandidates` | | |
+
+Every offer and swap records the version of each shift it was made against. Any change to the shift (a manager editing it, a transfer) moves the version on and closes its open offer or swap in the same transaction, so nothing is ever approved against a shift that no longer exists as it was. The emulator tests cover three claimants racing for one instant pickup, a swap whose second shift is edited after both people agreed (neither side moves), and limits reached between asking and approval.
+
+### Navigation
+
+Five tabs at most. Everyone: Home, Calendar, Marketplace, Requests. Employees then have Profile; managers have Manage (Schedule and Team) and reach Profile from the avatar in the header. The Requests tab badge counts swaps waiting on the person and, for managers, everything awaiting approval.
+
+Offers carry `claimantUids` so the app can show who has asked without a collection-group query. Every member of the business can read it; who asked for a shift is visible to coworkers.
+
 ## Running Teams locally
 
 Everything runs against the Firebase emulators under the `demo-hengam` project, so nothing touches production.
@@ -171,6 +204,7 @@ cd teams && npx expo start --web
 - **Vercel Hobby allows 12 functions.** `api/teams/*` is one router function, not one file per endpoint.
 - **Firebase Storage needs the Blaze plan.** Imports are processed in the request and discarded, within Vercel's 4.5 MB request body limit; larger files would need direct Blob uploads.
 - **Imported names are ambiguous.** Matches to the roster are suggestions on the review screen, never applied silently.
+- **Swaps show coworkers' shifts.** Choosing a shift to swap for lists coworkers' upcoming shifts (name, time, position) even when the business has the full-schedule view off. Swapping cannot work without it; the list comes from the server and only for the next four weeks.
 - **Labor rules are per business.** The app does not know local law and says so where limits are configured.
 - **Existing employee accounts.** Accounts linked to Hengam through `managerId` move to memberships with an idempotent migration script.
 

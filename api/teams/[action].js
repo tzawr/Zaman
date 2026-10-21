@@ -2,6 +2,7 @@ import { getFirestore } from 'firebase-admin/firestore'
 import { initAdmin, requireSignedIn, sendError } from '../_firebase-admin.js'
 import { consumeRateLimit, sendRateLimited } from '../_rate-limit.js'
 import { TeamsError, applyCors, clientIp, readBody } from '../_teams-http.js'
+import * as marketplace from '../_teams-marketplace.js'
 import * as schedules from '../_teams-schedules.js'
 import * as workspaces from '../_teams-workspaces.js'
 
@@ -26,6 +27,17 @@ const ACTIONS = {
   saveShift: { run: schedules.saveShift, limit: [600, 60 * 60] },
   deleteShift: { run: schedules.deleteShift, limit: [600, 60 * 60] },
   publishSchedule: { run: schedules.publishSchedule, limit: [60, 60 * 60] },
+  offerShift: { run: marketplace.offerShift, limit: [60, 60 * 60] },
+  cancelOffer: { run: marketplace.cancelOffer, limit: [120, 60 * 60] },
+  previewClaim: { run: marketplace.previewClaim, limit: [600, 60 * 60] },
+  claimOffer: { run: marketplace.claimOffer, limit: [60, 60 * 60] },
+  withdrawClaim: { run: marketplace.withdrawClaim, limit: [120, 60 * 60] },
+  decideClaim: { run: marketplace.decideClaim, limit: [300, 60 * 60] },
+  listSwapCandidates: { run: marketplace.listSwapCandidates, limit: [300, 60 * 60] },
+  requestSwap: { run: marketplace.requestSwap, limit: [60, 60 * 60] },
+  respondSwap: { run: marketplace.respondSwap, limit: [120, 60 * 60] },
+  decideSwap: { run: marketplace.decideSwap, limit: [300, 60 * 60] },
+  cancelSwap: { run: marketplace.cancelSwap, limit: [120, 60 * 60] },
 }
 
 export default async function handler(req, res) {
@@ -61,7 +73,7 @@ export default async function handler(req, res) {
     return res.status(200).json(result)
   } catch (err) {
     if (err instanceof TeamsError) {
-      return res.status(err.status).json({ blocked: true, reason: err.reason, message: err.message })
+      return res.status(err.status).json({ blocked: true, reason: err.reason, message: err.message, problems: err.problems || undefined })
     }
     return sendError(res, err)
   }

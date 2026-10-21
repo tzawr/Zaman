@@ -2,8 +2,9 @@ import { useRouter } from 'expo-router'
 import { Pressable, View } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Feather } from '@expo/vector-icons'
+import { useAuth } from '../state/auth'
 import { useWorkspace } from '../state/workspace'
-import { Badge, Skeleton, Text } from '../ui/components'
+import { Avatar, Badge, Skeleton, Text } from '../ui/components'
 import { useTheme } from '../ui/theme'
 
 const ROLE_LABEL = { owner: 'Owner', manager: 'Manager', employee: 'Employee' }
@@ -14,6 +15,7 @@ export default function WorkplaceHeader({ title }) {
   const router = useRouter()
   const insets = useSafeAreaInsets()
   const { active, role, workplaces, loading } = useWorkspace()
+  const { user } = useAuth()
 
   return (
     <View style={{ paddingTop: insets.top + 12, paddingHorizontal: 20, paddingBottom: 4, backgroundColor: t.color.bg }}>
@@ -31,7 +33,12 @@ export default function WorkplaceHeader({ title }) {
             {role ? <Badge label={ROLE_LABEL[role]} tone="neutral" /> : null}
           </Pressable>
         ) : null}
-        <Text variant="title" accessibilityRole="header">{title}</Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+          <Text variant="title" accessibilityRole="header">{title}</Text>
+          <Pressable onPress={() => router.push('/profile')} accessibilityRole="button" accessibilityLabel="Profile and settings" hitSlop={8}>
+            <Avatar name={user?.displayName || user?.email} size={36} />
+          </Pressable>
+        </View>
       </View>
     </View>
   )

@@ -3,6 +3,7 @@ import { getFirestore } from 'firebase-admin/firestore'
 import { initAdmin } from '../api/_firebase-admin.js'
 import * as ws from '../api/_teams-workspaces.js'
 import * as sched from '../api/_teams-schedules.js'
+import * as mk from '../api/_teams-marketplace.js'
 import { addDays, todayIn, weekStartOf } from '../shared/teams/time.js'
 
 // Fills the Firebase emulators with a small, realistic setup for working on
@@ -77,6 +78,15 @@ await run(sched.publishSchedule, maya, { bizId: cafe, weekStart: thisWeek })
 // Sam's own bar: an overnight shift this week, published.
 await run(sched.saveShift, sam, { bizId: bar, staffId: samAtBar, date: addDays(thisWeek, 5), start: '20:00', end: '02:00', positionName: 'Bar' })
 await run(sched.publishSchedule, sam, { bizId: bar, weekStart: thisWeek })
+
+// Lee puts this Saturday's shift on the marketplace. Skipped late in the week,
+// when that shift is already too close to trade.
+const leeSaturday = (await db.collection(`businesses/${cafe}/shifts`)
+  .where('staffId', '==', leeInvite.staffId).where('date', '==', addDays(thisWeek, 5)).get()).docs[0]
+if (leeSaturday) {
+  await run(mk.offerShift, lee, { bizId: cafe, shiftId: leeSaturday.id, note: 'Family visiting, can anyone cover?' })
+    .catch(err => console.log(`Skipped Lee's offer: ${err.message}`))
+}
 
 console.log(`Seeded Blue Door Cafe (${cafe}) and Night Owl Bar (${bar}).`)
 console.log(`Open invite for Jo Bloggs: ${pending.code}`)

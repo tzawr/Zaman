@@ -8,6 +8,7 @@ import {
 } from '../shared/teams/workspace.js'
 import { TeamsError, conflict, forbidden, invalid, notFound } from './_teams-http.js'
 import { audit, countOwners, readActor, requireId, requireString, sha256 } from './_teams-common.js'
+import { writeBusyBlock } from './_teams-assignments.js'
 
 // Workspaces, memberships and invites. Each workflow is one Firestore
 // transaction: it reads what it depends on, checks the rules in
@@ -178,7 +179,10 @@ export async function acceptInvite({ db, uid, token, input, now }) {
 
     const at = Timestamp.fromDate(now)
     const displayName = staffSnap.data().name
-    shiftsSnap.docs.forEach(d => tx.update(d.ref, { assigneeUid: uid }))
+    shiftsSnap.docs.forEach(d => {
+      tx.update(d.ref, { assigneeUid: uid })
+      writeBusyBlock(tx, db, bizId, d.id, { ...d.data(), assigneeUid: uid })
+    })
     tx.set(memberRef, {
       role: invite.role, status: 'active', staffId: invite.staffId, displayName, joinedAt: at,
     })
@@ -241,7 +245,13 @@ export async function updateMemberRole({ db, uid, input, now }) {
 
 // Removing someone keeps their roster entry, so past shifts still say who
 // worked them, but unlinks it from their account.
-function writeRemoval(tx, db, bizId, member, memberUid, now) {
+// Their entries in the busy index for this business, which go with them.
+async function readBusyBlocksHere(tx, db, bizId, memberUid) {
+  return tx.get(db.collection(`userBusy/${memberUid}/blocks`).where('bizId', '==', bizId))
+}
+
+function writeRemoval(tx, db, bizId, member, memberUid, now, busySnap) {
+  busySnap?.docs.forEach(d => tx.delete(d.ref))
   tx.update(db.doc(paths.member(bizId, memberUid)), { status: 'removed', removedAt: Timestamp.fromDate(now) })
   if (member.staffId) {
     tx.update(db.doc(paths.staff(bizId, member.staffId)), { uid: FieldValue.delete() })
@@ -258,14 +268,14 @@ export async function removeMember({ db, uid, input, now }) {
     const actor = await readActor(tx, db, bizId, uid)
     const targetSnap = await tx.get(db.doc(paths.member(bizId, targetUid)))
     if (!targetSnap.exists || !isActive(targetSnap.data())) throw notFound('That person is not in this workspace.')
-    const owners = await countOwners(tx, db, bizId)
+    const [owners, busySnap] = await Promise.all([countOwners(tx, db, bizId), readBusyBlocksHere(tx, db, bizId, targetUid)])
     const target = targetSnap.data()
     if (!canRemove(actor, target, owners)) {
       throw forbidden(target.role === 'employee'
         ? 'Only managers can remove people.'
         : 'Only an owner can remove a manager or another owner.')
     }
-    writeRemoval(tx, db, bizId, target, targetUid, now)
+    writeRemoval(tx, db, bizId, target, targetUid, now, busySnap)
     audit(tx, db, bizId, uid, 'member.removed', { memberUid: targetUid, role: target.role }, now)
     return { ok: true }
   })
@@ -275,11 +285,11 @@ export async function leaveBusiness({ db, uid, input, now }) {
   const bizId = requireId(input.bizId, 'workspace')
   return db.runTransaction(async (tx) => {
     const member = await readActor(tx, db, bizId, uid)
-    const owners = await countOwners(tx, db, bizId)
+    const [owners, busySnap] = await Promise.all([countOwners(tx, db, bizId), readBusyBlocksHere(tx, db, bizId, uid)])
     if (!canLeave(member, owners)) {
       throw forbidden('You are the only owner. Make someone else an owner before you leave.')
     }
-    writeRemoval(tx, db, bizId, member, uid, now)
+    writeRemoval(tx, db, bizId, member, uid, now, busySnap)
     audit(tx, db, bizId, uid, 'member.left', {}, now)
     return { ok: true }
   })

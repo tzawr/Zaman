@@ -5,11 +5,13 @@ import ShiftCard from '../../components/ShiftCard'
 import VerifyEmailBanner from '../../components/VerifyEmailBanner'
 import WorkplaceHeader from '../../components/WorkplaceHeader'
 import { useAuth } from '../../state/auth'
+import { useMySwaps, useOpenOffers } from '../../state/market'
+import { useRequestCount } from '../../state/requests'
 import { thisWeek, useMyShifts, useNow, useToday, useWorkplaceColors, useWeekSchedule } from '../../state/shifts'
 import { useWorkspace } from '../../state/workspace'
 import { addDays, formatDuration } from '../../../../shared/teams/time'
 import {
-  Badge, Banner, Button, Card, EmptyState, Screen, SectionTitle, Skeleton, SkeletonCard, Text,
+  Badge, Banner, Button, Card, EmptyState, ListRow, Screen, SectionTitle, Skeleton, SkeletonCard, Text,
 } from '../../ui/components'
 
 function firstName(user) {
@@ -59,6 +61,7 @@ export default function Home() {
       <Screen>
         <Banner message={error} />
         <MyWeek multiple={workplaces.length > 1} />
+        <Activity />
         {isManager ? <ManagerSummary /> : null}
       </Screen>
     </View>
@@ -130,6 +133,45 @@ function MyWeek({ multiple }) {
   )
 }
 
+// What is waiting: anything that needs this person's answer, and shifts on
+// offer they could pick up. Shown only when there is something.
+function Activity() {
+  const router = useRouter()
+  const { user } = useAuth()
+  const waiting = useRequestCount()
+  const swaps = useMySwaps()
+  const { items } = useOpenOffers()
+  const open = (items || []).filter(o => o.offeredByUid !== user?.uid && !o.claimantUids?.includes(user?.uid))
+  const mine = swaps.outgoing.length + (items || []).filter(o => o.offeredByUid === user?.uid || o.claimantUids?.includes(user?.uid)).length
+  if (!waiting && !open.length && !mine) return null
+  return (
+    <>
+      <SectionTitle>Activity</SectionTitle>
+      <Card style={{ paddingVertical: 6 }}>
+        {waiting ? (
+          <ActivityRow icon="inbox" tone="warning" text={`${waiting} ${waiting === 1 ? 'request needs' : 'requests need'} your answer`}
+            onPress={() => router.push('/requests')} />
+        ) : null}
+        {mine ? (
+          <ActivityRow icon="clock" text={`${mine} of your ${mine === 1 ? 'request is' : 'requests are'} pending`}
+            onPress={() => router.push('/requests')} />
+        ) : null}
+        {open.length ? (
+          <ActivityRow icon="repeat" text={`${open.length} ${open.length === 1 ? 'shift' : 'shifts'} on the marketplace`}
+            onPress={() => router.push('/marketplace')} />
+        ) : null}
+      </Card>
+    </>
+  )
+}
+
+function ActivityRow({ icon, text, onPress, tone }) {
+  return (
+    <ListRow icon={icon} title={text} onPress={onPress} destructive={false}
+      right={tone === 'warning' ? <Badge label="New" tone="warning" /> : undefined} />
+  )
+}
+
 function ManagerSummary() {
   const router = useRouter()
   const today = useToday()
@@ -150,7 +192,7 @@ function ManagerSummary() {
           {count ? `${count} ${count === 1 ? 'shift' : 'shifts'} scheduled.` : 'Nothing scheduled yet.'}
           {schedule && !published ? ' Your team cannot see it until you publish.' : ''}
         </Text>
-        <Button title="Open schedule" variant="secondary" icon="calendar" onPress={() => router.push('/schedule')} />
+        <Button title="Open schedule" variant="secondary" icon="calendar" onPress={() => router.push('/manage')} />
       </Card>
     </>
   )

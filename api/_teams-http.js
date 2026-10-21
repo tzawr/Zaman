@@ -4,10 +4,12 @@
 // A refusal the caller can act on. Its message is written for the person
 // using the app, and is shown to them as-is.
 export class TeamsError extends Error {
-  constructor(status, reason, message) {
+  constructor(status, reason, message, problems = null) {
     super(message)
     this.status = status
     this.reason = reason
+    // Each reason a request was refused, when there is more than one to show.
+    this.problems = problems
   }
 }
 
@@ -15,6 +17,8 @@ export const notFound = (message) => new TeamsError(404, 'not_found', message)
 export const forbidden = (message) => new TeamsError(403, 'forbidden', message)
 export const conflict = (reason, message) => new TeamsError(409, reason, message)
 export const invalid = (message) => new TeamsError(400, 'invalid', message)
+export const ineligible = (problems) =>
+  new TeamsError(422, 'ineligible', problems.map(p => p.message).join(' '), problems)
 
 // The Teams web app is served from its own origin. Native apps send no Origin
 // header and are unaffected. Anything not on the list gets no CORS headers,
