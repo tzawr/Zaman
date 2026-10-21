@@ -24,3 +24,7 @@ build
 npm-debug.log*
 .vercel
 .env*.local
+
+# Emulator logs
+firestore-debug.log
+firebase-debug.log

@@ -254,7 +254,207 @@ function isAdmin() {
       // rules; this covers the direct case and makes the right explicit.
       allow delete: if isAdmin() || (signedIn() && request.auth.uid == uid);
 
+      // ---- Hengam Teams: the user's own corner ----------------------------
+
+      // Which businesses this account belongs to, for the workplace switcher.
+      // A mirror of businesses/{bizId}/members, written only by the server.
+      match /workplaces/{bizId} {
+        allow read: if signedIn() && request.auth.uid == uid;
+        allow write: if false;
+      }
+
+      // Written by the server, keyed by a dedupe key. The owner can only mark
+      // one read, or clear it.
+      match /notifications/{notificationId} {
+        allow read, delete: if signedIn() && request.auth.uid == uid;
+        allow update: if signedIn() && request.auth.uid == uid &&
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['readAt']) &&
+          request.resource.data.readAt == request.time;
+        allow create: if false;
+      }
+
+      // Push tokens for this account's devices.
+      match /devices/{deviceId} {
+        allow read, delete: if signedIn() && request.auth.uid == uid;
+        allow create, update: if signedIn() && request.auth.uid == uid &&
+          request.resource.data.keys().hasOnly(['platform', 'token', 'createdAt', 'updatedAt']) &&
+          request.resource.data.platform in ['ios', 'android', 'web'] &&
+          request.resource.data.token is string &&
+          request.resource.data.token.size() > 0 &&
+          request.resource.data.token.size() <= 4096 &&
+          request.resource.data.updatedAt == request.time;
+      }
     }
 
+    // ==== Hengam Teams ======================================================
+    //
+    // Everything a business owns lives under businesses/{bizId}, and every
+    // read is gated on the caller's membership document in that business.
+    // Clients never write here: claims, swaps, approvals, publishing and
+    // imports all go through /api/teams, which validates and writes inside a
+    // transaction with the Admin SDK. These rules decide only who may read.
+    //
+    // Collection names and status values match shared/teams/schema.js.
+
+    function memberPath(bizId) {
+      return /databases/$(database)/documents/businesses/$(bizId)/members/$(request.auth.uid);
+    }
+
+    function isMember(bizId) {
+      return signedIn() &&
+        exists(memberPath(bizId)) &&
+        get(memberPath(bizId)).data.status == 'active';
+    }
+
+    function isManager(bizId) {
+      return isMember(bizId) && get(memberPath(bizId)).data.role in ['owner', 'manager'];
+    }
+
+    function policiesPath(bizId) {
+      return /databases/$(database)/documents/businesses/$(bizId)/settings/policies;
+    }
+
+    // Whether employees may see coworkers' shifts. Off unless set.
+    function fullView(bizId) {
+      return exists(policiesPath(bizId)) &&
+        get(policiesPath(bizId)).data.get('employeeFullView', false) == true;
+    }
+
+    function isMine() {
+      return resource.data.get('uid', '') == request.auth.uid;
+    }
+
+    match /businesses/{bizId} {
+      allow read: if isMember(bizId);
+      allow write: if false;
+
+      // Who is in the business and in what role. Employees see only their own
+      // membership; coworker names come from staff.
+      match /members/{memberUid} {
+        allow read: if isManager(bizId) || (signedIn() && request.auth.uid == memberUid);
+        allow write: if false;
+      }
+
+      // The roster: a name, positions and locations per person, readable by the
+      // whole team so offers and swaps can show who is involved.
+      match /staff/{staffId} {
+        allow read: if isMember(bizId);
+        allow write: if false;
+      }
+
+      // Contact details, pay codes and anything else coworkers must not see.
+      match /staffPrivate/{staffId} {
+        allow read: if isManager(bizId) || (isMember(bizId) && isMine());
+        allow write: if false;
+      }
+
+      match /locations/{locationId} {
+        allow read: if isMember(bizId);
+        allow write: if false;
+      }
+
+      match /positions/{positionId} {
+        allow read: if isMember(bizId);
+        allow write: if false;
+      }
+
+      match /settings/{settingId} {
+        allow read: if isMember(bizId);
+        allow write: if false;
+      }
+
+      // Drafts are the manager's. Employees see a schedule once it is published.
+      match /schedules/{scheduleId} {
+        allow read: if isManager(bizId) ||
+          (isMember(bizId) && resource.data.status == 'published');
+        allow write: if false;
+      }
+
+      // One document per shift, so access is per shift: an employee reads their
+      // own published shifts, and coworkers' only when the business allows the
+      // full view. A query must carry the matching filters to pass.
+      match /shifts/{shiftId} {
+        allow read: if isManager(bizId) || (
+          isMember(bizId) &&
+          resource.data.published == true &&
+          (resource.data.assigneeUid == request.auth.uid || fullView(bizId))
+        );
+        allow write: if false;
+      }
+
+      // The marketplace is open to the whole business: an offered shift is
+      // offered to everyone, and each person is told whether they qualify.
+      match /offers/{offerId} {
+        allow read: if isMember(bizId);
+        allow write: if false;
+
+        // Keyed by the claimant's uid. Visible to the claimant, the person
+        // offering the shift, and managers.
+        match /claims/{claimantUid} {
+          allow read: if isManager(bizId) || (
+            isMember(bizId) && (
+              request.auth.uid == claimantUid ||
+              get(/databases/$(database)/documents/businesses/$(bizId)/offers/$(offerId)).data.offeredByUid == request.auth.uid
+            )
+          );
+          allow write: if false;
+        }
+      }
+
+      match /swaps/{swapId} {
+        allow read: if isManager(bizId) || (
+          isMember(bizId) && (
+            resource.data.requesterUid == request.auth.uid ||
+            resource.data.counterpartyUid == request.auth.uid
+          )
+        );
+        allow write: if false;
+      }
+
+      match /availability/{staffId} {
+        allow read: if isManager(bizId) || (isMember(bizId) && isMine());
+        allow write: if false;
+
+        match /overrides/{overrideId} {
+          allow read: if isManager(bizId) || (isMember(bizId) && isMine());
+          allow write: if false;
+        }
+      }
+
+      match /timeOff/{requestId} {
+        allow read: if isManager(bizId) || (isMember(bizId) && isMine());
+        allow write: if false;
+      }
+
+      // AI and file imports awaiting review, the audit trail, and Hengam sync
+      // state are the manager's alone.
+      match /imports/{importId} {
+        allow read: if isManager(bizId);
+        allow write: if false;
+      }
+
+      match /auditLog/{entryId} {
+        allow read: if isManager(bizId);
+        allow write: if false;
+      }
+
+      match /sync/{syncId} {
+        allow read: if isManager(bizId);
+        allow write: if false;
+      }
+    }
+
+    // Every shift a person holds in any business, with no business details,
+    // so the server can catch a clash across employers. Nobody reads it but
+    // the server: a client that could would learn where else a coworker works.
+    match /userBusy/{uid}/{document=**} {
+      allow read, write: if false;
+    }
+
+    // Calendar subscription tokens. The token is the secret in the feed URL,
+    // and only the server resolves it.
+    match /calendarFeeds/{token} {
+      allow read, write: if false;
+    }
   }
 }
