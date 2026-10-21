@@ -117,7 +117,7 @@ export function Card({ children, style, onPress, accessibilityLabel }) {
   )
 }
 
-export function ListRow({ title, subtitle, icon, right, onPress, accessibilityLabel, destructive }) {
+export function ListRow({ title, subtitle, icon, right, onPress, accessibilityLabel, destructive, subtitleLines = 2 }) {
   const t = useTheme()
   const content = (
     <>
@@ -129,7 +129,7 @@ export function ListRow({ title, subtitle, icon, right, onPress, accessibilityLa
       ) : null}
       <View style={{ flex: 1, gap: 2 }}>
         <Text style={destructive && { color: t.color.danger }} numberOfLines={1}>{title}</Text>
-        {subtitle ? <Text variant="caption" tone="muted" numberOfLines={2}>{subtitle}</Text> : null}
+        {subtitle ? <Text variant="caption" tone="muted" numberOfLines={subtitleLines || undefined}>{subtitle}</Text> : null}
       </View>
       {right}
       {onPress && !right ? <Feather name="chevron-right" size={18} color={t.color.textFaint} /> : null}

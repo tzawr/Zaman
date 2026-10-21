@@ -2,6 +2,7 @@ import { getFirestore } from 'firebase-admin/firestore'
 import { initAdmin, requireSignedIn, sendError } from '../_firebase-admin.js'
 import { consumeRateLimit, sendRateLimited } from '../_rate-limit.js'
 import { TeamsError, applyCors, clientIp, readBody } from '../_teams-http.js'
+import * as availability from '../_teams-availability.js'
 import * as marketplace from '../_teams-marketplace.js'
 import * as schedules from '../_teams-schedules.js'
 import * as workspaces from '../_teams-workspaces.js'
@@ -38,6 +39,13 @@ const ACTIONS = {
   respondSwap: { run: marketplace.respondSwap, limit: [120, 60 * 60] },
   decideSwap: { run: marketplace.decideSwap, limit: [300, 60 * 60] },
   cancelSwap: { run: marketplace.cancelSwap, limit: [120, 60 * 60] },
+  saveAvailability: { run: availability.saveAvailability, limit: [120, 60 * 60] },
+  addAvailabilityOverride: { run: availability.addAvailabilityOverride, limit: [120, 60 * 60] },
+  removeAvailabilityOverride: { run: availability.removeAvailabilityOverride, limit: [120, 60 * 60] },
+  requestTimeOff: { run: availability.requestTimeOff, limit: [60, 60 * 60] },
+  cancelTimeOff: { run: availability.cancelTimeOff, limit: [120, 60 * 60] },
+  decideTimeOff: { run: availability.decideTimeOff, limit: [300, 60 * 60] },
+  updatePolicies: { run: availability.updatePolicies, limit: [120, 60 * 60] },
 }
 
 export default async function handler(req, res) {

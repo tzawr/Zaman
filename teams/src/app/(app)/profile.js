@@ -54,6 +54,17 @@ export default function Profile() {
 
         <Banner tone={notice?.tone} message={notice?.message} />
 
+        {activeId ? (
+          <>
+            <SectionTitle>At {workplaces?.find(w => w.id === activeId)?.name}</SectionTitle>
+            <Card style={{ paddingVertical: 6 }}>
+              <ListRow icon="clock" title="My availability" subtitle="When you can work, and temporary changes" onPress={() => router.push('/availability')} />
+              <Divider />
+              <ListRow icon="sun" title="Request time off" onPress={() => router.push('/timeoff-new')} />
+            </Card>
+          </>
+        ) : null}
+
         <SectionTitle>Workplaces</SectionTitle>
         <Card style={{ paddingVertical: 6 }}>
           {(workplaces || []).map((w, i) => (

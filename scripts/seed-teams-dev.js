@@ -4,6 +4,7 @@ import { initAdmin } from '../api/_firebase-admin.js'
 import * as ws from '../api/_teams-workspaces.js'
 import * as sched from '../api/_teams-schedules.js'
 import * as mk from '../api/_teams-marketplace.js'
+import * as av from '../api/_teams-availability.js'
 import { addDays, todayIn, weekStartOf } from '../shared/teams/time.js'
 
 // Fills the Firebase emulators with a small, realistic setup for working on
@@ -87,6 +88,23 @@ if (leeSaturday) {
   await run(mk.offerShift, lee, { bizId: cafe, shiftId: leeSaturday.id, note: 'Family visiting, can anyone cover?' })
     .catch(err => console.log(`Skipped Lee's offer: ${err.message}`))
 }
+
+// Availability: Sam works weekdays and Saturday mornings; Lee can't do
+// Wednesdays. Lee has asked for next Friday off, which Maya has not decided.
+await run(av.saveAvailability, sam, { bizId: cafe, weekly: {
+  monday: { available: true, windows: [{ start: '07:00', end: '19:00' }] },
+  tuesday: { available: true, windows: [{ start: '07:00', end: '19:00' }] },
+  wednesday: { available: true, windows: [{ start: '07:00', end: '19:00' }] },
+  thursday: { available: true, windows: [{ start: '07:00', end: '19:00' }] },
+  friday: { available: true, windows: [{ start: '07:00', end: '19:00' }] },
+  saturday: { available: true, windows: [{ start: '08:00', end: '13:00' }] },
+}, preferredHoursPerWeek: 30 })
+await run(av.saveAvailability, lee, { bizId: cafe, weekly: {
+  monday: { available: true }, tuesday: { available: true }, thursday: { available: true },
+  friday: { available: true }, saturday: { available: true }, sunday: { available: true },
+} })
+await run(av.requestTimeOff, lee, { bizId: cafe, requestId: 'seed-timeoff-0001', category: 'personal',
+  startDate: addDays(nextWeek, 4), endDate: addDays(nextWeek, 4), reason: 'Moving house' })
 
 console.log(`Seeded Blue Door Cafe (${cafe}) and Night Owl Bar (${bar}).`)
 console.log(`Open invite for Jo Bloggs: ${pending.code}`)

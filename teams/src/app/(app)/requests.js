@@ -2,10 +2,13 @@ import { useEffect, useState } from 'react'
 import { View } from 'react-native'
 import OfferCard from '../../components/OfferCard'
 import SwapCard from '../../components/SwapCard'
+import TimeOffCard from '../../components/TimeOffCard'
 import WorkplaceHeader from '../../components/WorkplaceHeader'
 import { ApiError, callTeams } from '../../lib/api'
 import { useAuth } from '../../state/auth'
+import { useMyTimeOff, usePendingTimeOff, usePolicies } from '../../state/availability'
 import { useApprovals, useMySwaps, useOpenOffers, usePendingClaims } from '../../state/market'
+import { useRouter } from 'expo-router'
 import { useToday } from '../../state/shifts'
 import { useWorkspace } from '../../state/workspace'
 import { formatDuration, formatShiftRange, relativeDay } from '../../../../shared/teams/time'
@@ -20,6 +23,10 @@ export default function Requests() {
   const swaps = useMySwaps()
   const approvals = useApprovals()
   const offers = useOpenOffers()
+  const router = useRouter()
+  const policies = usePolicies()
+  const myTimeOff = useMyTimeOff()
+  const pendingTimeOff = usePendingTimeOff()
   const [notice, setNotice] = useState(null)
   const [busy, setBusy] = useState(null)
 
@@ -28,7 +35,8 @@ export default function Requests() {
     setNotice(null)
     try {
       const result = await callTeams(action, { bizId: activeId, ...body })
-      setNotice({ tone: result.message ? 'warning' : 'success', message: result.message || success })
+      const message = typeof success === 'function' ? success(result) : success
+      setNotice({ tone: result.message ? 'warning' : 'success', message: result.message || message })
     } catch (err) {
       setNotice({ tone: 'danger', message: err instanceof ApiError ? err.message : 'That did not work. Try again.' })
     } finally {
@@ -36,18 +44,23 @@ export default function Requests() {
     }
   }
 
-  const loading = swaps.loading || approvals.loading || offers.items === null
+  const loading = swaps.loading || approvals.loading || offers.items === null || myTimeOff.items === null || pendingTimeOff.items === null
   const myOffers = (offers.items || []).filter(o => o.offeredByUid === user?.uid)
   const myClaims = (offers.items || []).filter(o => o.claimantUids?.includes(user?.uid))
+  const myOpenTimeOff = (myTimeOff.items || []).filter(r => r.status === 'pending' || (r.status === 'approved' && r.endDate >= today))
+  const myPastTimeOff = (myTimeOff.items || []).filter(r => !myOpenTimeOff.includes(r)).slice(0, 5)
+  const pendingForMe = isManager ? (pendingTimeOff.items || []) : []
   const nothing = !loading && !swaps.incoming.length && !swaps.outgoing.length && !myOffers.length
-    && !myClaims.length && !approvals.offers.length && !approvals.swaps.length
+    && !myClaims.length && !approvals.offers.length && !approvals.swaps.length && !pendingForMe.length
+    && !myOpenTimeOff.length && !myPastTimeOff.length && !swaps.history.length
 
   return (
     <View style={{ flex: 1 }}>
       <WorkplaceHeader title="Requests" />
       <Screen>
         <Banner tone={notice?.tone} message={notice?.message} />
-        <Banner message={swaps.error || approvals.error || offers.error} />
+        <Banner message={swaps.error || approvals.error || offers.error || myTimeOff.error} />
+        <Button title="Request time off" icon="sun" variant="secondary" onPress={() => router.push('/timeoff-new')} />
         {loading ? <><SkeletonCard lines={2} /><SkeletonCard lines={2} /></> : null}
 
         {swaps.incoming.length ? <SectionTitle>Needs your answer</SectionTitle> : null}
@@ -63,7 +76,19 @@ export default function Requests() {
           </SwapCard>
         ))}
 
-        {isManager && (approvals.offers.length || approvals.swaps.length) ? <SectionTitle>Needs your approval</SectionTitle> : null}
+        {isManager && (approvals.offers.length || approvals.swaps.length || pendingForMe.length) ? <SectionTitle>Needs your approval</SectionTitle> : null}
+        {pendingForMe.map(r => (
+          <TimeOffCard key={r.id} request={r} labels={policies?.labels} showName>
+            <View style={{ flexDirection: 'row', gap: 8 }}>
+              <Button title="Approve" style={{ flex: 1 }} loading={busy === `${r.id}:yes`} disabled={Boolean(busy)}
+                onPress={() => act(`${r.id}:yes`, 'decideTimeOff', { timeOffId: r.id, approve: true }, (res) => res.clashingShifts?.length
+                  ? `Approved. ${r.staffName} still has ${res.clashingShifts.length} ${res.clashingShifts.length === 1 ? 'shift' : 'shifts'} in that time; reassign ${res.clashingShifts.length === 1 ? 'it' : 'them'} from Manage.`
+                  : 'Time off approved.')} />
+              <Button title="Decline" variant="secondary" style={{ flex: 1 }} loading={busy === `${r.id}:no`} disabled={Boolean(busy)}
+                onPress={() => act(`${r.id}:no`, 'decideTimeOff', { timeOffId: r.id, approve: false }, 'Time off declined.')} />
+            </View>
+          </TimeOffCard>
+        ))}
         {isManager ? approvals.offers.map(o => (
           <PickupApproval key={o.id} offer={o} today={today} busy={busy} onAct={act} />
         )) : null}
@@ -79,7 +104,16 @@ export default function Requests() {
           </SwapCard>
         )) : null}
 
-        {swaps.outgoing.length || myOffers.length || myClaims.length ? <SectionTitle>Your requests</SectionTitle> : null}
+        {swaps.outgoing.length || myOffers.length || myClaims.length || myOpenTimeOff.length ? <SectionTitle>Your requests</SectionTitle> : null}
+        {myOpenTimeOff.map(r => (
+          <TimeOffCard key={r.id} request={r} labels={policies?.labels}>
+            {r.status === 'pending' || r.startDate > today ? (
+              <Button title={r.status === 'pending' ? 'Withdraw request' : 'Cancel time off'} variant="secondary"
+                loading={busy === r.id} disabled={Boolean(busy)}
+                onPress={() => act(r.id, 'cancelTimeOff', { timeOffId: r.id }, 'Cancelled.')} />
+            ) : null}
+          </TimeOffCard>
+        ))}
         {swaps.outgoing.map(s => (
           <SwapCard key={s.id} swap={s} today={today}>
             {s.requesterUid === user?.uid ? (
@@ -90,12 +124,13 @@ export default function Requests() {
         ))}
         {[...myOffers, ...myClaims].map(o => <OfferCard key={o.id} offer={o} today={today} />)}
 
-        {swaps.history.length ? <SectionTitle>Recent swaps</SectionTitle> : null}
+        {swaps.history.length || myPastTimeOff.length ? <SectionTitle>Recent</SectionTitle> : null}
         {swaps.history.map(s => <SwapCard key={s.id} swap={s} today={today} />)}
+        {myPastTimeOff.map(r => <TimeOffCard key={r.id} request={r} labels={policies?.labels} />)}
 
         {nothing ? (
           <EmptyState icon="inbox" title="No requests"
-            message="Shift offers, pickups and swaps you are part of show up here." />
+            message="Time off, shift offers, pickups and swaps you are part of show up here." />
         ) : null}
       </Screen>
     </View>

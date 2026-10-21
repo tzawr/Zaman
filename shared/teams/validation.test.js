@@ -79,3 +79,13 @@ test('people who left or never joined cannot take shifts', () => {
   assert.deepEqual(codes(checkAssignment({ shift: s, person: { name: 'Jo', active: true }, now })), ['no_account'])
   assert.deepEqual(codes(checkAssignment({ shift: s, person: { ...ana, active: false }, now })), ['not_member'])
 })
+
+test('approved time off blocks a shift; pending and other days do not', () => {
+  const s = shift('s', '2026-10-22', '09:00', '17:00')
+  const off = (status, startDate = '2026-10-22') => ({ status, startDate, endDate: startDate, partial: null })
+  assert.deepEqual(codes(checkAssignment({ shift: s, person: ana, timeOff: [off('approved')], now })), ['time_off'])
+  assert.equal(checkAssignment({ shift: s, person: ana, timeOff: [off('pending')], now }).ok, true)
+  assert.equal(checkAssignment({ shift: s, person: ana, timeOff: [off('approved', '2026-10-23')], now }).ok, true)
+  const m = checkAssignment({ shift: s, person: ana, timeOff: [off('approved')], now, audience: 'manager' })
+  assert.equal(m.problems[0].message, 'Ana has approved time off then.')
+})

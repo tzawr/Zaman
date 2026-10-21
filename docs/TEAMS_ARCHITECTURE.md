@@ -108,7 +108,7 @@ A removed member (`status: removed`) loses every read immediately. Someone who w
 | 5 | Home, calendar (day, week, month), upcoming shifts, manual scheduling and publishing | Done |
 | 6 | Validation engine, marketplace, swaps, approvals, audit log | Done |
 | 7 | Availability and time off | Next |
-| 8 | Hengam sync | |
+| 8 | Hengam sync | Next |
 | 9 | Notifications, push, reminders, calendar feed and export | |
 | 9b | Standalone imports: manual, CSV, Excel, PDF and image via Claude with mandatory review | |
 | 10 | Performance, accessibility, monitoring, store submission | |
@@ -177,6 +177,26 @@ Every offer and swap records the version of each shift it was made against. Any 
 Five tabs at most. Everyone: Home, Calendar, Marketplace, Requests. Employees then have Profile; managers have Manage (Schedule and Team) and reach Profile from the avatar in the header. The Requests tab badge counts swaps waiting on the person and, for managers, everything awaiting approval.
 
 Offers carry `claimantUids` so the app can show who has asked without a collection-group query. Every member of the business can read it; who asked for a shift is visible to coworkers.
+
+## Availability, time off and policies (Phase 7)
+
+### Availability
+
+`businesses/{bizId}/availability/{staffId}` holds a short list of weekly patterns, each with the date it takes effect, so a change can be entered now and apply from next month. Old versions are pruned once a newer one is in force. Each day is available or not, with up to two windows (overnight allowed) or all day. Temporary changes, such as exams or a trip, are kept in the same document and override the weekly pattern for their dates. Someone who has never set availability is treated as available any time.
+
+People set their own unless the business turns that off; managers can set anyone's. `shared/teams/availability.js` holds the rules both sides use: validating a pattern, which version applies on a date, whether a shift fits, and a one-line summary.
+
+Availability does not block anything. A manager may know more than the form does, so the schedule editor warns ("Sam is not available on Weds") rather than refusing. The Schedule view marks every shift that falls outside availability or in time off, and lists who is off each day. The Availability section of Manage shows everyone's week, preferred hours, temporary changes, time off, and a badge on anything changed in the last week or about to change.
+
+### Time off
+
+`businesses/{bizId}/timeOff/{id}` is one request: category, dates, optionally part of one day, reason, and the instants it covers in the business's time zone. The id is derived from the app's request id, so a retried submission is the same request. A request cannot overlap another of the person's pending or approved requests. Managers approve or decline with a note; approving reports any shifts the person still has in that time so they can be reassigned. People can withdraw a pending request, or cancel approved time off that has not started.
+
+Approved time off is a hard rule for trades: `checkAssignment` refuses a pickup or swap that would put someone on a shift during their approved time off.
+
+### Policies
+
+`businesses/{bizId}/settings/policies`, edited from Manage → Settings through `updatePolicies`: whether pickups and swaps need approval, whether employees see the full schedule or set their own availability, weekly and daily hour limits, minimum rest, the trading cut-off, and which kinds of time off are offered, including the business's own. Every change is audited with its before and after values.
 
 ## Running Teams locally
 

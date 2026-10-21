@@ -135,6 +135,9 @@ export const DEFAULT_POLICIES = Object.freeze({
   requireLocationMatch: false,
   offerCutoffHours: 2,
   timeOffCategories: TIME_OFF_CATEGORIES,
+  // Categories a business adds: [{ id, label }]. Their ids are also listed in
+  // timeOffCategories when switched on.
+  customTimeOffCategories: [],
 })
 
 // Paths. Collection names appear nowhere else, so a rename is one edit here

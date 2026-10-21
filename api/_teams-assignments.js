@@ -51,14 +51,16 @@ export async function readFacts(tx, db, bizId, shift, person) {
   const { fromDate, toDate } = validationWindow(shift.date)
   const from = Timestamp.fromDate(new Date(`${fromDate}T00:00:00Z`))
   const to = Timestamp.fromDate(new Date(`${addDays(toDate, 1)}T00:00:00Z`))
-  const [here, busy] = await Promise.all([
+  const [here, busy, timeOff] = await Promise.all([
     tx.get(db.collection(`businesses/${bizId}/shifts`)
       .where('staffId', '==', person.staffId).where('startAt', '>=', from).where('startAt', '<', to)),
     person.uid
       ? tx.get(db.collection(`userBusy/${person.uid}/blocks`).where('startAt', '>=', from).where('startAt', '<', to))
       : Promise.resolve({ docs: [] }),
+    tx.get(db.collection(`businesses/${bizId}/timeOff`).where('staffId', '==', person.staffId).where('status', '==', 'approved')),
   ])
   return {
+    timeOff: timeOff.docs.map(d => d.data()).filter(r => r.endDate >= fromDate && r.startDate <= toDate),
     sameBusinessShifts: here.docs.map(d => toPlainShift(d.id, d.data())),
     otherWorkplaceBlocks: busy.docs.map(d => d.data()).filter(b => b.bizId !== bizId)
       .map(b => ({ ...b, startAt: b.startAt.toDate(), endAt: b.endAt.toDate() })),

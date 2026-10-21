@@ -3,11 +3,13 @@ import { useRouter } from 'expo-router'
 import { Pressable, View } from 'react-native'
 import { Feather } from '@expo/vector-icons'
 import { ApiError, callTeams } from '../lib/api'
+import { useTeamAvailability, useTeamTimeOff } from '../state/availability'
 import { useToday, useWeekSchedule } from '../state/shifts'
 import { useWorkspace } from '../state/workspace'
 import {
   addDays, formatDateShort, formatDuration, formatShiftRange, formatWeekRange, weekDates, weekStartOf,
 } from '../../../shared/teams/time'
+import { availabilityOn, availabilityProblem, timeOffClash } from '../../../shared/teams/availability'
 import { Badge, Banner, Button, Card, Divider, SkeletonCard, Text } from '../ui/components'
 import { useTheme } from '../ui/theme'
 
@@ -22,6 +24,33 @@ export default function ScheduleManager() {
   const [busy, setBusy] = useState(false)
   const [confirm, setConfirm] = useState(false)
   const [notice, setNotice] = useState(null)
+
+  const availability = useTeamAvailability()
+  const timeOff = useTeamTimeOff(weekStart)
+
+  // For each shift, why it may not suit the person working it: time off,
+  // pending or approved, or hours outside what they said they can work.
+  const concerns = useMemo(() => {
+    const out = {}
+    for (const s of shifts || []) {
+      const off = (timeOff || []).find(r => r.staffId === s.staffId && timeOffClash(s, r))
+      const outside = availabilityProblem(s, availability?.[s.staffId])
+      if (off) out[s.id] = `${s.staffName} ${off.status === 'approved' ? 'has time off' : 'has asked for time off'} then`
+      else if (outside) out[s.id] = `${s.staffName} ${outside}`
+    }
+    return out
+  }, [shifts, timeOff, availability])
+
+  // Who is off on each day, so the gaps are visible before adding a shift.
+  const offOn = (date) => {
+    const names = new Set()
+    for (const r of timeOff || []) if (r.status === 'approved' && r.startDate <= date && r.endDate >= date) names.add(r.staffName)
+    for (const a of Object.values(availability || {})) {
+      const day = availabilityOn(a, date)
+      if (day && !day.available) names.add(a.staffName)
+    }
+    return [...names]
+  }
 
   const byDate = useMemo(() => {
     const map = {}
@@ -100,18 +129,22 @@ export default function ScheduleManager() {
                   <Text variant="label" tone="accent">Add</Text>
                 </Pressable>
               </View>
+              {offOn(date).length ? (
+                <Text variant="caption" tone="muted">Off or unavailable: {offOn(date).join(', ')}</Text>
+              ) : null}
               {(byDate[date] || []).length ? (byDate[date]).map((s, i) => (
                 <View key={s.id}>
                   {i > 0 ? <Divider /> : null}
                   <Pressable onPress={() => router.push({ pathname: '/shift-edit', params: { shiftId: s.id } })}
                     accessibilityRole="button"
-                    accessibilityLabel={`${s.staffName}, ${formatShiftRange(s)}${s.positionName ? `, ${s.positionName}` : ''}. Edit`}
+                    accessibilityLabel={`${s.staffName}, ${formatShiftRange(s)}${s.positionName ? `, ${s.positionName}` : ''}${concerns[s.id] ? `. Warning: ${concerns[s.id]}` : ''}. Edit`}
                     style={({ pressed }) => ({ flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 8, opacity: pressed ? 0.7 : 1 })}>
                     <View style={{ flex: 1, gap: 2 }}>
                       <Text numberOfLines={1}>{s.staffName}</Text>
                       <Text variant="caption" tone="muted">
                         {formatShiftRange(s)} · {formatDuration(s.minutes)}{s.positionName ? ` · ${s.positionName}` : ''}
                       </Text>
+                      {concerns[s.id] ? <Text variant="caption" style={{ color: t.color.warning }}>⚠ {concerns[s.id]}</Text> : null}
                     </View>
                     {!s.assigneeUid ? <Badge label="No account" tone="neutral" /> : null}
                     <Feather name="chevron-right" size={16} color={t.color.textFaint} />

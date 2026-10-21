@@ -5,11 +5,13 @@ import { doc, getDoc } from 'firebase/firestore'
 import { ApiError, callTeams } from '../lib/api'
 import { db } from '../lib/firebase'
 import { closeModal } from '../lib/next'
+import { useTeamAvailability, useTeamTimeOff } from '../state/availability'
 import { useStaff, useToday } from '../state/shifts'
 import { useWorkspace } from '../state/workspace'
 import {
   addDays, formatDateShort, formatDuration, isDateString, normalizeTimeInput, resolveShiftTimes, weekDates, weekStartOf,
 } from '../../../shared/teams/time'
+import { availabilityProblem, timeOffClash } from '../../../shared/teams/availability'
 import { Banner, Button, Card, Screen, Skeleton, Text, TextField } from '../ui/components'
 import { useTheme } from '../ui/theme'
 
@@ -59,6 +61,23 @@ export default function ShiftEdit() {
     if (!s || !e) return null
     return resolveShiftTimes({ date, start: s, end: e, timezone: 'UTC' })
   }, [date, start, end])
+
+  const availability = useTeamAvailability()
+  const timeOff = useTeamTimeOff(addDays(date, -1))
+
+  // A warning, not a refusal: the manager may know something the
+  // availability does not. The person's own requests are checked strictly.
+  const warning = useMemo(() => {
+    const s = normalizeTimeInput(start)
+    const e = normalizeTimeInput(end)
+    if (!staffId || !s || !e) return null
+    const shift = { date, startLocal: s, endLocal: e }
+    const name = staff?.find(p => p.id === staffId)?.name || 'They'
+    const off = (timeOff || []).find(r => r.staffId === staffId && timeOffClash(shift, r))
+    if (off) return `${name} ${off.status === 'approved' ? 'has approved time off' : 'has asked for time off'} then.`
+    const outside = availabilityProblem(shift, availability?.[staffId])
+    return outside ? `${name} ${outside}.` : null
+  }, [staffId, date, start, end, staff, timeOff, availability])
 
   async function save() {
     setError('')
@@ -145,6 +164,8 @@ export default function ShiftEdit() {
           {formatDuration(preview.value.minutes)}{preview.value.overnight ? ', ending the next morning' : ''}
         </Text>
       ) : preview ? <Text variant="caption" tone="danger">{preview.message}</Text> : null}
+
+      {warning ? <Banner tone="warning" message={warning} /> : null}
 
       <TextField label="Position (optional)" value={positionName} onChangeText={setPositionName} placeholder="Barista" />
       <TextField label="Notes (optional)" value={notes} onChangeText={setNotes} multiline

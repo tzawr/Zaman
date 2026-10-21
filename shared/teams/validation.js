@@ -6,6 +6,7 @@
 // on the server, which is authoritative, and in tests.
 
 import { DEFAULT_POLICIES } from './schema.js'
+import { timeOffClash } from './availability.js'
 import { addDays, formatDateShort, formatDuration, formatShiftRange, weekStartOf } from './time.js'
 
 const HOUR = 60 * 60 * 1000
@@ -18,6 +19,7 @@ export function checkAssignment({
   person,
   sameBusinessShifts = [],
   otherWorkplaceBlocks = [],
+  timeOff = [],
   policies = DEFAULT_POLICIES,
   now = new Date(),
   audience = 'self',
@@ -65,6 +67,12 @@ export function checkAssignment({
     add('conflict_elsewhere', audience === 'self'
       ? 'You have a shift at another workplace at the same time.'
       : `${person.name} has another commitment at that time.`)
+  }
+
+  // Time off a manager has approved. Someone who asked for the day off is
+  // not handed a shift on it, even by their own request.
+  if (timeOff.some(r => r.status === 'approved' && timeOffClash(shift, r))) {
+    add('time_off', audience === 'self' ? 'You have approved time off then.' : `${person.name} has approved time off then.`)
   }
 
   if (p.minRestHours) {
