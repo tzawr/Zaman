@@ -2,6 +2,7 @@ import { getFirestore } from 'firebase-admin/firestore'
 import { initAdmin, requireSignedIn, sendError } from '../_firebase-admin.js'
 import { consumeRateLimit, sendRateLimited } from '../_rate-limit.js'
 import { TeamsError, applyCors, clientIp, readBody } from '../_teams-http.js'
+import * as schedules from '../_teams-schedules.js'
 import * as workspaces from '../_teams-workspaces.js'
 
 // Every Teams workflow behind one function. Vercel's Hobby plan caps a project
@@ -21,6 +22,10 @@ const ACTIONS = {
   updateMemberRole: { run: workspaces.updateMemberRole, limit: [60, 60 * 60] },
   removeMember: { run: workspaces.removeMember, limit: [60, 60 * 60] },
   leaveBusiness: { run: workspaces.leaveBusiness, limit: [20, 60 * 60] },
+  // Building a week is many small saves, so these allow a steady pace.
+  saveShift: { run: schedules.saveShift, limit: [600, 60 * 60] },
+  deleteShift: { run: schedules.deleteShift, limit: [600, 60 * 60] },
+  publishSchedule: { run: schedules.publishSchedule, limit: [60, 60 * 60] },
 }
 
 export default async function handler(req, res) {

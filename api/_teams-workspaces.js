@@ -1,4 +1,4 @@
-import { createHash, randomBytes } from 'node:crypto'
+import { randomBytes } from 'node:crypto'
 import { FieldValue, Timestamp } from 'firebase-admin/firestore'
 import { DEFAULT_POLICIES, ROLES, canTransition, paths } from '../shared/teams/schema.js'
 import {
@@ -7,6 +7,7 @@ import {
   normalizeInviteCode, validateBusinessName, validatePersonName,
 } from '../shared/teams/workspace.js'
 import { TeamsError, conflict, forbidden, invalid, notFound } from './_teams-http.js'
+import { audit, countOwners, readActor, requireId, requireString, sha256 } from './_teams-common.js'
 
 // Workspaces, memberships and invites. Each workflow is one Firestore
 // transaction: it reads what it depends on, checks the rules in
@@ -15,44 +16,9 @@ import { TeamsError, conflict, forbidden, invalid, notFound } from './_teams-htt
 //
 // Each takes { db, uid, token, input, now } and returns plain JSON.
 
-const sha256 = (value) => createHash('sha256').update(value).digest('hex')
-
-function audit(tx, db, bizId, actorUid, action, details, now) {
-  tx.set(db.collection(`businesses/${bizId}/auditLog`).doc(), {
-    actorUid, action, ...details, at: Timestamp.fromDate(now),
-  })
-}
-
-function requireString(value, message) {
-  if (typeof value !== 'string' || !value) throw invalid(message)
-  return value
-}
-
-// Firestore ids reach these functions from the request body, so they are
-// checked before being spliced into a path.
-function requireId(value, what) {
-  const id = requireString(value, `Missing ${what}.`)
-  if (!/^[A-Za-z0-9_-]{1,128}$/.test(id)) throw invalid(`Invalid ${what}.`)
-  return id
-}
-
 // The name a new member is shown by when they did not give one.
 function fallbackName(token) {
   return cleanName(token?.name, 80) || cleanName(String(token?.email || '').split('@')[0], 80) || 'Me'
-}
-
-async function readActor(tx, db, bizId, uid) {
-  const snap = await tx.get(db.doc(paths.member(bizId, uid)))
-  if (!snap.exists || !isActive(snap.data())) {
-    throw notFound('That workspace does not exist, or you are not a member of it.')
-  }
-  return snap.data()
-}
-
-async function countOwners(tx, db, bizId) {
-  const snap = await tx.get(db.collection(`businesses/${bizId}/members`)
-    .where('role', '==', 'owner').where('status', '==', 'active'))
-  return snap.size
 }
 
 export async function createBusiness({ db, uid, token, input, now }) {
@@ -205,8 +171,14 @@ export async function acceptInvite({ db, uid, token, input, now }) {
       throw conflict('already_linked', 'Someone else has already joined as this person. Ask your manager for a new invite.')
     }
 
+    // Shifts already scheduled for this roster entry become theirs to see.
+    // Rules show an employee the shifts whose assigneeUid is theirs.
+    const shiftsSnap = await tx.get(db.collection(`businesses/${bizId}/shifts`)
+      .where('staffId', '==', invite.staffId).limit(450))
+
     const at = Timestamp.fromDate(now)
     const displayName = staffSnap.data().name
+    shiftsSnap.docs.forEach(d => tx.update(d.ref, { assigneeUid: uid }))
     tx.set(memberRef, {
       role: invite.role, status: 'active', staffId: invite.staffId, displayName, joinedAt: at,
     })

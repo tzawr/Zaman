@@ -105,8 +105,8 @@ A removed member (`status: removed`) loses every read immediately. Someone who w
 | — | Fix reusable invites, lost employee availability, full-view leak in Hengam | Done |
 | 3 | Schema, rules, rules tests | Done |
 | 4 | Expo scaffold, sign-in (email, Google, Apple), workspaces, single-use invites, workplace switcher | Done |
-| 5 | Home, calendar (day, week, month), upcoming shifts | Next |
-| 6 | Validation engine, marketplace, swaps, approvals, audit log | |
+| 5 | Home, calendar (day, week, month), upcoming shifts, manual scheduling and publishing | Done |
+| 6 | Validation engine, marketplace, swaps, approvals, audit log | Next |
 | 7 | Availability and time off | |
 | 8 | Hengam sync | |
 | 9 | Notifications, push, reminders, calendar feed and export | |
@@ -129,6 +129,22 @@ Invite codes are stored in two places. The manager-readable invite document keep
 
 Deleting an account (`api/delete-account.js`) now leaves every workspace first. It refuses while the account is the only owner of a workspace that has other people in it, and deletes workspaces nobody else is in.
 
+## Schedules and shifts (Phase 5)
+
+A standalone business builds its schedule in Teams one shift at a time; Hengam businesses will get theirs from sync in Phase 8. One schedule document per week, keyed by its Monday (`schedules/2026-10-19`), holds the week's status. Each shift is its own document.
+
+| Action | Notes |
+|---|---|
+| `saveShift` | Create or edit. Refuses an overlap with the same person's other live shifts, including overnight ones, and an edit made against a version someone else has since changed. Opens the week as a draft if it is new. |
+| `deleteShift` | A draft shift is deleted; a published one is cancelled, so the person working it can be told. |
+| `publishSchedule` | Publishes every live shift in the week in one transaction. Publishing twice is harmless. After publishing, saves go live immediately. |
+
+A shift stores the business-local date and times people read (`date`, `startLocal`, `endLocal`, `overnight`) and the UTC instants arithmetic uses (`startAt`, `endAt`, `minutes`). `shared/teams/time.js` converts between them with `Intl`, tested across both daylight-saving transitions: an overnight shift over the fall change is nine hours, over the spring change seven.
+
+`assigneeUid` is set when the roster entry has an account, and filled in for every existing shift when its person joins, so shifts scheduled before someone accepted their invite appear for them.
+
+Employees read their own published shifts from every workplace with one query per workplace, merged and coloured by workplace on Home and Calendar. The queries need the composite indexes in `firestore.indexes.json`, which also keeps Hengam's two existing indexes so a deploy does not drop them.
+
 ## Running Teams locally
 
 Everything runs against the Firebase emulators under the `demo-hengam` project, so nothing touches production.
@@ -138,6 +154,8 @@ JAVA_HOME=/opt/homebrew/opt/openjdk@21 PATH="/opt/homebrew/opt/openjdk@21/bin:$P
 npm run dev:api
 cd teams && npx expo start --web
 ```
+
+`npm run dev:seed` fills the emulators with two workplaces, a manager, and an employee who works at both, with last week and this week published and next week in draft. The test accounts are listed at the top of `scripts/seed-teams-dev.js`.
 
 `teams/.env.example` lists the app's settings. For the emulators, `EXPO_PUBLIC_FIREBASE_PROJECT_ID=demo-hengam` and `EXPO_PUBLIC_USE_EMULATORS=1`. Verification emails are not sent by the emulator; their links are listed at `http://127.0.0.1:9099/emulator/v1/projects/demo-hengam/oobCodes`.
 

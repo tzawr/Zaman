@@ -4,8 +4,8 @@ import { Feather } from '@expo/vector-icons'
 import { useWorkspace } from '../../state/workspace'
 import { useTheme } from '../../ui/theme'
 
-// Tabs arrive with the phases that fill them: Calendar, Marketplace and
-// Requests join Home and Profile as those features land.
+// Tabs arrive with the phases that fill them: Marketplace and Requests join
+// as those features land.
 export default function AppTabs() {
   const t = useTheme()
   const { isManager, loading, roleKnown } = useWorkspace()
@@ -31,7 +31,9 @@ export default function AppTabs() {
       sceneStyle: { backgroundColor: t.color.bg },
     }}>
       <Tabs.Screen name="index" options={{ title: 'Home', tabBarIcon: icon('home') }} />
-      {/* Only managers run the team; for everyone else the tab is not there. */}
+      <Tabs.Screen name="calendar" options={{ title: 'Calendar', tabBarIcon: icon('calendar') }} />
+      {/* Only managers run the schedule and the team; for everyone else these tabs are not there. */}
+      <Tabs.Screen name="schedule" options={{ title: 'Schedule', tabBarIcon: icon('grid'), href: isManager ? undefined : null }} />
       <Tabs.Screen name="team" options={{ title: 'Team', tabBarIcon: icon('users'), href: isManager ? undefined : null }} />
       <Tabs.Screen name="profile" options={{ title: 'Profile', tabBarIcon: icon('user') }} />
     </Tabs>

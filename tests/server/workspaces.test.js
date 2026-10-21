@@ -12,7 +12,7 @@ const PROJECT_ID = 'demo-hengam'
 let db
 before(() => {
   process.env.FIRESTORE_EMULATOR_HOST ||= '127.0.0.1:8085'
-  initializeApp({ projectId: PROJECT_ID })
+  if (!getApps().length) initializeApp({ projectId: PROJECT_ID })
   db = getFirestore()
 })
 after(async () => { await Promise.all(getApps().map(deleteApp)) })

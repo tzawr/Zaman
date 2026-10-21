@@ -14,7 +14,8 @@
     "test": "node --test \"src/utils/*.test.js\" \"shared/**/*.test.js\"",
     "test:emulator": "firebase emulators:exec --only firestore --project demo-hengam 'node --test --test-concurrency=1 \"tests/rules/*.test.js\" \"tests/server/*.test.js\"'",
     "dev:emulators": "firebase emulators:start --only auth,firestore --project demo-hengam",
-    "dev:api": "node scripts/dev-api.js"
+    "dev:api": "node scripts/dev-api.js",
+    "dev:seed": "node scripts/seed-teams-dev.js"
   },
   "dependencies": {
     "firebase": "^12.12.1",
