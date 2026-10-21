@@ -1,6 +1,6 @@
 import { useRouter } from 'expo-router'
 import { View } from 'react-native'
-import { Feather } from '@expo/vector-icons'
+import Feather from '@expo/vector-icons/Feather'
 import { useWorkspace } from '../state/workspace'
 import { closeModal } from '../lib/next'
 import { Card, Divider, ListRow, Screen } from '../ui/components'

@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Pressable, TextInput, View } from 'react-native'
-import { Feather } from '@expo/vector-icons'
+import Feather from '@expo/vector-icons/Feather'
 import { addDays, formatDateLong, isDateString } from '../../../shared/teams/time'
 import { Text } from '../ui/components'
 import { useTheme } from '../ui/theme'
@@ -16,7 +16,7 @@ export default function DateField({ label, value, onChange, min, max, step: step
 
   const arrow = (icon, n, a11y, disabled) => (
     <Pressable onPress={() => step(n)} disabled={disabled} accessibilityRole="button" accessibilityLabel={a11y}
-      accessibilityState={{ disabled }} hitSlop={6}
+      aria-disabled={disabled} hitSlop={6}
       style={{ width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center',
         backgroundColor: t.color.elevated, opacity: disabled ? 0.4 : 1 }}>
       <Feather name={icon} size={18} color={t.color.text} />

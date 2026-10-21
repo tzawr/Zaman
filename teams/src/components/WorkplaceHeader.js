@@ -1,7 +1,7 @@
 import { useRouter } from 'expo-router'
 import { Pressable, View } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import { Feather } from '@expo/vector-icons'
+import Feather from '@expo/vector-icons/Feather'
 import { useAuth } from '../state/auth'
 import { useNotifications } from '../state/notifications'
 import { useWorkspace } from '../state/workspace'
@@ -20,7 +20,7 @@ export default function WorkplaceHeader({ title }) {
   const { unread } = useNotifications()
 
   return (
-    <View style={{ paddingTop: insets.top + 12, paddingHorizontal: 20, paddingBottom: 4, backgroundColor: t.color.bg }}>
+    <View role="banner" style={{ paddingTop: insets.top + 12, paddingHorizontal: 20, paddingBottom: 4, backgroundColor: t.color.bg }}>
       <View style={{ width: '100%', maxWidth: 560, alignSelf: 'center', gap: 6 }}>
         {loading ? <Skeleton width={160} height={20} /> : active ? (
           <Pressable

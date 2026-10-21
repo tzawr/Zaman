@@ -1,4 +1,4 @@
-import { GoogleAuthProvider, OAuthProvider, signInWithPopup } from 'firebase/auth'
+import { GoogleAuthProvider, OAuthProvider, reauthenticateWithPopup, signInWithPopup } from 'firebase/auth'
 import { auth } from './firebase'
 
 // Web: both providers run through Firebase's popup.
@@ -10,9 +10,20 @@ export async function signInWithGoogle() {
   return signInWithPopup(auth, new GoogleAuthProvider())
 }
 
-export async function signInWithApple() {
+function appleProvider() {
   const provider = new OAuthProvider('apple.com')
   provider.addScope('email')
   provider.addScope('name')
-  return signInWithPopup(auth, provider)
+  return provider
+}
+
+export async function signInWithApple() {
+  return signInWithPopup(auth, appleProvider())
+}
+
+// Proving it is still the same person, before something irreversible.
+// Firebase refuses a different account with auth/user-mismatch.
+export async function reauthenticate(providerId) {
+  const provider = providerId === 'apple.com' ? appleProvider() : new GoogleAuthProvider()
+  return reauthenticateWithPopup(auth.currentUser, provider)
 }

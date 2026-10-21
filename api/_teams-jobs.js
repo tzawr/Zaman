@@ -3,6 +3,7 @@ import { paths } from '../shared/teams/schema.js'
 import { todayIn } from '../shared/teams/time.js'
 import { deliver } from './_teams-notify.js'
 import { drainPushQueue } from './_teams-push.js'
+import { recordError, summariseAndPruneErrors } from './_monitoring.js'
 
 // The daily job: remind people of tomorrow's shifts, close offers and swaps
 // whose deadline passed, and send any pushes still waiting. Every part is
@@ -63,9 +64,25 @@ export async function expireRequests(db, now = new Date()) {
   return { offersExpired: offers, swapsExpired: swaps }
 }
 
+// Each part runs even when one before it fails; a failure is recorded and
+// reported in the result rather than skipping the rest of the day's work.
 export async function runDailyJob(db, now = new Date(), options = {}) {
-  const reminders = await sendReminders(db, now)
-  const expired = await expireRequests(db, now)
-  const pushes = await drainPushQueue(db, { now, ...options })
-  return { ...reminders, ...expired, ...pushes }
+  const parts = {
+    reminders: () => sendReminders(db, now),
+    expiry: () => expireRequests(db, now),
+    push: () => drainPushQueue(db, { now, ...options }),
+    errors: () => summariseAndPruneErrors(db, now),
+  }
+  const result = {}
+  const failed = []
+  for (const [part, run] of Object.entries(parts)) {
+    try {
+      Object.assign(result, await run())
+    } catch (err) {
+      console.error(`daily job: ${part} failed:`, err)
+      failed.push(part)
+      await recordError(db, { source: 'cron', where: part, error: err, now })
+    }
+  }
+  return failed.length ? { ...result, failed } : result
 }

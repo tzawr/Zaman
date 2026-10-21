@@ -3,7 +3,7 @@ import {
   ActivityIndicator, Animated, Platform, Pressable, ScrollView, StyleSheet, Text as RNText, TextInput, View,
 } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import { Feather } from '@expo/vector-icons'
+import Feather from '@expo/vector-icons/Feather'
 import { useTheme } from './theme'
 
 // The kit every screen is built from. Each control carries its accessibility
@@ -23,7 +23,9 @@ export function Screen({ children, scroll = true, padded = true, style, contentS
   const t = useTheme()
   const insets = useSafeAreaInsets()
   const inner = (
-    <View style={[{ width: '100%', maxWidth: 560, alignSelf: 'center', paddingHorizontal: padded ? 20 : 0, gap: 16,
+    // The page's main landmark on the web, so screen-reader users can jump
+    // past the header and tab bar.
+    <View role="main" style={[{ width: '100%', maxWidth: 560, alignSelf: 'center', paddingHorizontal: padded ? 20 : 0, gap: 16,
       paddingTop: 16, paddingBottom: insets.bottom + 32 }, contentStyle]}>
       {children}
     </View>
@@ -58,7 +60,8 @@ export function Button({ title, onPress, variant = 'primary', loading = false, d
       accessibilityRole="button"
       accessibilityLabel={title}
       accessibilityHint={accessibilityHint}
-      accessibilityState={{ disabled: inactive, busy: loading }}
+      aria-disabled={inactive}
+      aria-busy={loading}
       style={({ pressed }) => [{
         minHeight: 50, borderRadius: t.radius.md, paddingHorizontal: 18, borderWidth: 1,
         backgroundColor: palette.bg, borderColor: palette.border,
@@ -168,7 +171,7 @@ export function Avatar({ name, size = 40 }) {
   const t = useTheme()
   const initials = String(name || '?').split(' ').filter(Boolean).slice(0, 2).map(p => p[0].toUpperCase()).join('')
   return (
-    <View accessibilityElementsHidden importantForAccessibility="no"
+    <View aria-hidden
       style={{ width: size, height: size, borderRadius: size / 2, backgroundColor: t.color.accentBg,
         alignItems: 'center', justifyContent: 'center' }}>
       <RNText style={{ color: t.color.accent, fontWeight: '700', fontSize: size * 0.38 }}>{initials || '?'}</RNText>
@@ -189,7 +192,7 @@ export function Skeleton({ width = '100%', height = 16, radius = 8, style }) {
     loop.start()
     return () => loop.stop()
   }, [pulse])
-  return <Animated.View accessibilityElementsHidden importantForAccessibility="no-hide-descendants"
+  return <Animated.View aria-hidden
     style={[{ width, height, borderRadius: radius, backgroundColor: t.color.skeleton, opacity: pulse }, style]} />
 }
 
@@ -261,7 +264,7 @@ export function Segmented({ options, value, onChange, accessibilityLabel }) {
         const selected = opt.value === value
         return (
           <Pressable key={opt.value} onPress={() => onChange(opt.value)} accessibilityRole="radio"
-            accessibilityState={{ selected }} accessibilityLabel={opt.label}
+            aria-checked={selected} accessibilityLabel={opt.label}
             style={{ flex: 1, minHeight: 40, borderRadius: t.radius.sm, alignItems: 'center', justifyContent: 'center',
               backgroundColor: selected ? t.color.surface : 'transparent',
               borderWidth: selected ? 1 : 0, borderColor: t.color.border }}>

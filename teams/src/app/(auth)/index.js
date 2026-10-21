@@ -1,6 +1,6 @@
 import { Link, useLocalSearchParams } from 'expo-router'
 import { View } from 'react-native'
-import { Feather } from '@expo/vector-icons'
+import Feather from '@expo/vector-icons/Feather'
 import SocialButtons from '../../components/SocialButtons'
 import { safeNext } from '../../lib/next'
 import { Button, Screen, Text } from '../../ui/components'

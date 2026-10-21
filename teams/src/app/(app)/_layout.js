@@ -1,6 +1,6 @@
 import { Tabs } from 'expo-router'
 import { ActivityIndicator, View } from 'react-native'
-import { Feather } from '@expo/vector-icons'
+import Feather from '@expo/vector-icons/Feather'
 import { useRequestCount } from '../../state/requests'
 import { useWorkspace } from '../../state/workspace'
 import { useTheme } from '../../ui/theme'

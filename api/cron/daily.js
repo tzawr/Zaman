@@ -14,7 +14,8 @@ export default async function handler(req, res) {
     initAdmin()
     const result = await runDailyJob(getFirestore(), new Date())
     console.log('daily job', JSON.stringify(result))
-    return res.status(200).json(result)
+    // A part that failed marks the run failed in Vercel's cron history.
+    return res.status(result.failed ? 500 : 200).json(result)
   } catch (err) {
     return sendError(res, err)
   }

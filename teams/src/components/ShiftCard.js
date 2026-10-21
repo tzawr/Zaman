@@ -1,6 +1,6 @@
 import { useRouter } from 'expo-router'
 import { Pressable, View } from 'react-native'
-import { Feather } from '@expo/vector-icons'
+import Feather from '@expo/vector-icons/Feather'
 import { formatDuration, formatShiftRange, relativeDay } from '../../../shared/teams/time'
 import { Text } from '../ui/components'
 import { useTheme } from '../ui/theme'

@@ -135,7 +135,7 @@ Pending Teams time off appears on the Hengam Dashboard, to approve or decline th
 | 8 | Hengam sync | Done |
 | 9 | Notifications, push, reminders, calendar feed and export | Done |
 | 9b | Standalone imports: manual, CSV, Excel, PDF and image via Claude with mandatory review | Done |
-| 10 | Performance, accessibility, monitoring, store submission | Next |
+| 10 | Performance, accessibility, monitoring, store submission | Done (store accounts and review pending, see [TEAMS_STORE.md](TEAMS_STORE.md)) |
 
 ## Workspaces and invites (Phase 4)
 
@@ -278,6 +278,14 @@ Nothing becomes a shift without review. Each row is marked as needing a look whe
 - Claude flagged it as unclear.
 
 The manager confirms each row, picks the person, adds them as someone new, edits the row, or leaves it out. Applying refuses any row still unresolved, any overlap, and any week that is already published. The shifts arrive as a **draft**, which the manager publishes as usual. An import is applied once, then marked published; a discarded one is closed.
+
+## Launch readiness (Phase 10)
+
+- **Performance.** Icons are imported per family (`@expo/vector-icons/Feather`), which took every other glyph map out of the web bundle: about 450 KB of source, roughly 100 KB gzipped. Routes load on demand. Every Firestore listener is bounded by status, time window or a limit. Firestore keeps its cache in memory, not on disk, so a shared work computer doesn't keep a workplace's schedule after sign-out.
+- **Accessibility.** Checked with axe-core on every screen, in light and dark mode. State is set with `aria-*` props (`aria-checked`, `aria-disabled`, `aria-busy`, `aria-hidden`), which React Native and react-native-web both honour; react-native-web ignores `accessibilityState`. Each screen is a `main` landmark under a `banner` header. Light-mode accent, success and warning colours were darkened to clear 4.5:1 on their tinted backgrounds. The remaining axe notice is the tab bar and stack header containers, which the navigation library renders.
+- **Monitoring.** `api/_monitoring.js` groups errors into `errorEvents/{day}_{fingerprint}` (server-only), with a count and the people affected. Ids and numbers are stripped before grouping. It records server 5xx errors from the router, failed notification deliveries, daily job parts, failed account deletions, and crashes the app reports through `reportClientError`. The app reports through a root `ErrorBoundary`, which shows a "Something went wrong" screen, and through global handlers for uncaught errors. Each session sends at most ten. Records are kept 30 days; the daily job prunes them and logs a summary. Each daily job part runs even when an earlier one fails, and a failed part makes the run return 500. `GET /api/teams/health` is for an uptime monitor. `scripts/teams-errors.js` lists the recorded errors.
+- **Account deletion.** Profile → Delete account re-authenticates (password, or Google/Apple again, with Firebase refusing a different account) and calls `deleteAccount`. It runs the same code as Hengam's `/api/delete-account` (`api/_account-deletion.js`), which needs a sign-in from the last five minutes.
+- **Store builds.** `teams/eas.json` has development, preview and production profiles, with remote build numbers. `app.config.js` declares the privacy manifest, the encryption exemption, the blocked storage permissions, the splash screen and the notification icon. What only the account holder can do, and the store answers, are in [TEAMS_STORE.md](TEAMS_STORE.md).
 
 ## Running Teams locally
 

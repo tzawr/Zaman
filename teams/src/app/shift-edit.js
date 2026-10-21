@@ -190,7 +190,7 @@ export default function ShiftEdit() {
 function Chip({ label, selected, onPress }) {
   const t = useTheme()
   return (
-    <Pressable onPress={onPress} accessibilityRole="radio" accessibilityState={{ selected }} accessibilityLabel={label}
+    <Pressable onPress={onPress} accessibilityRole="radio" aria-checked={selected} accessibilityLabel={label}
       style={{ paddingHorizontal: 14, minHeight: 40, justifyContent: 'center', borderRadius: t.radius.pill, borderWidth: 1.5,
         borderColor: selected ? t.color.accent : t.color.border, backgroundColor: selected ? t.color.accentBg : t.color.surface }}>
       <Text variant="label" style={{ color: selected ? t.color.accent : t.color.text }}>{label}</Text>
@@ -201,7 +201,7 @@ function Chip({ label, selected, onPress }) {
 function DayChip({ name, day, selected, onPress, label }) {
   const t = useTheme()
   return (
-    <Pressable onPress={onPress} accessibilityRole="radio" accessibilityState={{ selected }} accessibilityLabel={label}
+    <Pressable onPress={onPress} accessibilityRole="radio" aria-checked={selected} accessibilityLabel={label}
       style={{ flex: 1, alignItems: 'center', paddingVertical: 8, borderRadius: t.radius.md, gap: 2,
         backgroundColor: selected ? t.color.accent : t.color.elevated }}>
       <Text variant="caption" style={{ color: selected ? t.color.onAccent : t.color.textMuted }}>{name}</Text>

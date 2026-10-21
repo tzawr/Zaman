@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useRouter } from 'expo-router'
 import { Pressable, View } from 'react-native'
-import { Feather } from '@expo/vector-icons'
+import Feather from '@expo/vector-icons/Feather'
 import { ApiError, callTeams } from '../lib/api'
 import { useAuth } from '../state/auth'
 import { markRead, useNotifications } from '../state/notifications'

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useLocalSearchParams, useRouter } from 'expo-router'
 import { Pressable, ScrollView, Switch, View } from 'react-native'
-import { Feather } from '@expo/vector-icons'
+import Feather from '@expo/vector-icons/Feather'
 import { doc, onSnapshot } from 'firebase/firestore'
 import { ApiError, callTeams } from '../../lib/api'
 import { db } from '../../lib/firebase'

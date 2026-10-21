@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useLocalSearchParams, useRouter } from 'expo-router'
 import { Pressable, View } from 'react-native'
-import { Feather } from '@expo/vector-icons'
+import Feather from '@expo/vector-icons/Feather'
 import { ApiError, callTeams } from '../lib/api'
 import { closeModal } from '../lib/next'
 import { useToday } from '../state/shifts'
@@ -72,7 +72,7 @@ export default function SwapNew() {
       {current.candidates === null ? <><SkeletonCard /><SkeletonCard /></> : current.candidates.length ? (
         current.candidates.map(c => (
           <Pressable key={c.shiftId} onPress={() => c.ok && setChosen(c)} disabled={!c.ok}
-            accessibilityRole="button" accessibilityState={{ disabled: !c.ok }}
+            accessibilityRole="button" aria-disabled={!c.ok}
             accessibilityLabel={`${c.staffName}, ${relativeDay(c.date, today)}, ${formatShiftRange(c)}${c.ok ? '' : `. Not available: ${c.reason}`}`}
             style={({ pressed }) => ({ backgroundColor: pressed ? t.color.pressed : t.color.surface, borderRadius: t.radius.lg,
               borderWidth: 1, borderColor: t.color.border, padding: 14, gap: 4, opacity: c.ok ? 1 : 0.6 })}>

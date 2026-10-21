@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { Pressable, View } from 'react-native'
-import { Feather } from '@expo/vector-icons'
+import Feather from '@expo/vector-icons/Feather'
 import ShiftCard from '../../components/ShiftCard'
 import WorkplaceHeader from '../../components/WorkplaceHeader'
 import { useMyShifts, useToday, useWorkplaceColors } from '../../state/shifts'
@@ -125,7 +125,7 @@ function MonthGrid({ grid, cursor, today, byDate, colors, onSelect }) {
   const month = cursor.slice(0, 7)
   return (
     <Card style={{ padding: 10, gap: 4 }}>
-      <View style={{ flexDirection: 'row' }} importantForAccessibility="no-hide-descendants" accessibilityElementsHidden>
+      <View style={{ flexDirection: 'row' }} aria-hidden>
         {WEEKDAYS.map((d, i) => <Text key={i} variant="caption" tone="faint" style={{ flex: 1, textAlign: 'center' }}>{d}</Text>)}
       </View>
       {grid.map(week => (
@@ -138,8 +138,7 @@ function MonthGrid({ grid, cursor, today, byDate, colors, onSelect }) {
             const dots = [...new Set(shifts.map(s => s.bizId))].slice(0, 3)
             return (
               <Pressable key={date} onPress={() => onSelect(date)} accessibilityRole="button"
-                accessibilityState={{ selected }}
-                accessibilityLabel={`${formatDateShort(date)}${isToday ? ', today' : ''}, ${shifts.length ? `${shifts.length} ${shifts.length === 1 ? 'shift' : 'shifts'}` : 'no shifts'}`}
+                accessibilityLabel={`${formatDateShort(date)}${isToday ? ', today' : ''}${selected ? ', selected' : ''}, ${shifts.length ? `${shifts.length} ${shifts.length === 1 ? 'shift' : 'shifts'}` : 'no shifts'}`}
                 style={{ flex: 1, alignItems: 'center', paddingVertical: 6, gap: 3, minHeight: 48 }}>
                 <View style={{ width: 32, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center',
                   backgroundColor: selected ? t.color.accent : isToday ? t.color.accentBg : 'transparent' }}>

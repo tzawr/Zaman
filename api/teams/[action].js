@@ -1,5 +1,7 @@
 import { getFirestore } from 'firebase-admin/firestore'
 import { initAdmin, requireSignedIn, sendError } from '../_firebase-admin.js'
+import { recordError, reportClientError } from '../_monitoring.js'
+import { deleteAccount } from '../_account-deletion.js'
 import { consumeRateLimit, sendRateLimited } from '../_rate-limit.js'
 import { TeamsError, applyCors, clientIp, readBody } from '../_teams-http.js'
 import * as availability from '../_teams-availability.js'
@@ -60,10 +62,32 @@ const ACTIONS = {
   importSchedule: { run: imports.importSchedule, limit: [30, 60 * 60] },
   applyImport: { run: imports.applyImport, limit: [60, 60 * 60] },
   discardImport: { run: imports.discardImport, limit: [60, 60 * 60] },
+  // The same erasure as Hengam's Settings; the app re-authenticates first.
+  deleteAccount: { run: deleteAccount, limit: [5, 60 * 60] },
+  // Crashes the app caught. Sent before sign-in too, so limited by address.
+  reportClientError: { run: reportClientError, auth: false, limit: [30, 60 * 60] },
+}
+
+// GET /api/teams/health, for an uptime monitor: the function runs and can
+// reach Firestore. Not rate limited, since the limiter itself needs Firestore.
+async function health(res) {
+  const started = Date.now()
+  try {
+    initAdmin()
+    await Promise.race([
+      getFirestore().doc('meta/health').get(),
+      new Promise((_, reject) => setTimeout(() => reject(new Error('Firestore did not answer in 5s')), 5000)),
+    ])
+    return res.status(200).json({ ok: true, firestoreMs: Date.now() - started, version: (process.env.VERCEL_GIT_COMMIT_SHA || 'local').slice(0, 7) })
+  } catch (err) {
+    console.error('health check failed:', err?.message || err)
+    return res.status(503).json({ ok: false })
+  }
 }
 
 export default async function handler(req, res) {
   if (applyCors(req, res)) return
+  if (req.query?.action === 'health' && req.method === 'GET') return health(res)
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' })
 
   const name = req.query?.action
@@ -101,13 +125,17 @@ export default async function handler(req, res) {
         // Send the pushes this change queued now, rather than at the next
         // daily run. Anything that fails waits in the queue for that run.
         .then(({ queued }) => drainPushQueue(db, { ids: queued }))
-        .catch(err => console.error('notification delivery failed:', err))
+        .catch(err => {
+          console.error('notification delivery failed:', err)
+          return recordError(db, { source: 'server', where: `${name}:notify`, error: err, uid: token?.uid })
+        })
     }
     return res.status(200).json(result)
   } catch (err) {
     if (err instanceof TeamsError) {
       return res.status(err.status).json({ blocked: true, reason: err.reason, message: err.message, problems: err.problems || undefined })
     }
+    if (!(err.status < 500)) await recordError(getFirestore(), { source: 'server', where: name, error: err, uid: token?.uid })
     return sendError(res, err)
   }
 }

@@ -61,7 +61,7 @@ export default function TimeOffNew() {
           {policies.categories.map(c => {
             const selected = c.id === chosen
             return (
-              <Pressable key={c.id} onPress={() => setCategory(c.id)} accessibilityRole="radio" accessibilityState={{ selected }}
+              <Pressable key={c.id} onPress={() => setCategory(c.id)} accessibilityRole="radio" aria-checked={selected}
                 accessibilityLabel={c.label}
                 style={{ paddingHorizontal: 14, minHeight: 40, justifyContent: 'center', borderRadius: t.radius.pill, borderWidth: 1.5,
                   borderColor: selected ? t.color.accent : t.color.border, backgroundColor: selected ? t.color.accentBg : t.color.surface }}>

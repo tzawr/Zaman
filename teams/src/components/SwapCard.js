@@ -1,5 +1,5 @@
 import { View } from 'react-native'
-import { Feather } from '@expo/vector-icons'
+import Feather from '@expo/vector-icons/Feather'
 import { formatDuration, formatShiftRange, relativeDay } from '../../../shared/teams/time'
 import { useAuth } from '../state/auth'
 import { Badge, Card, Text } from '../ui/components'

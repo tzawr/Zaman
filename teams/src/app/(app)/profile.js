@@ -117,9 +117,8 @@ export default function Profile() {
         <View style={{ marginTop: 12 }}>
           <Button title="Sign out" variant="secondary" icon="log-out" onPress={signOut} />
         </View>
-        <Text variant="caption" tone="faint" style={{ textAlign: 'center' }}>
-          To delete your account, use Settings in Hengam. It removes you from every workplace.
-        </Text>
+        <Button title="Delete account" variant="ghost" onPress={() => router.push('/delete-account')}
+          accessibilityHint="Opens the page to delete your account" />
       </Screen>
     </View>
   )
