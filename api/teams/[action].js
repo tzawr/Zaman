@@ -4,6 +4,7 @@ import { consumeRateLimit, sendRateLimited } from '../_rate-limit.js'
 import { TeamsError, applyCors, clientIp, readBody } from '../_teams-http.js'
 import * as availability from '../_teams-availability.js'
 import * as hengam from '../_teams-hengam.js'
+import * as imports from '../_teams-imports.js'
 import { calendarFeed } from '../_teams-calendar.js'
 import { deliver, markAllRead } from '../_teams-notify.js'
 import { drainPushQueue } from '../_teams-push.js'
@@ -54,6 +55,11 @@ const ACTIONS = {
   hengamPublish: { run: hengam.hengamPublish, limit: [120, 60 * 60] },
   markAllNotificationsRead: { run: markAllRead, limit: [120, 60 * 60] },
   calendarFeed: { run: calendarFeed, limit: [30, 60 * 60] },
+  // Reading a file can call Claude, which costs money; the per-business
+  // monthly budget in _teams-extract.js is the real cap.
+  importSchedule: { run: imports.importSchedule, limit: [30, 60 * 60] },
+  applyImport: { run: imports.applyImport, limit: [60, 60 * 60] },
+  discardImport: { run: imports.discardImport, limit: [60, 60 * 60] },
 }
 
 export default async function handler(req, res) {

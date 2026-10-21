@@ -7,11 +7,12 @@ import { useTheme } from '../ui/theme'
 
 // A date, stepped a day at a time or typed as YYYY-MM-DD. The same control
 // on phones and the web, readable and operable by screen readers.
-export default function DateField({ label, value, onChange, min, max }) {
+export default function DateField({ label, value, onChange, min, max, step: stepDays = 1 }) {
   const t = useTheme()
   const [typing, setTyping] = useState(null)
   const clamp = (d) => (min && d < min ? min : max && d > max ? max : d)
-  const step = (n) => onChange(clamp(addDays(value, n)))
+  const step = (n) => onChange(clamp(addDays(value, n * stepDays)))
+  const unit = stepDays === 7 ? 'week' : 'day'
 
   const arrow = (icon, n, a11y, disabled) => (
     <Pressable onPress={() => step(n)} disabled={disabled} accessibilityRole="button" accessibilityLabel={a11y}
@@ -27,7 +28,7 @@ export default function DateField({ label, value, onChange, min, max }) {
       {label ? <Text variant="label" tone="muted">{label}</Text> : null}
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: t.color.surface, borderRadius: t.radius.md,
         borderWidth: 1.5, borderColor: t.color.border, padding: 5 }}>
-        {arrow('chevron-left', -1, `${label || 'Date'}: previous day`, Boolean(min && value <= min))}
+        {arrow('chevron-left', -1, `${label || 'Date'}: previous ${unit}`, Boolean(min && value <= min))}
         {typing === null ? (
           <Pressable onPress={() => setTyping(value)} accessibilityRole="button"
             accessibilityLabel={`${label || 'Date'}: ${formatDateLong(value)}. Tap to type a date`}
@@ -47,7 +48,7 @@ export default function DateField({ label, value, onChange, min, max }) {
             style={[t.font.body, { flex: 1, textAlign: 'center', color: t.color.text, minHeight: 40 }]}
           />
         )}
-        {arrow('chevron-right', 1, `${label || 'Date'}: next day`, Boolean(max && value >= max))}
+        {arrow('chevron-right', 1, `${label || 'Date'}: next ${unit}`, Boolean(max && value >= max))}
       </View>
     </View>
   )

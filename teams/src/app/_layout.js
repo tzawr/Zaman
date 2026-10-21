@@ -65,6 +65,8 @@ function Navigator() {
           <Stack.Screen name="timeoff-new" options={{ ...modal, title: 'Time off' }} />
           <Stack.Screen name="notifications" options={{ ...modal, title: 'Notifications' }} />
           <Stack.Screen name="calendar-sync" options={{ ...modal, title: 'Calendar sync' }} />
+          <Stack.Screen name="import-new" options={{ ...modal, title: 'Import a schedule' }} />
+          <Stack.Screen name="import/[importId]" options={{ ...modal, title: 'Review import' }} />
           <Stack.Screen name="verify-email" options={{ ...modal, title: 'Verify your email' }} />
         </Stack.Protected>
         {/* Reachable signed in or out: an invite link opened before signing in. */}

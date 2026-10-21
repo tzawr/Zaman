@@ -19,6 +19,7 @@
     "dev:emulated": "vite --mode emulators --port 5175 --strictPort --host 127.0.0.1"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.137.0",
     "firebase": "^12.12.1",
     "firebase-admin": "^13.8.0",
     "framer-motion": "^12.38.0",

@@ -134,8 +134,8 @@ Pending Teams time off appears on the Hengam Dashboard, to approve or decline th
 | 7 | Availability, time off, business policies | Done |
 | 8 | Hengam sync | Done |
 | 9 | Notifications, push, reminders, calendar feed and export | Done |
-| 9b | Standalone imports: manual, CSV, Excel, PDF and image via Claude with mandatory review | Next |
-| 10 | Performance, accessibility, monitoring, store submission | |
+| 9b | Standalone imports: manual, CSV, Excel, PDF and image via Claude with mandatory review | Done |
+| 10 | Performance, accessibility, monitoring, store submission | Next |
 
 ## Workspaces and invites (Phase 4)
 
@@ -255,6 +255,29 @@ Every notification also queues a push in `pushQueue` (server-only), sent through
 - **One shift.** A shift's screen has "Google Calendar" (a prefilled event) and, on the web, "Download .ics".
 
 `shared/teams/ics.js` writes RFC 5545: UTC times, escaped text, lines folded at 75 bytes without splitting characters.
+
+## Imports (Phase 9b)
+
+Standalone workspaces can bring in an existing schedule from Manage → "Import a schedule". Hengam workspaces cannot; Hengam owns their shifts.
+
+### Reading the file
+
+- **CSV** (`shared/teams/imports.js`): RFC 4180, with comma, semicolon or tab detected and a BOM stripped.
+- **Excel** (`api/_xlsx.js`): `.xlsx` only, read without a dependency. It takes the first sheet, shared and inline strings, and dates stored as serial numbers. `.xls` is refused with a request to save as `.xlsx`.
+- **PDF and photos** (`api/_teams-extract.js`): Claude (`claude-opus-5-5`, with the server-side fallback) returns rows against a JSON schema and lists the fields it could not read. Each workspace may spend $5 a month and make 20 such imports a day, recorded in `aiUsage/teams-{bizId}_…`. CSV and Excel are never limited. This needs `ANTHROPIC_API_KEY` on Vercel.
+
+Tables are read in two layouts. A **list** has a row per shift with name, date and time columns. A **grid** has a row per person and a column per day. "Off" cells are skipped, and split shifts like "10-2 / 5-9" become two shifts. Files are capped at 3 MB and 400 rows, and are not stored: only the rows read from them are.
+
+### Review
+
+Nothing becomes a shift without review. Each row is marked as needing a look when:
+
+- its name only resembles someone on the team (a first name, an initial or a near spelling);
+- its date is ambiguous (3/4 could be March or April);
+- its times were guessed ("9-5" is read as 09:00–17:00);
+- Claude flagged it as unclear.
+
+The manager confirms each row, picks the person, adds them as someone new, edits the row, or leaves it out. Applying refuses any row still unresolved, any overlap, and any week that is already published. The shifts arrive as a **draft**, which the manager publishes as usual. An import is applied once, then marked published; a discarded one is closed.
 
 ## Running Teams locally
 

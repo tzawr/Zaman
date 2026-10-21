@@ -1,9 +1,11 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'expo-router'
 import { Pressable, View } from 'react-native'
 import { Feather } from '@expo/vector-icons'
 import { ApiError, callTeams } from '../lib/api'
 import { useTeamAvailability, useTeamTimeOff } from '../state/availability'
+import { collection, onSnapshot, query, where } from 'firebase/firestore'
+import { db } from '../lib/firebase'
 import { useToday, useWeekSchedule } from '../state/shifts'
 import { useWorkspace } from '../state/workspace'
 import {
@@ -103,6 +105,7 @@ export default function ScheduleManager() {
             <Stat label="People" value={String(people)} />
           </Card>
 
+          {!fromHengam ? <PendingImports onImport={() => router.push('/import-new')} onOpen={(id) => router.push(`/import/${id}`)} /> : null}
           {fromHengam ? (
             <Banner tone="info" message="This schedule comes from Hengam. Change it there and publish it again; pickups and swaps approved here are written back to Hengam." />
           ) : published ? (
@@ -178,5 +181,32 @@ function IconButton({ icon, label, onPress }) {
         backgroundColor: pressed ? t.color.pressed : t.color.elevated })}>
       <Feather name={icon} size={20} color={t.color.text} />
     </Pressable>
+  )
+}
+
+// Imports read but not yet reviewed, and the way to start a new one.
+function PendingImports({ onImport, onOpen }) {
+  const { activeId } = useWorkspace()
+  const [state, setState] = useState({ key: null, items: [] })
+  useEffect(() => {
+    if (!activeId) return undefined
+    return onSnapshot(query(collection(db, 'businesses', activeId, 'imports'), where('status', '==', 'review')),
+      (snap) => setState({ key: activeId, items: snap.docs.map(d => ({ id: d.id, ...d.data() })) }),
+      () => setState({ key: activeId, items: [] }))
+  }, [activeId])
+  const items = state.key === activeId ? state.items : []
+  return (
+    <View style={{ gap: 8 }}>
+      {items.map(i => (
+        <Card key={i.id} onPress={() => onOpen(i.id)} accessibilityLabel={`Import ${i.fileName}, waiting for review`}>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+            <Text variant="label" numberOfLines={1} style={{ flex: 1 }}>{i.fileName}</Text>
+            <Badge label="Review" tone="warning" />
+          </View>
+          <Text variant="caption" tone="muted">{i.rows?.length || 0} shifts read. Nothing is added until you review it.</Text>
+        </Card>
+      ))}
+      <Button title="Import a schedule" icon="upload" variant="secondary" onPress={onImport} />
+    </View>
   )
 }
