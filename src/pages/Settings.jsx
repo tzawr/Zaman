@@ -18,6 +18,7 @@ import Section from '../components/Section'
 import TimeSelect from '../components/TimeSelect'
 import { useSpeechInput } from '../utils/useSpeechInput'
 import { useI18n } from '../i18n'
+import TeamsConnectSection from '../components/teams/TeamsConnectSection'
 
 const DAYS = [
   { key: 'monday', labelKey: 'dayMonday' },
@@ -59,6 +60,7 @@ function Settings() {
   const [preventClopening, setPreventClopening] = useState(true)
   const [minHoursBetweenShifts, setMinHoursBetweenShifts] = useState(10)
   const [allowEmployeeFullView, setAllowEmployeeFullView] = useState(false)
+  const [teamsBizId, setTeamsBizId] = useState(null)
   const [allowEmployeeAvailabilityUpdates, setAllowEmployeeAvailabilityUpdates] = useState(false)
   const [roles, setRoles] = useState([])
   const [coverageRules, setCoverageRules] = useState('')
@@ -99,6 +101,7 @@ function Settings() {
         if (d.preventClopening !== undefined) setPreventClopening(d.preventClopening)
         if (d.minHoursBetweenShifts) setMinHoursBetweenShifts(d.minHoursBetweenShifts)
         if (d.allowEmployeeFullView !== undefined) setAllowEmployeeFullView(d.allowEmployeeFullView)
+        setTeamsBizId(d.teamsBizId || null)
         if (d.allowEmployeeAvailabilityUpdates !== undefined) setAllowEmployeeAvailabilityUpdates(d.allowEmployeeAvailabilityUpdates)
         if (d.roles) setRoles(d.roles)
         if (d.coverageRules !== undefined) setCoverageRules(d.coverageRules)
@@ -590,6 +593,8 @@ function Settings() {
           </label>
         </div>
       </Section>
+
+      <TeamsConnectSection teamsBizId={teamsBizId} />
 
       {hasPasswordProvider && (
         <Section

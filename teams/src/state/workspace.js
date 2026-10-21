@@ -50,6 +50,17 @@ export function WorkspaceProvider({ children }) {
 
   const member = membership.key === memberKey ? membership.data : null
 
+  // The business itself: its name, time zone, and whether its schedule comes
+  // from Hengam.
+  const [businessState, setBusinessState] = useState({ key: null, data: null })
+  useEffect(() => {
+    if (!activeId || !member) return undefined
+    return onSnapshot(doc(db, 'businesses', activeId),
+      (snap) => setBusinessState({ key: activeId, data: snap.exists() ? snap.data() : null }),
+      () => setBusinessState({ key: activeId, data: null }))
+  }, [activeId, member])
+  const business = businessState.key === activeId ? businessState.data : null
+
   const setActive = useCallback((bizId) => {
     setChosen({ uid, id: bizId })
     if (uid) AsyncStorage.setItem(activeKey(uid), bizId).catch(() => {})
@@ -68,7 +79,9 @@ export function WorkspaceProvider({ children }) {
     roleKnown: !activeId || membership.key === memberKey,
     role: member?.status === 'active' ? member.role : null,
     isManager: member?.status === 'active' && isManagerRole(member.role),
-  }), [workplaces, uid, error, active, activeId, setActive, member, membership.key, memberKey])
+    business,
+    fromHengam: business?.mode === 'hengam',
+  }), [business, workplaces, uid, error, active, activeId, setActive, member, membership.key, memberKey])
 
   return <WorkspaceContext.Provider value={value}>{children}</WorkspaceContext.Provider>
 }

@@ -2,8 +2,10 @@ import { Timestamp } from 'firebase-admin/firestore'
 import { DEFAULT_POLICIES, paths } from '../shared/teams/schema.js'
 import { addDays } from '../shared/teams/time.js'
 import { checkAssignment, validationWindow } from '../shared/teams/validation.js'
+import { hengamSlotMatches } from '../shared/teams/hengam.js'
 import { isActive } from '../shared/teams/workspace.js'
 import { audit } from './_teams-common.js'
+import { conflict } from './_teams-http.js'
 
 // What changing who works a shift involves, shared by the schedule editor,
 // the marketplace and swaps: gathering the facts validation needs, moving the
@@ -87,9 +89,56 @@ export function clearBusyBlock(tx, db, bizId, shiftId, uid) {
   if (uid) tx.delete(db.doc(paths.busyBlock(uid, blockId(bizId, shiftId))))
 }
 
+// Records transfers on the Hengam schedule a shift came from, inside the
+// same transaction that moves the shift in Teams. Hengam stays the
+// authoritative schedule: after a pickup or swap, its week names the person
+// now working each shift, and publishing it again changes nothing.
+//
+// prepare() reads (call it with the reads); apply() and flush() write.
+export class HengamWriteBack {
+  constructor(tx, db) {
+    this.tx = tx
+    this.db = db
+    this.docs = new Map()
+  }
+
+  async prepare(shift) {
+    const id = shift?.origin === 'hengam' ? shift.hengamRef?.scheduleId : null
+    if (!id || this.docs.has(id)) return
+    const snap = await this.tx.get(this.db.doc(`schedules/${id}`))
+    this.docs.set(id, snap.exists ? { ref: snap.ref, data: structuredClone(snap.data().data), dirty: false } : null)
+  }
+
+  apply(shift, to) {
+    const id = shift?.origin === 'hengam' ? shift.hengamRef?.scheduleId : null
+    if (!id) return
+    const entry = this.docs.get(id)
+    const slot = entry?.data?.days?.[shift.hengamRef.day]?.shifts?.[shift.hengamRef.index]
+    // The week was edited in Hengam after it was published: refuse rather
+    // than overwrite the manager's change.
+    if (!hengamSlotMatches(slot, shift)) {
+      throw conflict('hengam_changed', 'This week was changed in Hengam after it was published. Ask your manager to publish it again.')
+    }
+    slot.employee = to.name
+    entry.dirty = true
+  }
+
+  flush(now) {
+    for (const entry of this.docs.values()) {
+      if (!entry?.dirty) continue
+      this.tx.update(entry.ref, {
+        data: entry.data,
+        content: JSON.stringify(entry.data, null, 2),
+        teamsUpdatedAt: Timestamp.fromDate(now),
+      })
+    }
+  }
+}
+
 // Hands a shift to someone else. The shift's version moves on, so any other
 // request made against the old assignment is refused when it is acted on.
-export function writeTransfer(tx, db, { bizId, shiftId, shift, to, now, actorUid, action, details }) {
+export function writeTransfer(tx, db, { bizId, shiftId, shift, to, now, actorUid, action, details, hengam }) {
+  hengam?.apply(shift, to)
   const at = Timestamp.fromDate(now)
   const next = {
     staffId: to.staffId,

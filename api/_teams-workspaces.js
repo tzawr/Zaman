@@ -84,6 +84,12 @@ export async function createInvite({ db, uid, input, now }) {
 
     let staffId = staffIdInput
     let staffName = name?.value
+    // A Hengam workspace's roster comes from Hengam, so invites go to people
+    // already on it.
+    if (!staffId) {
+      const biz = await tx.get(db.doc(paths.business(bizId)))
+      if (biz.data()?.mode === 'hengam') throw invalid('Add them as an employee in Hengam first, then invite them here.')
+    }
     if (staffId) {
       const staffSnap = await tx.get(db.doc(paths.staff(bizId, staffId)))
       if (!staffSnap.exists) throw notFound('That person is not on your team.')

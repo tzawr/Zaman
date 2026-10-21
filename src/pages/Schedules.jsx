@@ -31,11 +31,12 @@ import { useToast } from '../components/Toast'
 import PageHero from '../components/PageHero'
 import { exportToCSV, exportToPNG, exportToPDF } from '../utils/exportSchedule'
 import { useI18n } from '../i18n'
+import TeamsPublishButton from '../components/teams/TeamsPublishButton'
 import { canExport, canViewRecommendationsForTier, getUserTier } from '../utils/tier'
 
 function Schedules() {
   const navigate = useNavigate()
-  const { currentUser } = useAuth()
+  const { currentUser, userData } = useAuth()
   const toast = useToast()
   const { t, language } = useI18n()
   
@@ -311,6 +312,7 @@ function Schedules() {
                     </p>
                   </div>
                   <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                    {selectedSchedule.data && userData?.teamsBizId && <TeamsPublishButton schedule={selectedSchedule} />}
                     {selectedSchedule.data && (
                       <div className="export-dropdown-wrap">
                         <button 

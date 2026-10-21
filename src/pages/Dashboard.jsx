@@ -26,6 +26,7 @@ import { db } from '../firebase'
 import { useAuth } from '../AuthContext'
 import PageHero from '../components/PageHero'
 import { useI18n } from '../i18n'
+import TeamsTimeOffPanel from '../components/teams/TeamsTimeOffPanel'
 
 function Dashboard() {
   const navigate = useNavigate()
@@ -254,6 +255,8 @@ function Dashboard() {
           )}
         </div>
       </motion.div>
+
+      <TeamsTimeOffPanel teamsBizId={userData?.teamsBizId} />
 
       {/* Recent schedules */}
       {recentSchedules.length > 0 && (

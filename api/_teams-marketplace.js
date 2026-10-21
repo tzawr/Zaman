@@ -4,7 +4,9 @@ import { checkAssignment } from '../shared/teams/validation.js'
 import { isManagerRole } from '../shared/teams/workspace.js'
 import { TeamsError, conflict, forbidden, ineligible, invalid, notFound } from './_teams-http.js'
 import { audit, readActor, readManager, requireId } from './_teams-common.js'
-import { check, readFacts, readPerson, readPolicies, toPlainShift, writeTransfer } from './_teams-assignments.js'
+import {
+  HengamWriteBack, check, readFacts, readPerson, readPolicies, toPlainShift, writeTransfer,
+} from './_teams-assignments.js'
 
 // The shift marketplace and direct swaps. A shift stays with its owner until
 // the transaction that completes a transfer; every request records the shift
@@ -161,6 +163,8 @@ export async function claimOffer({ db, uid, input, now }) {
 
     const result = check({ ...ctx, now })
     if (!result.ok) throw ineligible(result.problems)
+    const hengam = new HengamWriteBack(tx, db)
+    if (!ctx.offer.requiresApproval) await hengam.prepare(ctx.shift)
 
     const at = Timestamp.fromDate(now)
     const offerRef = db.doc(paths.offer(bizId, offerId))
@@ -170,8 +174,9 @@ export async function claimOffer({ db, uid, input, now }) {
       tx.update(offerRef, { status: 'completed', completedAt: at, takenByUid: uid, takenByName: ctx.person.name, claimantUids: [], updatedAt: at })
       writeTransfer(tx, db, {
         bizId, shiftId: ctx.shift.id, shift: ctx.shift, to: ctx.person, now, actorUid: uid,
-        action: 'offer.picked_up', details: { offerId },
+        action: 'offer.picked_up', details: { offerId }, hengam,
       })
+      hengam.flush(now)
       return { status: 'approved' }
     }
 
@@ -234,6 +239,8 @@ export async function decideClaim({ db, uid, input, now }) {
     const ctx = await readClaimContext(tx, db, bizId, offerId, claimantUid, now)
     const result = check({ ...ctx, now, audience: 'manager' })
     if (!result.ok) throw ineligible(result.problems)
+    const hengam = new HengamWriteBack(tx, db)
+    await hengam.prepare(ctx.shift)
 
     tx.update(claimRef, { status: 'approved', decidedAt: at, decidedBy: uid })
     pending.docs.filter(d => d.id !== claimantUid).forEach(d => tx.update(d.ref, { status: 'superseded', decidedAt: at }))
@@ -243,8 +250,9 @@ export async function decideClaim({ db, uid, input, now }) {
     })
     writeTransfer(tx, db, {
       bizId, shiftId: ctx.shift.id, shift: ctx.shift, to: ctx.person, now, actorUid: uid,
-      action: 'offer.approved', details: { offerId },
+      action: 'offer.approved', details: { offerId }, hengam,
     })
+    hengam.flush(now)
     return { status: 'approved' }
   })
 }
@@ -365,11 +373,20 @@ function writeSwapClosed(tx, db, bizId, swapId, ctx, status, extra, now) {
 }
 
 // Both sides move in one transaction, or neither does.
-function writeSwapDone(tx, db, bizId, swapId, ctx, sideA, sideB, actorUid, now) {
+function writeSwapDone(tx, db, bizId, swapId, ctx, sideA, sideB, actorUid, now, hengam) {
   const at = Timestamp.fromDate(now)
   tx.update(db.doc(paths.swap(bizId, swapId)), { status: 'completed', completedAt: at, decidedAt: at, decidedBy: actorUid, updatedAt: at })
-  writeTransfer(tx, db, { bizId, shiftId: ctx.shiftA.id, shift: ctx.shiftA, to: sideB.person, now, actorUid, action: 'swap.completed', details: { swapId, side: 'A' } })
-  writeTransfer(tx, db, { bizId, shiftId: ctx.shiftB.id, shift: ctx.shiftB, to: sideA.person, now, actorUid, action: 'swap.completed', details: { swapId, side: 'B' } })
+  writeTransfer(tx, db, { bizId, shiftId: ctx.shiftA.id, shift: ctx.shiftA, to: sideB.person, now, actorUid, action: 'swap.completed', details: { swapId, side: 'A' }, hengam })
+  writeTransfer(tx, db, { bizId, shiftId: ctx.shiftB.id, shift: ctx.shiftB, to: sideA.person, now, actorUid, action: 'swap.completed', details: { swapId, side: 'B' }, hengam })
+  hengam.flush(now)
+}
+
+// Reads the Hengam schedules a swap's two shifts came from, if any.
+async function prepareHengam(tx, db, ctx) {
+  const hengam = new HengamWriteBack(tx, db)
+  await hengam.prepare(ctx.shiftA)
+  await hengam.prepare(ctx.shiftB)
+  return hengam
 }
 
 function refuseIfClosed(ctx, statuses, now) {
@@ -405,7 +422,8 @@ export async function respondSwap({ db, uid, input, now }) {
       audit(tx, db, bizId, uid, 'swap.accepted', { swapId }, now)
       return { status: 'pending_manager' }
     }
-    writeSwapDone(tx, db, bizId, swapId, ctx, sideA, sideB, uid, now)
+    const hengam = await prepareHengam(tx, db, ctx)
+    writeSwapDone(tx, db, bizId, swapId, ctx, sideA, sideB, uid, now, hengam)
     return { status: 'completed' }
   })
 }
@@ -427,7 +445,8 @@ export async function decideSwap({ db, uid, input, now }) {
     const [sideA, sideB] = await Promise.all([readSwapSide(tx, db, bizId, ctx.shiftA), readSwapSide(tx, db, bizId, ctx.shiftB)])
     const result = checkSwap({ shiftA: ctx.shiftA, shiftB: ctx.shiftB, sideA, sideB, policies: ctx.policies, now, audience: 'manager' })
     if (!result.ok) throw ineligible(result.problems)
-    writeSwapDone(tx, db, bizId, swapId, ctx, sideA, sideB, uid, now)
+    const hengam = await prepareHengam(tx, db, ctx)
+    writeSwapDone(tx, db, bizId, swapId, ctx, sideA, sideB, uid, now, hengam)
     return { status: 'completed' }
   })
 }

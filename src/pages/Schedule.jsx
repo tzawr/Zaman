@@ -40,6 +40,7 @@ import ScheduleTable from '../components/ScheduleTable'
 import { exportToCSV, exportToPNG, exportToPDF } from '../utils/exportSchedule'
 import { runScheduler } from '../utils/scheduler'
 import { freshestRecord } from '../utils/freshestRecord'
+import { withTeamsAvailability } from '../utils/teamsAvailability'
 import { shiftLengthHours, toMinutes } from '../utils/shiftTime'
 import { useSpeechInput } from '../utils/useSpeechInput'
 import PageHero from '../components/PageHero'
@@ -168,7 +169,13 @@ function Schedule() {
 
     // Availability can arrive either from the employee record or from an
     // invited employee's own portal, so merge before deciding what is missing.
-    const schedulingEmployees = await mergeEmployeePortalAvailability(employees)
+    // A workspace connected to Hengam Teams takes availability and approved
+    // time off from Teams, which is where its people keep them.
+    const teams = await withTeamsAvailability(await mergeEmployeePortalAvailability(employees), {
+      teamsBizId: userSettings?.teamsBizId, weekStart,
+    })
+    const schedulingEmployees = teams.employees
+    if (teams.error) setError(teams.error)
 
     const problems = describeMissingSetup(
       getSetupStatus({ userData: userSettings, employees: schedulingEmployees }),

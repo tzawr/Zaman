@@ -18,7 +18,7 @@ export default function ScheduleManager() {
   const router = useRouter()
   const t = useTheme()
   const today = useToday()
-  const { activeId } = useWorkspace()
+  const { activeId, fromHengam } = useWorkspace()
   const [weekStart, setWeekStart] = useState(() => weekStartOf(today))
   const { schedule, shifts, loading, error } = useWeekSchedule(weekStart)
   const [busy, setBusy] = useState(false)
@@ -103,7 +103,9 @@ export default function ScheduleManager() {
             <Stat label="People" value={String(people)} />
           </Card>
 
-          {published ? (
+          {fromHengam ? (
+            <Banner tone="info" message="This schedule comes from Hengam. Change it there and publish it again; pickups and swaps approved here are written back to Hengam." />
+          ) : published ? (
             <Text variant="caption" tone="muted">This week is published. Changes you make go live for your team as you save them.</Text>
           ) : count ? (
             confirm ? (
@@ -123,11 +125,11 @@ export default function ScheduleManager() {
                 <Text variant="label" style={date === today ? { color: t.color.accent } : null} accessibilityRole="header">
                   {formatDateShort(date)}{date === today ? ' · Today' : ''}
                 </Text>
-                <Pressable onPress={() => add(date)} accessibilityRole="button" accessibilityLabel={`Add a shift on ${formatDateShort(date)}`}
+                {fromHengam ? null : <Pressable onPress={() => add(date)} accessibilityRole="button" accessibilityLabel={`Add a shift on ${formatDateShort(date)}`}
                   hitSlop={8} style={{ flexDirection: 'row', alignItems: 'center', gap: 4, minHeight: 32, paddingHorizontal: 6 }}>
                   <Feather name="plus" size={16} color={t.color.accent} />
                   <Text variant="label" tone="accent">Add</Text>
-                </Pressable>
+                </Pressable>}
               </View>
               {offOn(date).length ? (
                 <Text variant="caption" tone="muted">Off or unavailable: {offOn(date).join(', ')}</Text>
@@ -135,7 +137,7 @@ export default function ScheduleManager() {
               {(byDate[date] || []).length ? (byDate[date]).map((s, i) => (
                 <View key={s.id}>
                   {i > 0 ? <Divider /> : null}
-                  <Pressable onPress={() => router.push({ pathname: '/shift-edit', params: { shiftId: s.id } })}
+                  <Pressable onPress={() => router.push(fromHengam ? `/shift/${activeId}/${s.id}` : { pathname: '/shift-edit', params: { shiftId: s.id } })}
                     accessibilityRole="button"
                     accessibilityLabel={`${s.staffName}, ${formatShiftRange(s)}${s.positionName ? `, ${s.positionName}` : ''}${concerns[s.id] ? `. Warning: ${concerns[s.id]}` : ''}. Edit`}
                     style={({ pressed }) => ({ flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 8, opacity: pressed ? 0.7 : 1 })}>

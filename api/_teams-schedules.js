@@ -15,6 +15,14 @@ import { clearBusyBlock, readLocks, writeBusyBlock, writeReleaseLocks } from './
 // they are saved.
 
 const MINUTE = 60 * 1000
+
+// A business connected to Hengam takes its schedule from Hengam; editing it
+// in Teams as well would give the week two owners.
+function refuseIfHengam(business) {
+  if (business?.mode === 'hengam') {
+    throw conflict('hengam_owned', 'This schedule comes from Hengam. Change it there and publish it again.')
+  }
+}
 const POSITION_MAX = 40
 const NOTES_MAX = 280
 // A week's shifts are published in one transaction, which Firestore caps at
@@ -50,6 +58,7 @@ export async function saveShift({ db, uid, input, now }) {
       tx.get(db.doc(paths.staff(bizId, staffId))),
       shiftId ? tx.get(db.doc(paths.shift(bizId, shiftId))) : Promise.resolve(null),
     ])
+    refuseIfHengam(bizSnap.data())
     if (!staffSnap.exists) throw notFound('That person is not on your team.')
     if (shiftId && !existingSnap.exists) throw notFound('That shift no longer exists.')
     const existing = existingSnap?.data()
@@ -133,6 +142,7 @@ export async function deleteShift({ db, uid, input, now }) {
   const shiftId = requireId(input.shiftId, 'shift')
   return db.runTransaction(async (tx) => {
     await readManager(tx, db, bizId, uid)
+    refuseIfHengam((await tx.get(db.doc(paths.business(bizId)))).data())
     const ref = db.doc(paths.shift(bizId, shiftId))
     const snap = await tx.get(ref)
     if (!snap.exists || snap.data().status === 'cancelled') return { ok: true }
@@ -162,6 +172,7 @@ export async function publishSchedule({ db, uid, input, now }) {
   const weekStart = input.weekStart
   return db.runTransaction(async (tx) => {
     await readManager(tx, db, bizId, uid)
+    refuseIfHengam((await tx.get(db.doc(paths.business(bizId)))).data())
     const ref = scheduleRef(db, bizId, weekStart)
     const scheduleSnap = await tx.get(ref)
     if (!scheduleSnap.exists) throw notFound('There is nothing scheduled that week yet.')
