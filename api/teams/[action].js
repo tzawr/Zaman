@@ -9,7 +9,7 @@ import * as hengam from '../_teams-hengam.js'
 import * as imports from '../_teams-imports.js'
 import { calendarFeed } from '../_teams-calendar.js'
 import { deliver, markAllRead } from '../_teams-notify.js'
-import { drainPushQueue } from '../_teams-push.js'
+import { drainPushQueue, forgetDevice } from '../_teams-push.js'
 import * as marketplace from '../_teams-marketplace.js'
 import * as schedules from '../_teams-schedules.js'
 import * as workspaces from '../_teams-workspaces.js'
@@ -64,6 +64,9 @@ const ACTIONS = {
   discardImport: { run: imports.discardImport, limit: [60, 60 * 60] },
   // The same erasure as Hengam's Settings; the app re-authenticates first.
   deleteAccount: { run: deleteAccount, limit: [5, 60 * 60] },
+  // A phone that signed out offline, removing its push entry afterwards.
+  // Called signed out, so limited by address.
+  forgetDevice: { run: forgetDevice, auth: false, limit: [30, 60 * 60] },
   // Crashes the app caught. Sent before sign-in too, so limited by address.
   reportClientError: { run: reportClientError, auth: false, limit: [30, 60 * 60] },
 }

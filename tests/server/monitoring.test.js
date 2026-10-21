@@ -6,6 +6,8 @@ import { fingerprintOf, recordError, reportClientError, summariseAndPruneErrors 
 import { deleteAccount } from '../../api/_account-deletion.js'
 import { runDailyJob } from '../../api/_teams-jobs.js'
 import * as ws from '../../api/_teams-workspaces.js'
+import { forgetDevice } from '../../api/_teams-push.js'
+import { createHash } from 'node:crypto'
 
 const PROJECT_ID = 'demo-hengam'
 let db
@@ -128,5 +130,30 @@ describe('deleting an account', () => {
     const [e] = await events()
     assert.equal(e.where, 'deleteAccount')
     assert.deepEqual(e.uids, ['u2'])
+  })
+})
+
+describe('forgetting a device after an offline sign-out', () => {
+  const TOKEN = 'ExponentPushToken[abc123]'
+  const idOf = (token) => createHash('sha256').update(token).digest('hex').slice(0, 32)
+
+  test('removes the entry only when the token matches, and answers the same way regardless', async () => {
+    await db.doc(`users/u1/devices/${idOf(TOKEN)}`).set({ platform: 'ios', token: TOKEN })
+    await db.doc('users/u1/devices/other').set({ platform: 'android', token: 'ExponentPushToken[other]' })
+
+    for (const input of [
+      { uid: 'u1', token: 'ExponentPushToken[wrong]' },
+      { uid: 'u2', token: TOKEN },
+      { uid: 'u1/../x', token: TOKEN },
+      { uid: 'u1', token: 'not a token' },
+      {},
+    ]) {
+      assert.deepEqual(await forgetDevice({ db, input }), { ok: true })
+    }
+    assert.ok((await db.doc(`users/u1/devices/${idOf(TOKEN)}`).get()).exists)
+
+    assert.deepEqual(await forgetDevice({ db, input: { uid: 'u1', token: TOKEN } }), { ok: true })
+    assert.equal((await db.doc(`users/u1/devices/${idOf(TOKEN)}`).get()).exists, false)
+    assert.ok((await db.doc('users/u1/devices/other').get()).exists)
   })
 })

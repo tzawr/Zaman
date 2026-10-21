@@ -7,6 +7,7 @@ import * as Device from 'expo-device'
 import * as Notifications from 'expo-notifications'
 import { useRouter } from 'expo-router'
 import { deleteDoc, doc, serverTimestamp, setDoc } from 'firebase/firestore'
+import { callTeams } from './api'
 import { db } from './firebase'
 
 // Push on iOS and Android through Expo's push service. A device registers
@@ -24,9 +25,20 @@ Notifications.setNotificationHandler({
 
 const projectId = process.env.EXPO_PUBLIC_EAS_PROJECT_ID || Constants.expoConfig?.extra?.eas?.projectId
 
-// The device entry this phone registered for each account, so signing out
-// can remove it without asking Expo for the token again.
+// The device entry this phone registered for each account, and its token,
+// so signing out can remove it without asking Expo for the token again.
 const registeredKey = (uid) => `hengam-teams-push-device:${uid}`
+// Removals that could not reach the server at sign-out, retried later.
+const PENDING_KEY = 'hengam-teams-push-forget'
+
+async function readRegistration(uid) {
+  const raw = await AsyncStorage.getItem(registeredKey(uid))
+  try {
+    return raw ? JSON.parse(raw) : null
+  } catch {
+    return null
+  }
+}
 
 // On only when this phone is registered for this account: the permission
 // alone may have been given by someone who signed in here before.
@@ -57,21 +69,45 @@ export async function enablePush(uid) {
   await setDoc(doc(db, 'users', uid, 'devices', id), {
     platform: Platform.OS, token, createdAt: serverTimestamp(), updatedAt: serverTimestamp(),
   })
-  await AsyncStorage.setItem(registeredKey(uid), id)
+  await AsyncStorage.setItem(registeredKey(uid), JSON.stringify({ id, token }))
   return { ok: true }
 }
 
 // Called before signing out, while the account can still delete its own
 // device entry. Gives up after a few seconds so signing out never hangs
-// offline; the entry then stays until the app is uninstalled.
+// offline; the removal is then queued and sent the next time the app opens.
 export async function forgetDevice(uid) {
-  const id = await AsyncStorage.getItem(registeredKey(uid))
-  if (!id) return
-  await Promise.race([
-    deleteDoc(doc(db, 'users', uid, 'devices', id)),
-    new Promise((_, reject) => setTimeout(() => reject(new Error('timed out')), 4000)),
-  ])
+  const registration = await readRegistration(uid)
+  if (!registration) return
   await AsyncStorage.removeItem(registeredKey(uid))
+  try {
+    await Promise.race([
+      deleteDoc(doc(db, 'users', uid, 'devices', registration.id)),
+      new Promise((_, reject) => setTimeout(() => reject(new Error('timed out')), 4000)),
+    ])
+  } catch {
+    // Entries from before the token was kept with the id cannot be retried.
+    if (!registration.token) return
+    const pending = JSON.parse((await AsyncStorage.getItem(PENDING_KEY)) || '[]')
+    pending.push({ uid, token: registration.token })
+    await AsyncStorage.setItem(PENDING_KEY, JSON.stringify(pending.slice(-10)))
+  }
+}
+
+// Sends any removal queued by an offline sign-out. The server checks the
+// token, which only this phone has, since nobody may be signed in by then.
+export async function retryForgottenDevices() {
+  const pending = JSON.parse((await AsyncStorage.getItem(PENDING_KEY)) || '[]')
+  if (!pending.length) return
+  const left = []
+  for (const entry of pending) {
+    try {
+      await callTeams('forgetDevice', entry, { signedIn: false })
+    } catch {
+      left.push(entry)
+    }
+  }
+  await AsyncStorage.setItem(PENDING_KEY, JSON.stringify(left))
 }
 
 // Tapping a notification opens the screen it is about.

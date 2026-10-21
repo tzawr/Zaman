@@ -12,4 +12,6 @@ export async function enablePush() {
 
 export async function forgetDevice() {}
 
+export async function retryForgottenDevices() {}
+
 export function usePushNavigation() {}

@@ -4,7 +4,7 @@ import { StatusBar } from 'expo-status-bar'
 import { ActivityIndicator, Pressable, Text, View, useColorScheme } from 'react-native'
 import { SafeAreaProvider } from 'react-native-safe-area-context'
 import { installGlobalErrorHandlers, reportError, setErrorRoute } from '../lib/monitoring'
-import { usePushNavigation } from '../lib/push'
+import { retryForgottenDevices, usePushNavigation } from '../lib/push'
 import { AuthProvider, useAuth } from '../state/auth'
 import { WorkspaceProvider } from '../state/workspace'
 import { ThemeProvider, useTheme } from '../ui/theme'
@@ -29,6 +29,10 @@ function Navigator() {
   const t = useTheme()
   const { user, loading } = useAuth()
   usePushNavigation()
+  // A sign-out that happened offline finishes removing its push entry: at
+  // launch, and whenever someone signs in or out here.
+  const uid = user?.uid
+  useEffect(() => { retryForgottenDevices().catch(() => {}) }, [uid])
   // The route pattern, not the path, so one bug on every shift is one group.
   const segments = useSegments()
   useEffect(() => { setErrorRoute(segments.join('/')) }, [segments])

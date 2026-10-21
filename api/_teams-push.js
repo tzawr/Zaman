@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto'
 import { Timestamp } from 'firebase-admin/firestore'
 
 // Push notifications through Expo's push service, which delivers to both
@@ -74,4 +75,22 @@ export async function drainPushQueue(db, { ids, limit = 300, now = new Date(), f
   staleDevices.forEach(ref => batch.delete(ref))
   await batch.commit()
   return { sent, failed, noDevice }
+}
+
+// A phone that signed out while offline could not delete its own device
+// entry, and is no longer signed in to try again. It asks here instead, the
+// next time the app opens. Holding the push token is the proof: only that
+// phone has it, and the entry is removed only when its token matches. The
+// answer is the same either way, so it tells a caller nothing.
+export async function forgetDevice({ db, input }) {
+  const uid = typeof input?.uid === 'string' && /^[A-Za-z0-9_-]{1,128}$/.test(input.uid) ? input.uid : null
+  const token = isExpoToken(input?.token) && input.token.length <= 4096 ? input.token : null
+  if (uid && token) {
+    // The same id the app gives the entry when it registers.
+    const id = createHash('sha256').update(token).digest('hex').slice(0, 32)
+    const ref = db.doc(`users/${uid}/devices/${id}`)
+    const snap = await ref.get()
+    if (snap.exists && snap.data().token === token) await ref.delete()
+  }
+  return { ok: true }
 }

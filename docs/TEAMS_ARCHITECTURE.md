@@ -243,7 +243,7 @@ The app shows them behind a bell in every tab's header, with an unread count. Op
 
 ### Push
 
-Every notification also queues a push in `pushQueue` (server-only), sent through Expo's push service to each device under `users/{uid}/devices`. The request that caused it sends its own pushes straight away; the daily job sends anything left. Devices Expo reports as uninstalled are removed, and signing out removes that phone's entry first, so a shared phone stops getting the last person's notifications. A sign-out while offline gives up after four seconds and leaves the entry. People turn push on from Profile, so the system prompt comes when they ask. Push needs a development build and `EXPO_PUBLIC_EAS_PROJECT_ID`; it is not available on the web, where the bell is the notification.
+Every notification also queues a push in `pushQueue` (server-only), sent through Expo's push service to each device under `users/{uid}/devices`. The request that caused it sends its own pushes straight away; the daily job sends anything left. Devices Expo reports as uninstalled are removed, and signing out removes that phone's entry first, so a shared phone stops getting the last person's notifications. A sign-out while offline gives up after four seconds and queues the removal. The app sends it to `forgetDevice` at the next launch or sign-in, with the push token as proof that it is that phone, since nobody may be signed in by then. People turn push on from Profile, so the system prompt comes when they ask. Push needs a development build and `EXPO_PUBLIC_EAS_PROJECT_ID`; it is not available on the web, where the bell is the notification.
 
 ### The daily job
 
