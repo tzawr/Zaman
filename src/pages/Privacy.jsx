@@ -1,4 +1,4 @@
-import { Shield, Database, User, Cookie, Building2, Scale } from 'lucide-react'
+import { Shield, Database, User, Cookie, Building2, Scale, Smartphone } from 'lucide-react'
 import PageHero from '../components/PageHero'
 import Section from '../components/Section'
 import { useI18n } from '../i18n'
@@ -39,6 +39,20 @@ function Privacy() {
         </div>
       </Section>
 
+      <Section title={t('privacyTeamsTitle')} icon={Smartphone} delay={0.12}>
+        <div className="legal-text">
+          <p>{t('privacyTeamsIntro')}</p>
+          <ul>
+            <li>{t('privacyTeams1')}</li>
+            <li>{t('privacyTeams2')}</li>
+            <li>{t('privacyTeams3')}</li>
+            <li>{t('privacyTeams4')}</li>
+            <li>{t('privacyTeams5')}</li>
+          </ul>
+          <p>{t('privacyTeamsP1')}</p>
+        </div>
+      </Section>
+
       <Section title={t('privacyStorageTitle')} icon={Database} delay={0.15}>
         <div className="legal-text">
           <p>{t('privacyStorageP1')}</p>
@@ -55,6 +69,7 @@ function Privacy() {
             <li>{t('privacySubVercel')}</li>
             <li>{t('privacySubAnthropic')}</li>
             <li>{t('privacySubResend')}</li>
+            <li>{t('privacySubExpo')}</li>
           </ul>
           <p>{t('privacySubprocessorsP1')}</p>
         </div>
