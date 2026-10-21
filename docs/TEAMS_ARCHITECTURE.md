@@ -107,7 +107,7 @@ A removed member (`status: removed`) loses every read immediately. Someone who w
 | 4 | Expo scaffold, sign-in (email, Google, Apple), workspaces, single-use invites, workplace switcher | Done |
 | 5 | Home, calendar (day, week, month), upcoming shifts, manual scheduling and publishing | Done |
 | 6 | Validation engine, marketplace, swaps, approvals, audit log | Done |
-| 7 | Availability and time off | Next |
+| 7 | Availability, time off, business policies | Done |
 | 8 | Hengam sync | Next |
 | 9 | Notifications, push, reminders, calendar feed and export | |
 | 9b | Standalone imports: manual, CSV, Excel, PDF and image via Claude with mandatory review | |
