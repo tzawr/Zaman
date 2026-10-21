@@ -303,6 +303,11 @@ cd teams && npx expo start --web
 
 ### Testing on your iPhone
 
+**To use it anywhere**, run `npm run ios:device -- live` in `teams/` with the phone plugged in. That builds a self-contained Release app on the live backend: the API at hengam.app and the production Firebase project. It needs nothing from this Mac once installed. Accounts and workplaces made in it are real production data. The Firebase settings come from Hengam's own `../.env.local` (`vercel env pull`).
+
+**For development**, the rest of this section builds an app that loads its code from this Mac and uses the emulators, so edits reload on the phone.
+
+
 `npm run ios:device` (in `teams/`) builds the app onto your own iPhone with a free Apple account, against the emulators on your Mac.
 
 - **What works:** sign-in with email and password, schedules, the marketplace, swaps, availability and time off, imports from Files, and account deletion. Crash reports are not sent from development builds, and calendar feed links point at the Mac's own address, so they don't open on the phone.
