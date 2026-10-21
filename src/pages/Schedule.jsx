@@ -29,6 +29,7 @@ import {
   where, 
   onSnapshot, 
   getDocs,
+  getDoc,
   doc, 
   addDoc, 
   serverTimestamp,
@@ -38,6 +39,7 @@ import { useAuth } from '../AuthContext'
 import ScheduleTable from '../components/ScheduleTable'
 import { exportToCSV, exportToPNG, exportToPDF } from '../utils/exportSchedule'
 import { runScheduler } from '../utils/scheduler'
+import { freshestRecord } from '../utils/freshestRecord'
 import { shiftLengthHours, toMinutes } from '../utils/shiftTime'
 import { useSpeechInput } from '../utils/useSpeechInput'
 import PageHero from '../components/PageHero'
@@ -89,7 +91,13 @@ function Schedule() {
         where('managerId', '==', currentUser.uid),
         where('accountType', '==', 'employee')
       )
-      const portalSnap = await getDocs(portalQuery)
+      const [portalSnap, managerSnap] = await Promise.all([
+        getDocs(portalQuery),
+        getDoc(doc(db, 'users', currentUser.uid)),
+      ])
+      // The setting lives on the manager's own record. Each employee's portal
+      // record carries a copy, but the employee can write that copy.
+      if (managerSnap.data()?.allowEmployeeAvailabilityUpdates === false) return team
       const portalByEmployeeId = new Map()
       portalSnap.docs.forEach(portalDoc => {
         const data = portalDoc.data()
@@ -98,12 +106,16 @@ function Schedule() {
       return team.map(emp => {
         const portal = portalByEmployeeId.get(emp.id)
         if (!portal) return emp
+        // A manager's later edit to the employee record must beat an older
+        // portal submission, and the other way round.
+        const availability = freshestRecord([emp, portal], 'availability', 'availabilityUpdatedAt')
+        const timeOff = freshestRecord([emp, portal], 'timeOff', 'timeOffUpdatedAt')
         return {
           ...emp,
-          availability: portal.availability || emp.availability,
-          timeOff: portal.timeOff || emp.timeOff,
-          availabilityUpdatedAt: portal.availabilityUpdatedAt || emp.availabilityUpdatedAt,
-          availabilityUpdatedByType: portal.availabilityUpdatedByType || emp.availabilityUpdatedByType,
+          availability: availability?.availability || emp.availability,
+          timeOff: timeOff?.timeOff || emp.timeOff,
+          availabilityUpdatedAt: availability?.availabilityUpdatedAt || emp.availabilityUpdatedAt,
+          availabilityUpdatedByType: availability?.availabilityUpdatedByType || emp.availabilityUpdatedByType,
         }
       })
     } catch {

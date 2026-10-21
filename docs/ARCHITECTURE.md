@@ -61,8 +61,9 @@ The rules enforce several things worth calling out:
 
 - **Ownership.** Reading or writing an `employees` or `schedules` document requires `resource.data.userId == request.auth.uid`.
 - **Billing fields are not self-writable.** A user owns their profile document but cannot change `tier`, `subscriptionTier`, `promoCode` or the other billing fields in it. Those change only via an admin or the promo flow, which writes a *separate* `adminOverrides` document.
-- **Workspace links need a real invite.** `accountType`, `managerId` and `linkedEmployeeId` decide what an account can read. They are writable only when the write also carries an `inviteToken` whose `invites` document names the same manager and employee. Without that, an account cannot attach itself to someone else's workspace.
-- **Linked employees get scoped read access.** An employee who joined through an invite can read that manager's schedules — checked by looking up their own user document, not by trusting a claim in the request.
+- **Workspace links need a real, unused invite.** `accountType`, `managerId` and `linkedEmployeeId` decide what an account can read. They are writable only in the same batch that closes an invite naming the same manager and employee, and the invite as it stands after that batch must name this account as its user. An invite attaches exactly one account. `scripts/close-claimed-invites.js` closes invites accepted before this was enforced.
+- **Managers read their employees' portal records.** A linked employee's availability and time-off submissions live on their own `users` document, which their manager can read but not write. The manager's settings decide whether those submissions are used.
+- **Employees read schedules through the server.** A schedule document holds the whole team's week and rules cannot hide fields, so linked employees have no direct read. `/api/my-schedule` returns each week cut down to their own shifts, or whole when the manager allows the full view.
 
 ### Plan resolution
 
@@ -86,5 +87,5 @@ Effective plan is `adminOverride ?? userTier`, where an override counts only if 
 
 - **Firestore rules cannot count documents**, so free-tier quotas (employee cap, schedule history) are enforced in application code and are bypassable by a determined user with devtools. The security boundary holds; the product boundary does not. Enforcing it properly needs a counter document or a server endpoint.
 - **The admin allowlist is duplicated** in `firestore.rules`, `src/utils/admin.js` and the `ADMIN_UIDS` environment variable. Three copies that must stay in sync.
-- **No automated tests for the Firestore rules.** The rules are the authorization model and are currently verified only by reading them. `@firebase/rules-unit-testing` against the emulator is the obvious next step.
+- **Rules tests need Java 21.** `npm run test:rules` runs `tests/rules/` against the Firestore emulator; see [TEAMS_ARCHITECTURE.md](TEAMS_ARCHITECTURE.md#running-the-rules-tests).
 - **No error monitoring.** Server errors go to Vercel logs; there is no alerting.

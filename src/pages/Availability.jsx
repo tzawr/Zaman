@@ -9,6 +9,7 @@ import PageHero from '../components/PageHero'
 import Section from '../components/Section'
 import TimeSelect from '../components/TimeSelect'
 import { useI18n } from '../i18n'
+import { freshestRecord } from '../utils/freshestRecord'
 
 const DAYS = [
   { key: 'monday', labelKey: 'dayMonday' },
@@ -24,25 +25,6 @@ const DEFAULT_AVAIL = DAYS.reduce((acc, d) => {
   acc[d.key] = { available: true, start: '09:00', end: '17:00' }
   return acc
 }, {})
-
-function timestampMs(value) {
-  if (!value) return 0
-  if (typeof value.toMillis === 'function') return value.toMillis()
-  if (typeof value.seconds === 'number') return value.seconds * 1000
-  return 0
-}
-
-function hasValue(record, field) {
-  if (!record?.[field]) return false
-  if (Array.isArray(record[field])) return record[field].length > 0
-  return Object.keys(record[field]).length > 0
-}
-
-function freshestRecord(records, field, timestampField) {
-  return records
-    .filter(record => hasValue(record, field))
-    .sort((a, b) => timestampMs(b[timestampField]) - timestampMs(a[timestampField]))[0]
-}
 
 function Availability() {
   const { employeeId } = useParams()

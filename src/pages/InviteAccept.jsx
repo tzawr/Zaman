@@ -2,7 +2,7 @@ import { useCallback, useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { motion as Motion } from 'framer-motion'
 import { ArrowRight, UserCheck } from 'lucide-react'
-import { doc, getDoc, setDoc, updateDoc, serverTimestamp } from 'firebase/firestore'
+import { doc, getDoc, updateDoc, writeBatch, serverTimestamp } from 'firebase/firestore'
 import { db } from '../firebase'
 import { sendEmailVerification } from 'firebase/auth'
 import { useAuth } from '../AuthContext'
@@ -37,7 +37,11 @@ function InviteAccept() {
       throw new Error(t('inviteAlreadyUsed'))
     }
 
-    await setDoc(doc(db, 'users', uid), {
+    // The link and the claim go in one batch: rules only accept the link when
+    // the invite, as it stands after this batch, names this account as its
+    // user, so an invite can attach exactly one account.
+    const batch = writeBatch(db)
+    batch.set(doc(db, 'users', uid), {
       email: userEmail,
       displayName: invite.employeeName,
       accountType: 'employee',
@@ -53,6 +57,12 @@ function InviteAccept() {
       onboarded: true,
       createdAt: serverTimestamp(),
     }, { merge: true })
+    batch.update(inviteRef, {
+      used: true,
+      usedBy: uid,
+      usedAt: serverTimestamp()
+    })
+    await batch.commit()
 
     try {
       await updateDoc(doc(db, 'employees', invite.employeeId), {
@@ -64,17 +74,6 @@ function InviteAccept() {
       // Manager-owned employee records may reject employee writes in production rules.
       // The employee portal uses linkedEmployeeId from the user doc above, so this
       // stamp is helpful but not required to finish joining.
-    }
-
-    try {
-      await updateDoc(inviteRef, {
-        used: true,
-        usedBy: uid,
-        usedAt: serverTimestamp()
-      })
-    } catch {
-      // Some rules only let managers update invite docs. Do not leave the employee
-      // stuck after their Auth account and user doc were created successfully.
     }
   }, [token, t])
 

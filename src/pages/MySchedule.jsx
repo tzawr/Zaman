@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion as Motion } from 'framer-motion'
 import { ChevronLeft, ChevronRight, Clock, Calendar, Users, LayoutDashboard, Palmtree } from 'lucide-react'
-import { doc, getDoc, collection, query, where, orderBy, onSnapshot } from 'firebase/firestore'
+import { doc, getDoc } from 'firebase/firestore'
 import { db } from '../firebase'
 import { useAuth } from '../AuthContext'
 import PageHero from '../components/PageHero'
@@ -45,8 +45,7 @@ function MySchedule() {
   const { currentUser } = useAuth()
   const { t, language } = useI18n()
 
-  const [userDoc, setUserDoc] = useState(null)
-  const [schedules, setSchedules] = useState([])
+  const [view, setView] = useState(null)
   const [weekIndex, setWeekIndex] = useState(0)
   const [viewMode, setViewMode] = useState('mine') // 'mine' | 'full'
   const [loading, setLoading] = useState(true)
@@ -54,38 +53,51 @@ function MySchedule() {
 
   useEffect(() => {
     if (!currentUser) { navigate('/signin'); return }
-    getDoc(doc(db, 'users', currentUser.uid)).then(snap => {
-      if (!snap.exists()) {
-        setError(t('myScheduleLoadErrorSetup'))
+    let cancelled = false
+
+    // Read through the server, which cuts each week down to this employee's
+    // own shifts unless the manager allows the full view.
+    async function load() {
+      try {
+        const snap = await getDoc(doc(db, 'users', currentUser.uid))
+        if (cancelled) return
+        if (!snap.exists()) {
+          setError(t('myScheduleLoadErrorSetup'))
+          setLoading(false)
+          return
+        }
+        if (snap.data().accountType !== 'employee') { navigate('/dashboard'); return }
+      } catch {
+        if (cancelled) return
+        setError(t('myScheduleLoadErrorAccount'))
         setLoading(false)
         return
       }
-      const data = snap.data()
-      if (data.accountType !== 'employee') { navigate('/dashboard'); return }
-      setUserDoc(data)
-    }).catch(() => {
-      setError(t('myScheduleLoadErrorAccount'))
-      setLoading(false)
-    })
-  }, [currentUser, navigate, t])
 
-  // Load schedules
-  useEffect(() => {
-    if (!userDoc?.managerId) return
-    const q = query(
-      collection(db, 'schedules'),
-      where('userId', '==', userDoc.managerId),
-      orderBy('createdAt', 'desc')
-    )
-    const unsub = onSnapshot(q, snap => {
-      setSchedules(snap.docs.map(d => ({ id: d.id, ...d.data() })))
-      setLoading(false)
-    }, () => {
-      setError(t('myScheduleLoadErrorSchedules'))
-      setLoading(false)
-    })
-    return () => unsub()
-  }, [userDoc, t])
+      try {
+        const token = await currentUser.getIdToken()
+        const resp = await fetch('/api/my-schedule', { headers: { Authorization: `Bearer ${token}` } })
+        if (!resp.ok) throw new Error('schedule request failed')
+        const body = await resp.json()
+        if (cancelled) return
+        setView(body)
+        setLoading(false)
+      } catch {
+        if (cancelled) return
+        setError(t('myScheduleLoadErrorSchedules'))
+        setLoading(false)
+      }
+    }
+
+    load()
+    // A schedule published while the page is open shows up when the employee
+    // comes back to it.
+    window.addEventListener('focus', load)
+    return () => {
+      cancelled = true
+      window.removeEventListener('focus', load)
+    }
+  }, [currentUser, navigate, t])
 
   if (loading) {
     return (
@@ -103,8 +115,9 @@ function MySchedule() {
     )
   }
 
-  const employeeName = userDoc?.employeeName || ''
-  const canSeeFullSchedule = userDoc?.allowEmployeeFullView === true
+  const employeeName = view?.employeeName || ''
+  const schedules = view?.schedules || []
+  const canSeeFullSchedule = view?.canSeeFullSchedule === true
   const totalWeeks = schedules.length
   const currentSchedule = schedules[weekIndex] || null
 

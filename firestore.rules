@@ -66,21 +66,34 @@ function isAdmin() {
       return ['accountType', 'managerId', 'linkedEmployeeId'];
     }
 
+    // An invite is single-use. The link and the claim are written in one batch,
+    // so the invite as it will stand after the batch must name this account as
+    // its user. Checking `used` alone was not enough: the claim used to be a
+    // separate write that rules denied, so every invite stayed open forever and
+    // anyone holding the link could attach to the same employee.
     function inviteBacksLink() {
+      let token = request.resource.data.inviteToken;
+      let after = getAfter(/databases/$(database)/documents/invites/$(token));
       return request.resource.data.accountType == 'employee' &&
         'inviteToken' in request.resource.data &&
-        request.resource.data.inviteToken is string &&
-        exists(/databases/$(database)/documents/invites/$(request.resource.data.inviteToken)) &&
-        inviteDoc(request.resource.data.inviteToken).data.managerId == request.resource.data.managerId &&
-        inviteDoc(request.resource.data.inviteToken).data.employeeId == request.resource.data.linkedEmployeeId;
+        token is string &&
+        exists(/databases/$(database)/documents/invites/$(token)) &&
+        after.data.managerId == request.resource.data.managerId &&
+        after.data.employeeId == request.resource.data.linkedEmployeeId &&
+        after.data.get('used', false) == true &&
+        after.data.get('usedBy', '') == request.auth.uid;
     }
 
-    // An employee who joined a workspace through an invite can read that
-    // workspace's schedules; the employee portal shows their own shifts from it.
-    function isLinkedEmployeeOf(managerUid) {
-      return exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
-        userDoc(request.auth.uid).data.accountType == 'employee' &&
-        userDoc(request.auth.uid).data.managerId == managerUid;
+    // The invitee marks their own invite used, once, in the same batch that
+    // links their account to it.
+    function isInviteClaim(inviteId) {
+      return signedIn() &&
+        getAfter(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('inviteToken', '') == inviteId &&
+        resource.data.get('used', false) != true &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['used', 'usedBy', 'usedAt']) &&
+        request.resource.data.used == true &&
+        request.resource.data.usedBy == request.auth.uid &&
+        request.resource.data.usedAt == request.time;
     }
 
     function promoDoc(code) {
@@ -169,10 +182,12 @@ function isAdmin() {
     }
 
     match /schedules/{scheduleId} {
+      // Linked employees read schedules through /api/my-schedule, which cuts
+      // each week down to their own shifts unless the manager allows the full
+      // view. A direct read would hand them the whole team's week regardless.
       allow read: if signedIn() && (
         resource.data.userId == request.auth.uid ||
-        isAdmin() ||
-        isLinkedEmployeeOf(resource.data.userId)
+        isAdmin()
       );
       // The free-tier generation quota is enforced client-side in src/utils/tier.js.
       allow create: if signedIn() &&
@@ -189,7 +204,9 @@ function isAdmin() {
       allow create: if signedIn() &&
         request.resource.data.managerId == request.auth.uid &&
         isPro(request.auth.uid);
-      allow update, delete: if signedIn() &&
+      allow update: if signedIn() &&
+        (resource.data.managerId == request.auth.uid || isAdmin() || isInviteClaim(inviteId));
+      allow delete: if signedIn() &&
         (resource.data.managerId == request.auth.uid || isAdmin());
     }
 
@@ -208,7 +225,16 @@ function isAdmin() {
     }
 
     match /users/{uid} {
-      allow read: if signedIn() && (request.auth.uid == uid || isAdmin());
+      // A manager reads the portal record of each employee linked to their
+      // workspace: it is where those employees submit availability and time
+      // off. Without this the manager's query was denied, the error swallowed,
+      // and every employee submission silently never reached the schedule.
+      allow read: if signedIn() && (
+        request.auth.uid == uid ||
+        isAdmin() ||
+        (resource.data.get('accountType', '') == 'employee' &&
+          resource.data.get('managerId', '') == request.auth.uid)
+      );
 
       // A user owns their profile, availability and workspace settings, but not
       // their plan, and not the fields that point their account at a workspace.
@@ -227,6 +253,8 @@ function isAdmin() {
       // full delete runs server-side through the Admin SDK, which bypasses
       // rules; this covers the direct case and makes the right explicit.
       allow delete: if isAdmin() || (signedIn() && request.auth.uid == uid);
+
     }
+
   }
 }
