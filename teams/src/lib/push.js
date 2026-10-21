@@ -10,4 +10,6 @@ export async function enablePush() {
   return { ok: false, reason: 'unsupported' }
 }
 
+export async function forgetDevice() {}
+
 export function usePushNavigation() {}

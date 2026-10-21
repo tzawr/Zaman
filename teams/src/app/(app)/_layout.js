@@ -35,9 +35,12 @@ export default function AppTabs() {
       <Tabs.Screen name="marketplace" options={{ title: 'Marketplace', tabBarIcon: icon('repeat') }} />
       <Tabs.Screen name="requests" options={{ title: 'Requests', tabBarIcon: icon('inbox'), tabBarBadge: badge || undefined }} />
       {/* Five tabs at most. Managers get Manage in place of Profile, which
-          they reach from the avatar in the header like everyone else. */}
+          they reach from the avatar in the header like everyone else. Its
+          button is hidden rather than its href, since href: null also makes
+          the route unreachable. */}
       <Tabs.Screen name="manage" options={{ title: 'Manage', tabBarIcon: icon('grid'), href: isManager ? undefined : null }} />
-      <Tabs.Screen name="profile" options={{ title: 'Profile', tabBarIcon: icon('user'), href: isManager ? null : undefined }} />
+      <Tabs.Screen name="profile" options={{ title: 'Profile', tabBarIcon: icon('user'),
+        tabBarItemStyle: isManager ? { display: 'none' } : undefined }} />
     </Tabs>
   )
 }

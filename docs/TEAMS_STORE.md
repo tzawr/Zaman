@@ -81,7 +81,7 @@ Data is encrypted in transit. People can delete their account in the app.
 The policy at `/privacy` (in `src/i18n.jsx`, every language) describes Hengam. Before review it also needs to say:
 
 - Hengam Teams uses the same account and data store as Hengam. Workplaces hold their members' names, contact details, shifts, availability, time off and requests, and members of a workplace see the schedule and the marketplace.
-- Push notifications: the device's push token is stored and sent to Expo's push service (expo.dev) to deliver them, until push is turned off or the account is deleted.
+- Push notifications: the device's push token is stored and sent to Expo's push service (expo.dev) to deliver them, until the person signs out on that device, the app is uninstalled, or the account is deleted.
 - Calendar feeds: a private link that anyone holding it can read, which the person can replace at any time.
 - Schedule imports: a PDF or photo is sent to Anthropic's API to read the shifts in it, and is not stored by Hengam. Anthropic does not use it to train models.
 - Crash reports: error details and the screen name, with the account id when signed in, kept for 30 days.

@@ -4,6 +4,7 @@ import {
   signInWithEmailAndPassword, signOut as firebaseSignOut, updateProfile,
 } from 'firebase/auth'
 import { auth } from '../lib/firebase'
+import { forgetDevice } from '../lib/push'
 
 const AuthContext = createContext(null)
 
@@ -44,7 +45,12 @@ export function AuthProvider({ children }) {
     return auth.currentUser
   }, [])
 
-  const signOut = useCallback(() => firebaseSignOut(auth), [])
+  // This phone stops getting the account's notifications first; that needs
+  // the account still signed in. A failure there must not block signing out.
+  const signOut = useCallback(async () => {
+    if (auth.currentUser) await forgetDevice(auth.currentUser.uid).catch(() => {})
+    return firebaseSignOut(auth)
+  }, [])
 
   const value = useMemo(() => ({
     user, loading: user === undefined, version,

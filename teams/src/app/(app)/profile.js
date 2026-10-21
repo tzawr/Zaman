@@ -129,7 +129,7 @@ export default function Profile() {
 function PushRow({ uid }) {
   const [status, setStatus] = useState(null)
   const [busy, setBusy] = useState(false)
-  useEffect(() => { pushStatus().then(setStatus).catch(() => setStatus('unsupported')) }, [])
+  useEffect(() => { pushStatus(uid).then(setStatus).catch(() => setStatus('unsupported')) }, [uid])
   const subtitle = {
     on: 'On for this phone',
     off: 'Get alerts for schedules, swaps and requests',
