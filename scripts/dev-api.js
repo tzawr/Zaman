@@ -14,6 +14,8 @@ process.env.FIRESTORE_EMULATOR_HOST ||= '127.0.0.1:8085'
 process.env.FIREBASE_AUTH_EMULATOR_HOST ||= '127.0.0.1:9099'
 process.env.GCLOUD_PROJECT ||= 'demo-hengam'
 
+// 0.0.0.0 (npm run dev:api:device) lets a phone on the same Wi-Fi reach it.
+const HOST = process.env.DEV_API_HOST || '127.0.0.1'
 const PORT = Number(process.env.PORT || 3001)
 // Links the API hands out (calendar feeds) point back at this server.
 process.env.APP_URL ||= `http://127.0.0.1:${PORT}`
@@ -65,6 +67,6 @@ createServer(async (req, res) => {
     console.error(err)
     if (!res.headersSent) res.status(500).json({ error: 'dev-api handler crashed' })
   }
-}).listen(PORT, '127.0.0.1', () => {
-  console.log(`api on http://127.0.0.1:${PORT} (emulators: firestore ${process.env.FIRESTORE_EMULATOR_HOST}, auth ${process.env.FIREBASE_AUTH_EMULATOR_HOST})`)
+}).listen(PORT, HOST, () => {
+  console.log(`api on http://${HOST}:${PORT} (emulators: firestore ${process.env.FIRESTORE_EMULATOR_HOST}, auth ${process.env.FIREBASE_AUTH_EMULATOR_HOST})`)
 })

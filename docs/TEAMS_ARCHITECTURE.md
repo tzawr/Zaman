@@ -301,6 +301,38 @@ cd teams && npx expo start --web
 
 `teams/.env.example` lists the app's settings. For the emulators, `EXPO_PUBLIC_FIREBASE_PROJECT_ID=demo-hengam` and `EXPO_PUBLIC_USE_EMULATORS=1`. Verification emails are not sent by the emulator; their links are listed at `http://127.0.0.1:9099/emulator/v1/projects/demo-hengam/oobCodes`.
 
+### Testing on your iPhone
+
+`npm run ios:device` (in `teams/`) builds the app onto your own iPhone with a free Apple account, against the emulators on your Mac.
+
+- **What works:** sign-in with email and password, schedules, the marketplace, swaps, availability and time off, imports from Files, and account deletion. Crash reports are not sent from development builds, and calendar feed links point at the Mac's own address, so they don't open on the phone.
+- **What doesn't:** push notifications, Sign in with Apple and universal links. A free account can't sign them, so this build leaves them out. They need a paid account and an EAS build.
+- **Separate app:** the build uses its own bundle id, `app.hengam.teams.dev`, so it never takes the store app's.
+- **Expiry:** Apple stops it opening after 7 days; run the command again to reinstall.
+
+Once, on the iPhone:
+
+1. Turn on Settings → Privacy & Security → Developer Mode, and restart when asked.
+2. Connect it to the Mac with a cable, unlock it, and tap Trust.
+3. In Xcode → Settings → Accounts, sign in with your Apple ID if it isn't there.
+
+Each time (the phone and the Mac on the same Wi-Fi):
+
+```bash
+JAVA_HOME=/opt/homebrew/opt/openjdk@21 PATH="/opt/homebrew/opt/openjdk@21/bin:$PATH" npm run dev:emulators:device
+npm run dev:api:device
+npm run dev:seed
+cd teams && npm run ios:device
+```
+
+The first install fails to open with "Untrusted Developer". On the phone, go to Settings → General → VPN & Device Management, tap your Apple ID, then Trust. When the app asks to find devices on your local network, allow it; that is how it reaches the Mac. Sign in as `maya@example.test` (a manager) or `lee@example.test` (an employee) with the password in `scripts/seed-teams-dev.js`.
+
+With the app already installed, `npm run ios:device:start` starts just the bundler. If the app opens to its launcher instead of Hengam Teams, tap the server it lists, or enter `http://<the Mac's address>:8082`.
+
+The app finds the Mac by its network address, which is read when the bundler starts. If the Mac joins a different network (another Wi-Fi, or a phone's hotspot), restart `npm run ios:device:start`, and the emulators and API if they stopped. There is no need to rebuild.
+
+The native build runs from a copy in `~/Library/Developer/HengamTeams`. When Desktop syncs to iCloud, every new folder in it gets Finder attributes that code signing refuses ("resource fork, Finder information, or similar detritus not allowed"). The device variants of the emulators and API listen on your network rather than only on this Mac, so anyone on the same Wi-Fi could reach the test data while they run.
+
 ### Before a real build
 
 - **Google sign-in on iOS and Android** needs the iOS and web OAuth client ids from the Firebase console in `EXPO_PUBLIC_GOOGLE_*`, and a development build (it is not in Expo Go). Without them the button is hidden on native; it always works on the web.

@@ -3,6 +3,13 @@
 
 const googleIosUrlScheme = process.env.EXPO_PUBLIC_GOOGLE_IOS_URL_SCHEME
 
+// A build for your own iPhone signed with a free Apple account
+// (scripts/ios-device.js). Free accounts cannot sign push, Sign in with
+// Apple or universal links, so those are left out, and it uses its own
+// bundle id so it never takes the store app's. The build reaches the
+// emulators on this Mac over Wi-Fi.
+const freeTeam = process.env.IOS_FREE_TEAM === '1'
+
 export default {
   expo: {
     name: 'Hengam Teams',
@@ -16,10 +23,14 @@ export default {
     // Follows the device; the app's own setting can override it.
     userInterfaceStyle: 'automatic',
     ios: {
-      bundleIdentifier: 'app.hengam.teams',
+      bundleIdentifier: freeTeam ? 'app.hengam.teams.dev' : 'app.hengam.teams',
+      appleTeamId: process.env.APPLE_TEAM_ID || undefined,
       supportsTablet: true,
-      usesAppleSignIn: true,
-      associatedDomains: ['applinks:teams.hengam.app'],
+      usesAppleSignIn: !freeTeam,
+      associatedDomains: freeTeam ? undefined : ['applinks:teams.hengam.app'],
+      ...(freeTeam && {
+        infoPlist: { NSLocalNetworkUsageDescription: 'Hengam Teams connects to the test servers on your computer.' },
+      }),
       // Only HTTPS, which is exempt, so no export compliance questions per build.
       config: { usesNonExemptEncryption: false },
       // Apple's required-reason APIs used by React Native and the Expo
@@ -37,7 +48,7 @@ export default {
     android: {
       package: 'app.hengam.teams',
       adaptiveIcon: {
-        backgroundColor: '#030816',
+        backgroundColor: '#0d1b2e',
         foregroundImage: './assets/android-icon-foreground.png',
         backgroundImage: './assets/android-icon-background.png',
         monochromeImage: './assets/android-icon-monochrome.png',
@@ -71,9 +82,11 @@ export default {
         dark: { image: './assets/splash-icon.png', backgroundColor: '#030816' },
       }],
       'expo-localization',
-      'expo-apple-authentication',
-      // The Android status-bar icon must be a white silhouette.
-      ['expo-notifications', { icon: './assets/android-icon-monochrome.png', color: '#3B82F6' }],
+      ...(freeTeam ? ['./plugins/withoutPaidEntitlements'] : [
+        'expo-apple-authentication',
+        // The Android status-bar icon must be a white silhouette.
+        ['expo-notifications', { icon: './assets/android-icon-monochrome.png', color: '#3B82F6' }],
+      ]),
       // The Google plugin refuses to build without the iOS URL scheme from
       // the Firebase console, so it is added only once that is configured.
       ...(googleIosUrlScheme
@@ -82,6 +95,9 @@ export default {
     ],
     experiments: { typedRoutes: false },
     // The EAS project, which Expo's push service needs to address this app.
-    extra: { eas: { projectId: process.env.EXPO_PUBLIC_EAS_PROJECT_ID || undefined } },
+    extra: {
+      eas: { projectId: process.env.EXPO_PUBLIC_EAS_PROJECT_ID || undefined },
+      appleSignIn: !freeTeam,
+    },
   },
 }

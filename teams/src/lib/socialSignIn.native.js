@@ -1,5 +1,6 @@
 import { Platform } from 'react-native'
 import * as AppleAuthentication from 'expo-apple-authentication'
+import Constants from 'expo-constants'
 import * as Crypto from 'expo-crypto'
 import { GoogleAuthProvider, OAuthProvider, reauthenticateWithCredential, signInWithCredential, updateProfile } from 'firebase/auth'
 import { auth } from './firebase'
@@ -38,8 +39,10 @@ export async function signInWithGoogle() {
   return signInWithCredential(auth, await googleCredential())
 }
 
+// Off in builds signed without the Sign in with Apple capability.
 export async function appleAvailable() {
-  return Platform.OS === 'ios' && AppleAuthentication.isAvailableAsync()
+  return Platform.OS === 'ios' && Constants.expoConfig?.extra?.appleSignIn !== false &&
+    AppleAuthentication.isAvailableAsync()
 }
 
 // Firebase checks that Apple's token was minted for the nonce it is given, so

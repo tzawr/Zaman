@@ -33,10 +33,12 @@
   },
   "scripts": {
     "start": "expo start",
-    "android": "expo start --android",
-    "ios": "expo start --ios",
+    "android": "expo run:android",
+    "ios": "expo run:ios",
     "web": "expo start --web",
-    "lint": "eslint ."
+    "lint": "eslint .",
+    "ios:device": "node scripts/ios-device.js",
+    "ios:device:start": "node scripts/ios-device.js start"
   },
   "private": true,
   "devDependencies": {
