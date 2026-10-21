@@ -45,6 +45,8 @@ beforeEach(async () => {
     [paths.timeOff('A', 't-ana')]: { uid: 'ana', status: 'pending' },
     [paths.timeOff('A', 't-ben')]: { uid: 'ben', status: 'pending' },
     [paths.importJob('A', 'i1')]: { status: 'review' },
+    [paths.invite('A', 'inv1')]: { code: 'ABCDE12345', status: 'open' },
+    [paths.inviteCode('hash1')]: { bizId: 'A', inviteId: 'inv1' },
     [paths.audit('A', 'a1')]: { action: 'publish' },
     [paths.syncState('A', 'hengam')]: { status: 'ok' },
 
@@ -165,8 +167,8 @@ describe('availability, time off and manager-only records', () => {
     await assertFails(getDocs(collection(as('ana'), 'businesses/A/timeOff')))
   })
 
-  test('imports, the audit log and sync state are for managers', async () => {
-    for (const path of [paths.importJob('A', 'i1'), paths.audit('A', 'a1'), paths.syncState('A', 'hengam')]) {
+  test('imports, invites, the audit log and sync state are for managers', async () => {
+    for (const path of [paths.importJob('A', 'i1'), paths.invite('A', 'inv1'), paths.audit('A', 'a1'), paths.syncState('A', 'hengam')]) {
       await assertFails(get('ana', path))
       await assertSucceeds(get('owner', path))
     }
@@ -217,8 +219,9 @@ describe('the user\'s own corner', () => {
     await assertFails(setDoc(doc(as('ben'), paths.device('ana', 'd4')), ok))
   })
 
-  test('cross-workplace busy blocks and calendar tokens are server-only', async () => {
+  test('busy blocks, calendar tokens and invite codes are server-only', async () => {
     await assertFails(get('ana', 'userBusy/ana/blocks/x'))
     await assertFails(get('ana', 'calendarFeeds/secret'))
+    await assertFails(get('owner', paths.inviteCode('hash1')))
   })
 })

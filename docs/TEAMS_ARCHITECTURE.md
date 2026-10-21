@@ -104,14 +104,49 @@ A removed member (`status: removed`) loses every read immediately. Someone who w
 | 1–2 | Inspect Hengam, architecture | Done |
 | — | Fix reusable invites, lost employee availability, full-view leak in Hengam | Done |
 | 3 | Schema, rules, rules tests | Done |
-| 4 | Expo scaffold, sign-in (email, Google, Apple), workspaces, single-use invites, workplace switcher | Next |
-| 5 | Home, calendar (day, week, month), upcoming shifts, themes, skeletons, empty states | |
+| 4 | Expo scaffold, sign-in (email, Google, Apple), workspaces, single-use invites, workplace switcher | Done |
+| 5 | Home, calendar (day, week, month), upcoming shifts | Next |
 | 6 | Validation engine, marketplace, swaps, approvals, audit log | |
 | 7 | Availability and time off | |
 | 8 | Hengam sync | |
 | 9 | Notifications, push, reminders, calendar feed and export | |
 | 9b | Standalone imports: manual, CSV, Excel, PDF and image via Claude with mandatory review | |
 | 10 | Performance, accessibility, monitoring, store submission | |
+
+## Workspaces and invites (Phase 4)
+
+All Teams writes go through one function, `api/teams/[action].js`, which verifies the caller, rate-limits by action, and runs a workflow from `api/_teams-workspaces.js` inside a Firestore transaction. The rules each workflow enforces are in `shared/teams/workspace.js`, which the app also uses to decide which controls to show.
+
+| Action | Who | Notes |
+|---|---|---|
+| `createBusiness` | Any signed-in, email-verified account | Idempotent per `requestId`. Creates the business, owner membership, roster entry, default policies and the workplace mirror together. |
+| `createInvite` | Managers (employees); owners (managers, owners) | Adds a roster entry, or reuses one with no account. Returns a 10-character code, valid once for 14 days. |
+| `previewInvite` | Anyone, before sign-in | Rate-limited by IP: 30 per 15 minutes. Codes are 50 bits. |
+| `acceptInvite` | Signed in | One transaction: membership, roster link, invite closed. Accepting twice is a no-op; a second person is refused. |
+| `revokeInvite`, `updateMemberRole`, `removeMember`, `leaveBusiness` | Per `shared/teams/workspace.js` | A workspace always keeps at least one owner. Removal keeps the roster entry so past shifts keep their name. |
+
+Invite codes are stored in two places. The manager-readable invite document keeps the code so it can be shared again. `inviteCodes/{sha256}` is server-only and maps the code to its invite, so redeeming a code is one direct read.
+
+Deleting an account (`api/delete-account.js`) now leaves every workspace first. It refuses while the account is the only owner of a workspace that has other people in it, and deletes workspaces nobody else is in.
+
+## Running Teams locally
+
+Everything runs against the Firebase emulators under the `demo-hengam` project, so nothing touches production.
+
+```bash
+JAVA_HOME=/opt/homebrew/opt/openjdk@21 PATH="/opt/homebrew/opt/openjdk@21/bin:$PATH" npm run dev:emulators
+npm run dev:api
+cd teams && npx expo start --web
+```
+
+`teams/.env.example` lists the app's settings. For the emulators, `EXPO_PUBLIC_FIREBASE_PROJECT_ID=demo-hengam` and `EXPO_PUBLIC_USE_EMULATORS=1`. Verification emails are not sent by the emulator; their links are listed at `http://127.0.0.1:9099/emulator/v1/projects/demo-hengam/oobCodes`.
+
+### Before a real build
+
+- **Google sign-in on iOS and Android** needs the iOS and web OAuth client ids from the Firebase console in `EXPO_PUBLIC_GOOGLE_*`, and a development build (it is not in Expo Go). Without them the button is hidden on native; it always works on the web.
+- **Sign in with Apple** needs the Apple provider enabled in Firebase and the capability on the App ID. On the web it also needs a Services ID, and is off unless `EXPO_PUBLIC_APPLE_WEB=1`.
+- **The Teams web origin** must be listed in `TEAMS_ALLOWED_ORIGINS` on Vercel, and added to Firebase Auth's authorized domains.
+- **Invite links** point at `EXPO_PUBLIC_INVITE_BASE_URL` (default `https://teams.hengam.app`). Universal links need the `apple-app-site-association` and `assetlinks.json` files served from that domain.
 
 ## Risks
 
@@ -121,12 +156,12 @@ A removed member (`status: removed`) loses every read immediately. Someone who w
 - **Labor rules are per business.** The app does not know local law and says so where limits are configured.
 - **Existing employee accounts.** Accounts linked to Hengam through `managerId` move to memberships with an idempotent migration script.
 
-## Running the rules tests
+## Running the emulator tests
 
 The Firestore emulator needs Java 21:
 
 ```bash
-JAVA_HOME=/opt/homebrew/opt/openjdk@21 PATH="/opt/homebrew/opt/openjdk@21/bin:$PATH" npm run test:rules
+JAVA_HOME=/opt/homebrew/opt/openjdk@21 PATH="/opt/homebrew/opt/openjdk@21/bin:$PATH" npm run test:emulator
 ```
 
-It runs against the `demo-hengam` project id, so nothing touches the real database.
+It runs the rules tests and the server workflow tests against the `demo-hengam` project id, so nothing touches the real database.

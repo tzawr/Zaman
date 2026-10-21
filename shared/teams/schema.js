@@ -70,6 +70,11 @@ export const TRANSITIONS = {
     rejected: [],
     cancelled: [],
   },
+  invite: {
+    open: ['accepted', 'revoked'],
+    accepted: [],
+    revoked: [],
+  },
   importJob: {
     extracting: ['review', 'failed'],
     review: ['published', 'discarded'],
@@ -153,6 +158,8 @@ export const paths = {
   availabilityOverride: (bizId, staffId, id) => `businesses/${bizId}/availability/${staffId}/overrides/${id}`,
   timeOff: (bizId, id) => `businesses/${bizId}/timeOff/${id}`,
   importJob: (bizId, id) => `businesses/${bizId}/imports/${id}`,
+  // Pending invites, for the manager's list. The code itself is never stored.
+  invite: (bizId, id) => `businesses/${bizId}/invites/${id}`,
   audit: (bizId, id) => `businesses/${bizId}/auditLog/${id}`,
   syncState: (bizId, id) => `businesses/${bizId}/sync/${id}`,
   workplace: (uid, bizId) => `users/${uid}/workplaces/${bizId}`,
@@ -163,6 +170,9 @@ export const paths = {
   // Server-only. Start and end of every shift a person holds anywhere, with no
   // business details, for cross-workplace conflict checks.
   busyBlock: (uid, blockId) => `userBusy/${uid}/blocks/${blockId}`,
+  // Server-only. Keyed by the SHA-256 of an invite code, pointing at the
+  // business and invite it opens, so redeeming a code is one direct read.
+  inviteCode: (codeHash) => `inviteCodes/${codeHash}`,
   // Server-only. The token is the secret in a calendar subscription URL.
   calendarFeed: (token) => `calendarFeeds/${token}`,
 }

@@ -87,5 +87,5 @@ Effective plan is `adminOverride ?? userTier`, where an override counts only if 
 
 - **Firestore rules cannot count documents**, so free-tier quotas (employee cap, schedule history) are enforced in application code and are bypassable by a determined user with devtools. The security boundary holds; the product boundary does not. Enforcing it properly needs a counter document or a server endpoint.
 - **The admin allowlist is duplicated** in `firestore.rules`, `src/utils/admin.js` and the `ADMIN_UIDS` environment variable. Three copies that must stay in sync.
-- **Rules tests need Java 21.** `npm run test:rules` runs `tests/rules/` against the Firestore emulator; see [TEAMS_ARCHITECTURE.md](TEAMS_ARCHITECTURE.md#running-the-rules-tests).
+- **Rules tests need Java 21.** `npm run test:emulator` runs `tests/rules/` and `tests/server/` against the Firestore emulator; see [TEAMS_ARCHITECTURE.md](TEAMS_ARCHITECTURE.md#running-the-emulator-tests).
 - **No error monitoring.** Server errors go to Vercel logs; there is no alerting.

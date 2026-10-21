@@ -12,7 +12,9 @@
     "preview": "vite preview",
     "seo": "node scripts/generate-seo-pages.js",
     "test": "node --test \"src/utils/*.test.js\" \"shared/**/*.test.js\"",
-    "test:rules": "firebase emulators:exec --only firestore --project demo-hengam 'node --test --test-concurrency=1 \"tests/rules/*.test.js\"'"
+    "test:emulator": "firebase emulators:exec --only firestore --project demo-hengam 'node --test --test-concurrency=1 \"tests/rules/*.test.js\" \"tests/server/*.test.js\"'",
+    "dev:emulators": "firebase emulators:start --only auth,firestore --project demo-hengam",
+    "dev:api": "node scripts/dev-api.js"
   },
   "dependencies": {
     "firebase": "^12.12.1",

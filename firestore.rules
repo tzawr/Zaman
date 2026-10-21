@@ -45,10 +45,6 @@ function isAdmin() {
       return effectiveTier(uid) == 'pro';
     }
 
-    function inviteDoc(token) {
-      return get(/databases/$(database)/documents/invites/$(token));
-    }
-
     function changedKeys() {
       return request.resource.data.diff(resource.data).affectedKeys();
     }
@@ -428,6 +424,12 @@ function isAdmin() {
 
       // AI and file imports awaiting review, the audit trail, and Hengam sync
       // state are the manager's alone.
+      // Pending invites, with their codes, so a manager can share one again.
+      match /invites/{inviteId} {
+        allow read: if isManager(bizId);
+        allow write: if false;
+      }
+
       match /imports/{importId} {
         allow read: if isManager(bizId);
         allow write: if false;
@@ -448,6 +450,12 @@ function isAdmin() {
     // so the server can catch a clash across employers. Nobody reads it but
     // the server: a client that could would learn where else a coworker works.
     match /userBusy/{uid}/{document=**} {
+      allow read, write: if false;
+    }
+
+    // Invite code lookups, keyed by the code's hash. Redeemed only through
+    // the server, which rate-limits guesses.
+    match /inviteCodes/{codeHash} {
       allow read, write: if false;
     }
 

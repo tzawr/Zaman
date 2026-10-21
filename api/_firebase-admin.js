@@ -69,8 +69,23 @@ function parseServiceAccountJson(value) {
   return parsed
 }
 
+// Under the Firebase emulators there is nothing to authenticate to, and the
+// Admin SDK reads the emulator hosts from the environment on its own. Only a
+// demo- project id is accepted, so a stray emulator variable can never point
+// these functions at production with no credentials checked.
+function emulatorProjectId() {
+  if (!process.env.FIRESTORE_EMULATOR_HOST && !process.env.FIREBASE_AUTH_EMULATOR_HOST) return null
+  const projectId = process.env.GCLOUD_PROJECT || process.env.FIREBASE_PROJECT_ID || 'demo-hengam'
+  return projectId.startsWith('demo-') ? projectId : null
+}
+
 export function initAdmin() {
   if (getApps().length) return
+  const emulatorProject = emulatorProjectId()
+  if (emulatorProject) {
+    initializeApp({ projectId: emulatorProject })
+    return
+  }
   const credentialAttempts = []
   try {
     const serviceAccountJson = process.env.FIREBASE_SERVICE_ACCOUNT_KEY

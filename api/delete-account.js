@@ -1,6 +1,7 @@
 import { getFirestore } from 'firebase-admin/firestore'
 import { adminAuth, initAdmin, requireSignedIn, sendError } from './_firebase-admin.js'
 import { consumeRateLimit, sendRateLimited } from './_rate-limit.js'
+import { leaveAllForDeletion } from './_teams-workspaces.js'
 
 // Erasing an account is done here rather than in the browser for two reasons.
 // A client loop that deletes a hundred documents and then loses its connection
@@ -70,6 +71,17 @@ export default async function handler(req, res) {
     const db = getFirestore()
     const removed = {}
 
+    // Teams first: it is the one step that can refuse, and it must refuse
+    // before anything is gone.
+    const teams = await leaveAllForDeletion({ db, uid, now: new Date() })
+    if (!teams.ok) {
+      return res.status(409).json({
+        blocked: true,
+        reason: 'sole_owner',
+        message: `You are the only owner of ${teams.blocking.join(', ')}. Make someone else an owner in Hengam Teams first, or remove everyone else.`,
+      })
+    }
+
     for (const collection of OWNED_BY_USER_ID) {
       removed[collection] = await deleteQueryInBatches(
         db, db.collection(collection).where('userId', '==', uid))
@@ -85,6 +97,10 @@ export default async function handler(req, res) {
     for (const collection of KEYED_BY_UID) {
       await db.collection(collection).doc(uid).delete()
     }
+    // The user document's Teams subcollections (workplaces, notifications,
+    // devices) and the cross-workplace busy index outlive a plain delete.
+    await db.recursiveDelete(db.collection('users').doc(uid))
+    await db.recursiveDelete(db.collection('userBusy').doc(uid))
 
     // Last, so a failure anywhere above leaves an account that can still sign
     // in and retry rather than a dangling sign-in with no data.

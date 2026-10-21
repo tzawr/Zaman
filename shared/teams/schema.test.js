@@ -57,7 +57,7 @@ test('unknown machines and statuses are refused, not guessed', () => {
 
 test('every business path stays inside its business', () => {
   for (const [name, build] of Object.entries(paths)) {
-    if (['workplace', 'notification', 'device', 'busyBlock', 'calendarFeed'].includes(name)) continue
+    if (['workplace', 'notification', 'device', 'busyBlock', 'calendarFeed', 'inviteCode'].includes(name)) continue
     const path = build('biz1', 'a', 'b')
     assert.ok(path.startsWith('businesses/biz1'), `${name} -> ${path}`)
     assert.equal(path.split('/').length % 2, 0, `${name} is not a document path`)
