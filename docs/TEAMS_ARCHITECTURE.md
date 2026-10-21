@@ -325,7 +325,7 @@ npm run dev:seed
 cd teams && npm run ios:device
 ```
 
-The first install fails to open with "Untrusted Developer". On the phone, go to Settings → General → VPN & Device Management, tap your Apple ID, then Trust. When the app asks to find devices on your local network, allow it; that is how it reaches the Mac. Sign in as `maya@example.test` (a manager) or `lee@example.test` (an employee) with the password in `scripts/seed-teams-dev.js`.
+The build and install use `xcodebuild` with automatic provisioning, which registers the phone with your Apple account; the phone's iOS must not be newer than your Xcode's. The first install fails to open with "Untrusted Developer". On the phone, go to Settings → General → VPN & Device Management, tap your Apple ID, then Trust. When the app asks to find devices on your local network, allow it; that is how it reaches the Mac. Sign in as `maya@example.test` (a manager) or `lee@example.test` (an employee) with the password in `scripts/seed-teams-dev.js`.
 
 With the app already installed, `npm run ios:device:start` starts just the bundler. If the app opens to its launcher instead of Hengam Teams, tap the server it lists, or enter `http://<the Mac's address>:8082`.
 

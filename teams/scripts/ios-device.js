@@ -1,7 +1,7 @@
 // Builds Hengam Teams onto your own iPhone, signed with a free Apple
 // account, talking to the emulators on this Mac over Wi-Fi.
 //
-//   node scripts/ios-device.js           build, install, then start the
+//   node scripts/ios-device.js [device]  build, install, then start the
 //                                        bundler (first time, after native
 //                                        changes, or every 7 days)
 //   node scripts/ios-device.js start     just start the bundler for an app
@@ -40,6 +40,17 @@ function personalTeam() {
     const blocks = teams.split('}')
     const personal = blocks.find(b => /isFreeProvisioningTeam = 1/.test(b))
     return personal?.match(/teamID = (\w+);/)?.[1]
+  } catch {
+    return undefined
+  }
+}
+
+// The UDID of the first physical iPhone Xcode sees.
+function connectedIphone() {
+  try {
+    const out = execFileSync('xcrun', ['xctrace', 'list', 'devices'], { encoding: 'utf8' })
+    const online = out.split('== Devices Offline ==')[0].split('== Simulators ==')[0]
+    return online.split('\n').find(l => /iPhone/.test(l))?.match(/\(([0-9A-F-]{20,})\)\s*$/)?.[1]
   } catch {
     return undefined
   }
@@ -85,7 +96,20 @@ if (process.argv[2] !== 'start') {
   const copy = join(buildDir, 'teams')
   // Regenerated each time, so the free-account settings always apply.
   run('npx', ['expo', 'prebuild', '--platform', 'ios', '--clean'], copy)
-  run('npx', ['expo', 'run:ios', '--device', '--no-bundler', ...process.argv.slice(2)], copy)
+  // Built with xcodebuild rather than expo run:ios, which does not let Xcode
+  // create a profile for a free account or register the phone.
+  const device = process.argv[2] || connectedIphone()
+  if (!device) {
+    console.error('No iPhone found. Connect it with a cable, unlock it, and trust this Mac.')
+    process.exit(1)
+  }
+  const derived = join(copy, 'ios', 'build')
+  run('xcodebuild', ['-workspace', 'ios/HengamTeams.xcworkspace', '-scheme', 'HengamTeams', '-configuration', 'Debug',
+    '-destination', `id=${device}`, '-derivedDataPath', derived,
+    '-allowProvisioningUpdates', '-allowProvisioningDeviceRegistration', 'build'], copy)
+  run('xcrun', ['devicectl', 'device', 'install', 'app', '--device', device,
+    join(derived, 'Build', 'Products', 'Debug-iphoneos', 'HengamTeams.app')])
+  console.log(`Installed. Open Hengam Teams on the phone; if it asks for a server, use http://${host}:8082.`)
 }
 // 8082, so it can run beside the web preview on 8081.
 run('npx', ['expo', 'start', '--dev-client', '--port', '8082'], appDir)
