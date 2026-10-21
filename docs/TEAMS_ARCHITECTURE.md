@@ -84,18 +84,42 @@ A removed member (`status: removed`) loses every read immediately. Someone who w
 
 ## Hengam integration
 
-| Data | Owner | Flow |
-|---|---|---|
-| Roster, positions, settings (Hengam businesses) | Hengam | Projected to Teams on publish |
-| Draft schedules | Hengam | Never leave Hengam |
-| Published assignments | Hengam schedule + Teams shifts, changed together | Publish projects to Teams. Approved swaps and pickups write both in one transaction. |
-| Availability, time off | Teams | Hengam's scheduler reads Teams collections through an adapter |
+Hengam and Teams share one Firestore, so syncing is not messaging between systems. Every cross-product step is one transaction that reads and writes both sides, or neither. Nothing is queued, so nothing can be half-applied, replayed out of order, or loop: Teams never triggers a Hengam publish, and a publish never writes back to itself. A failed step changes nothing, says why, and is simply tried again.
 
-- **Idempotent.** Shift ids for synced schedules are derived from the Hengam schedule, employee and slot, so replaying a sync rewrites the same documents.
-- **No loops.** Every write records its origin and source hash. Projection skips unchanged input and never writes back out.
-- **Failure.** A failed sync marks the schedule `syncStatus: pending`, a Vercel Cron job retries from the `sync` state, and the manager sees a banner.
-- **Republish over open requests.** Offers and swaps whose shift changed are cancelled with a notification saying why.
-- **Hengam changes needed (Phase 8).** Stable shift ids and `employeeId` in scheduler output (today shifts name the employee by name), an explicit draft/published state, and a "Publish to team" action that calls the sync endpoint.
+| Data | Owner | How the other side gets it |
+|---|---|---|
+| Roster | Hengam | Copied to Teams staff on connect and on every publish. Staff id = Hengam employee id. Someone removed in Hengam stays on the Teams roster marked archived, so past shifts keep a name. |
+| Schedule | Hengam | `hengamPublish` copies a saved week. Teams refuses to edit it (`hengam_owned`). |
+| Who works a shift after a pickup or swap | Teams, written back | The approving transaction also renames the Hengam slot (`HengamWriteBack`), so republishing changes nothing. |
+| Availability, time off | Teams | Hengam's generator overlays them for the week being built (`src/utils/teamsAvailability.js`). |
+
+### Connecting
+
+From Hengam Settings. `hengamConnect` creates one Teams business per Hengam workspace, `hengam-{managerUid}`, so connecting twice finds it. It copies the roster and makes everyone already on Hengam's employee portal a member, linked to their own employee record. The workspace's `users` document records `teamsBizId`.
+
+### Publishing
+
+From Schedule history, "Publish to team", which becomes "Update team schedule" once sent. `shared/teams/hengam.js` turns the Hengam week into Teams shifts:
+
+- Each shift's id is its slot, `h_{weekStart}_{day}_{index}`, so republishing updates the same documents, and a regenerated week (a new Hengam schedule document) replaces the old one shift for shift.
+- Hengam names employees by name. A name that matches nobody, or two people, stops the publish with the reason, and nothing is written.
+- Hengam's `26:00` overnight ends become next-morning wall times.
+- The publish adds, rewrites or cancels exactly what changed. A shift whose person and times are unchanged keeps its version, so its offers and swaps survive. A changed or removed shift closes any offer or swap on it.
+- A fingerprint of the result is stored on the Teams schedule, so publishing an unchanged week is recognised and skipped.
+
+### Write-back
+
+A pickup or swap approved in Teams on a Hengam shift updates `data.days[day].shifts[index].employee` (and `content`) on the Hengam schedule in the same transaction. If the slot no longer holds the shift the transfer was agreed on, because the manager edited the week in Hengam after publishing, the transfer is refused (`hengam_changed`) rather than overwriting their edit.
+
+### Availability and time off in Hengam
+
+Before generating, Hengam reads the workspace's Teams availability and approved time off and uses them in place of its own records, for the people who have them. Teams availability is converted day by day for the week, so temporary changes and changes effective mid-week land on the right days; two Teams windows become one Hengam window spanning both. Hengam has whole-day time off only, so a part-day request keeps the person off that whole day. If Teams cannot be read, generation goes ahead on Hengam's records and says so.
+
+Pending Teams time off appears on the Hengam Dashboard, to approve or decline there. Approving reports any shifts the person still has in that time.
+
+### Running Hengam against the emulators
+
+`npm run dev:emulated` runs Hengam with `.env.emulators` (demo values only), connected to the local emulators and with `/api` proxied to `npm run dev:api`. `npm run dev:seed` includes a Hengam workspace, Harbor Bakery (hana@example.test), not yet connected, with a saved week ready to publish and Sam on its employee portal.
 
 ## Roadmap
 
@@ -108,8 +132,8 @@ A removed member (`status: removed`) loses every read immediately. Someone who w
 | 5 | Home, calendar (day, week, month), upcoming shifts, manual scheduling and publishing | Done |
 | 6 | Validation engine, marketplace, swaps, approvals, audit log | Done |
 | 7 | Availability, time off, business policies | Done |
-| 8 | Hengam sync | Next |
-| 9 | Notifications, push, reminders, calendar feed and export | |
+| 8 | Hengam sync | Done |
+| 9 | Notifications, push, reminders, calendar feed and export | Next |
 | 9b | Standalone imports: manual, CSV, Excel, PDF and image via Claude with mandatory review | |
 | 10 | Performance, accessibility, monitoring, store submission | |
 

@@ -18,6 +18,8 @@ import { addDays, todayIn, weekStartOf } from '../shared/teams/time.js'
 //   maya@example.test  owner of Blue Door Cafe
 //   sam@example.test   employee at Blue Door Cafe, owner of Night Owl Bar
 //   lee@example.test   employee at Blue Door Cafe
+//   hana@example.test  Hengam manager of Harbor Bakery (not yet connected to
+//                      Teams); Sam is on its employee portal
 
 process.env.FIRESTORE_EMULATOR_HOST ||= '127.0.0.1:8085'
 process.env.FIREBASE_AUTH_EMULATOR_HOST ||= '127.0.0.1:9099'
@@ -105,6 +107,42 @@ await run(av.saveAvailability, lee, { bizId: cafe, weekly: {
 } })
 await run(av.requestTimeOff, lee, { bizId: cafe, requestId: 'seed-timeoff-0001', category: 'personal',
   startDate: addDays(nextWeek, 4), endDate: addDays(nextWeek, 4), reason: 'Moving house' })
+
+// A Hengam workspace, as Hengam itself stores it, ready to connect to Teams:
+// a manager, three employees (Sam already on Hengam's employee portal), and
+// a saved schedule for next week.
+const hana = await account('hana@example.test', 'Hana Ito')
+const openDay = { open: true, start: '06:00', end: '18:00' }
+await db.doc(`users/${hana.uid}`).set({
+  email: 'hana@example.test', displayName: 'Hana Ito', businessName: 'Harbor Bakery', onboarded: true,
+  operatingHours: Object.fromEntries(['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'].map(d => [d, openDay])),
+  roles: [{ id: 'baker', name: 'Baker' }, { id: 'counter', name: 'Counter' }], coverageRules: 'Two people on from 6am to 6pm.', createdAt: now,
+})
+const bakers = {}
+for (const [name, role] of [['Sam Rivera', 'Counter'], ['Kai Moreno', 'Baker'], ['Ola Berg', 'Baker']]) {
+  const ref = db.collection('employees').doc()
+  await ref.set({ userId: hana.uid, name, role, targetHours: 24, availability: {}, timeOff: [], createdAt: now })
+  bakers[name] = ref.id
+}
+await db.doc(`users/${sam.uid}`).set({
+  email: 'sam@example.test', accountType: 'employee', managerId: hana.uid, linkedEmployeeId: bakers['Sam Rivera'],
+  employeeName: 'Sam Rivera', onboarded: true,
+}, { merge: true })
+const bakeryWeek = { days: {} }
+;['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'].forEach((day, i) => {
+  bakeryWeek.days[day] = {
+    date: addDays(nextWeek, i),
+    shifts: i === 6 ? [] : [
+      { id: `${day.slice(0, 2)}0`, employee: i % 2 ? 'Kai Moreno' : 'Ola Berg', role: 'Baker', start: '05:00', end: '13:00', hours: 8 },
+      ...(i === 3 || i === 5 ? [{ id: `${day.slice(0, 2)}1`, employee: 'Sam Rivera', role: 'Counter', start: '22:00', end: '26:00', hours: 4 }] : []),
+      ...(i === 4 ? [{ id: `${day.slice(0, 2)}1`, employee: 'Sam Rivera', role: 'Counter', start: '06:00', end: '12:00', hours: 6 }] : []),
+    ],
+  }
+})
+await db.collection('schedules').add({
+  userId: hana.uid, weekStart: nextWeek, data: bakeryWeek, content: JSON.stringify(bakeryWeek, null, 2),
+  employeeCount: 3, createdAt: now,
+})
 
 console.log(`Seeded Blue Door Cafe (${cafe}) and Night Owl Bar (${bar}).`)
 console.log(`Open invite for Jo Bloggs: ${pending.code}`)

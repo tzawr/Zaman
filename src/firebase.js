@@ -1,6 +1,6 @@
 import { initializeApp } from 'firebase/app'
-import { getFirestore } from 'firebase/firestore'
-import { getAuth, GoogleAuthProvider } from 'firebase/auth'
+import { connectFirestoreEmulator, getFirestore } from 'firebase/firestore'
+import { connectAuthEmulator, getAuth, GoogleAuthProvider } from 'firebase/auth'
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
@@ -15,4 +15,12 @@ const app = initializeApp(firebaseConfig)
 export const db = getFirestore(app)
 export const auth = getAuth(app)
 auth.settings.appVerificationDisabledForTesting = false
+
+// Local development against the Firebase emulators (vite --mode emulators).
+// Only ever for a demo- project, so a stray flag cannot point a production
+// build at localhost.
+if (import.meta.env.VITE_USE_EMULATORS === '1' && String(firebaseConfig.projectId).startsWith('demo-')) {
+  connectAuthEmulator(auth, 'http://127.0.0.1:9099', { disableWarnings: true })
+  connectFirestoreEmulator(db, '127.0.0.1', 8085)
+}
 export const googleProvider = new GoogleAuthProvider()
