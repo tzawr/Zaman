@@ -1,11 +1,12 @@
 import { Timestamp } from 'firebase-admin/firestore'
 import { canTransition, paths } from '../shared/teams/schema.js'
 import { importWeek, interpretTable, parseCsv, prepareRows, readDate, rowIssues } from '../shared/teams/imports.js'
-import { isDateString, overlaps, resolveShiftTimes, weekStartOf } from '../shared/teams/time.js'
+import { addDays, isDateString, overlaps, resolveShiftTimes, weekStartOf } from '../shared/teams/time.js'
 import { validatePersonName } from '../shared/teams/workspace.js'
 import { TeamsError, conflict, invalid, notFound } from './_teams-http.js'
 import { audit, readManager, requireId } from './_teams-common.js'
 import { AI_MEDIA_TYPES, extractWithClaude } from './_teams-extract.js'
+import { readDocxTables } from './_docx.js'
 import { XlsxError, readXlsx } from './_xlsx.js'
 
 // Importing a schedule a business already has. Reading a file produces an
@@ -22,6 +23,8 @@ function kindOf(fileName, mimeType) {
   if (ext === 'csv' || ext === 'txt' || mimeType === 'text/csv') return 'csv'
   if (ext === 'xlsx' || mimeType === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet') return 'xlsx'
   if (ext === 'xls') return 'xls'
+  if (ext === 'docx' || mimeType === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') return 'docx'
+  if (ext === 'doc') return 'doc'
   if (ext === 'pdf' || mimeType === 'application/pdf') return 'pdf'
   if (AI_MEDIA_TYPES[mimeType] === 'image' || ['jpg', 'jpeg', 'png', 'webp', 'gif'].includes(ext)) return 'image'
   return null
@@ -35,8 +38,9 @@ export async function importSchedule({ db, uid, input, now, aiClient }) {
   const weekStart = input.weekStart
   const fileName = String(input.fileName || 'schedule').slice(0, 120)
   const kind = kindOf(fileName, input.mimeType)
-  if (!kind) throw invalid('Upload a CSV, Excel (.xlsx), PDF, or a photo of the schedule.')
+  if (!kind) throw invalid('Upload a Word (.docx), Excel (.xlsx) or CSV file, a PDF, or a photo of the schedule.')
   if (kind === 'xls') throw invalid('Older .xls files are not supported. Save it as .xlsx or CSV and try again.')
+  if (kind === 'doc') throw invalid('Older .doc files are not supported. Save it as .docx or PDF and try again.')
   if (typeof input.data !== 'string' || !input.data) throw invalid('The file was empty.')
   const bytes = Buffer.from(input.data, 'base64')
   if (!bytes.length) throw invalid('The file was empty.')
@@ -56,21 +60,29 @@ export async function importSchedule({ db, uid, input, now, aiClient }) {
   let extracted
   let layout = null
   let notes = ''
-  if (kind === 'csv' || kind === 'xlsx') {
-    let table
+  if (kind === 'csv' || kind === 'xlsx' || kind === 'docx') {
+    // Files we can read ourselves, at no cost: no AI involved.
+    let tables
     try {
-      table = kind === 'csv' ? parseCsv(bytes.toString('utf8')) : readXlsx(bytes)
+      tables = kind === 'csv' ? [parseCsv(bytes.toString('utf8'))]
+        : kind === 'xlsx' ? [readXlsx(bytes)]
+          : readDocxTables(bytes)
     } catch (err) {
       if (err instanceof XlsxError) throw invalid(err.message)
       throw err
     }
-    const read = interpretTable(table, { weekStart })
-    if (!read.rows.length) {
-      const problems = read.problems.length ? read.problems : ['No shifts were found in this file.']
+    if (!tables.length) throw invalid('This Word file has no table in it. Save it as a PDF, or take a photo of the schedule, and try again.')
+    // A Word file often holds one table per week. Days named only by weekday
+    // in a later table belong to the week after the one before it.
+    const reads = tables.map((table, i) => interpretTable(table, { weekStart: addDays(weekStart, 7 * i), year: Number(weekStart.slice(0, 4)) }))
+    const found = reads.filter(r => r.rows.length)
+    if (!found.length) {
+      const problems = [...new Set(reads.flatMap(r => r.problems))]
+      if (!problems.length) problems.push('No shifts were found in this file.')
       throw new TeamsError(422, 'unreadable', problems.join(' '), problems.map(message => ({ code: 'unreadable', message })))
     }
-    extracted = read.rows
-    layout = read.layout
+    extracted = found.flatMap(r => r.rows)
+    layout = found[0].layout
   } else {
     const mediaType = kind === 'pdf' ? 'application/pdf' : (AI_MEDIA_TYPES[input.mimeType] ? input.mimeType : IMAGE_TYPES[fileName.toLowerCase().split('.').pop()])
     const ai = await extractWithClaude({

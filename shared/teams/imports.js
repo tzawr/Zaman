@@ -104,7 +104,7 @@ export function readDate(value, { year, weekStart } = {}) {
   }
   // A weekday alone, placed in the week the manager chose.
   const wd = weekdayOf(raw)
-  if (wd !== null && weekStart) return { date: addDays(weekStart, wd), sure: true }
+  if (wd !== null && weekStart) return { date: addDays(weekStart, wd), sure: true, weekdayOnly: true }
   return null
 }
 
@@ -166,7 +166,20 @@ function dayHeader(cell, ctx) {
   const d = readDate(cell, ctx)
   if (d) return d
   const wd = weekdayOf(String(cell).split(/\s+/)[0])
-  return wd !== null && ctx.weekStart ? { date: addDays(ctx.weekStart, wd), sure: true } : null
+  return wd !== null && ctx.weekStart ? { date: addDays(ctx.weekStart, wd), sure: true, weekdayOnly: true } : null
+}
+
+// Day columns named only by weekday, across more than one week (Mon … Sun,
+// Mon … Sun): a weekday seen again is the week after.
+function spreadWeeks(dayCols) {
+  const seen = new Set()
+  return dayCols.map(day => {
+    if (!day) return day
+    let date = day.date
+    while (day.weekdayOnly && seen.has(date)) date = addDays(date, 7)
+    seen.add(date)
+    return { ...day, date }
+  })
 }
 
 // Turns a table into shift rows. Two layouts are read:
@@ -184,7 +197,7 @@ export function interpretTable(table, { weekStart, year } = {}) {
   const header = table[headerAt]
   const body = table.slice(headerAt + 1)
   const kinds = header.map(headerKind)
-  const dayCols = header.map(c => (headerKind(c) ? null : dayHeader(c, ctx)))
+  const dayCols = spreadWeeks(header.map(c => (headerKind(c) ? null : dayHeader(c, ctx))))
 
   if (dayCols.filter(Boolean).length >= 3) {
     const nameCol = kinds.indexOf('name') >= 0 ? kinds.indexOf('name') : 0
@@ -290,16 +303,38 @@ export function matchStaff(name, staff) {
 
 // ---- Review -----------------------------------------------------------------
 
-// What a person has to look at before a row can become a shift. A row with
-// any of these is held until someone resolves it.
+// What stops a row from becoming a shift: who works it, and when. Only
+// these hold an import back.
 export function rowIssues(row) {
   const issues = []
-  if (!row.staffId) issues.push(row.match === 'ambiguous' ? 'More than one person matches this name.' : 'Not matched to anyone on your team.')
-  else if (row.match === 'suggested' && !row.confirmed) issues.push('Check this is the right person.')
+  if (!row.staffId) issues.push(row.match === 'ambiguous' ? 'More than one person has this name. Pick who it is.' : 'Pick who works this shift.')
   if (!row.date) issues.push('No date.')
   if (!row.start || !row.end) issues.push('No start and end time.')
-  if (row.sure && !row.confirmed && (!row.sure.date || !row.sure.times || !row.sure.name)) issues.push('The file was unclear here; check the details.')
   return issues
+}
+
+// What the file left uncertain, for the manager to glance at. Unlike
+// rowIssues, none of it stops the import: adding the shifts accepts it.
+export function rowWarnings(row) {
+  if (row.confirmed || !row.sure) return []
+  const warnings = []
+  if (!row.sure.name) warnings.push('The name was hard to read.')
+  if (!row.sure.date) warnings.push('The date could be read two ways.')
+  if (!row.sure.times) warnings.push('The times were guessed.')
+  return warnings
+}
+
+// The people an import names, with how many shifts each has and who on the
+// team they will be: decided once per person, not once per shift.
+export function importPeople(rows) {
+  const people = new Map()
+  for (const r of rows) {
+    const p = people.get(r.name) || { name: r.name, staffId: r.staffId, match: r.match, candidates: r.candidates || [], count: 0, included: 0 }
+    p.count++
+    if (r.include) p.included++
+    people.set(r.name, p)
+  }
+  return [...people.values()]
 }
 
 // The rows of an import, matched to the roster and given ids, ready for
@@ -307,11 +342,15 @@ export function rowIssues(row) {
 export function prepareRows(extracted, staff) {
   return extracted.slice(0, MAX_IMPORT_ROWS).map((r, i) => {
     const m = matchStaff(r.name, staff)
+    const name = String(r.name || '').slice(0, 80)
+    // Someone not on the team yet is added with the import, unless the
+    // manager says otherwise.
+    const isNew = m.status === 'none' && Boolean(name.trim())
     const row = {
       id: `r${i}`,
-      name: String(r.name || '').slice(0, 80),
-      staffId: m.staffId,
-      match: m.status,
+      name,
+      staffId: isNew ? 'new' : m.staffId,
+      match: isNew ? 'new' : m.status,
       candidates: m.candidates || [],
       date: isDateString(r.date) ? r.date : null,
       start: r.start ? normalizeTimeInput(r.start) : null,

@@ -9,11 +9,14 @@ import { TeamsError } from './_teams-http.js'
 // Spend is capped per business per month, checked before each call, the way
 // Hengam caps its own AI use.
 
-const MODEL = 'claude-opus-5-5'
-// Claude Opus 5.5, USD per token.
-const INPUT_PER_TOKEN = 4 / 1_000_000
-const OUTPUT_PER_TOKEN = 20 / 1_000_000
-export const MONTHLY_IMPORT_BUDGET_USD = 5
+// Reading a schedule is extraction, which Haiku does well at a fortieth of
+// Opus's price: an import costs well under a cent.
+const MODEL = 'claude-haiku-5-5'
+// Claude Haiku 5.5, USD per token, for prompts of 100K tokens or fewer (a
+// schedule's are a few thousand; longer prompts are billed at 5x).
+const INPUT_PER_TOKEN = 0.1 / 1_000_000
+const OUTPUT_PER_TOKEN = 0.5 / 1_000_000
+export const MONTHLY_IMPORT_BUDGET_USD = 1
 export const MAX_AI_IMPORTS_PER_DAY = 20
 
 export const AI_MEDIA_TYPES = {
@@ -61,9 +64,9 @@ For each shift, write:
 - weekday: the day of the week as written (for example "Monday"), or empty.
 - start and end: 24-hour HH:MM. An end earlier than the start is a shift that runs past midnight; write it as shown.
 - position and location: when the document shows them, otherwise empty.
-- unclear: the fields you could not read with confidence (handwriting, a cut-off cell, an ambiguous time such as "9-5" with no am or pm). Leave a field empty rather than guess, and list it here.
+- unclear: the fields you could not read with confidence (handwriting, a cut-off cell, an ambiguous time). For a time with no am or pm, such as "9-5", write the usual working-hours reading (09:00 to 17:00) and list "times" here. Leave a field empty only when you cannot read it at all.
 
-Leave out days off, holidays and blank cells. A schedule may show several weeks; list them all. If something on the page looks like a schedule but you cannot read it, say so in notes. The manager reviews every row before anything is used, so an honest gap is better than a confident mistake.`
+Leave out days off, holidays and blank cells. A schedule may show several weeks; list them all, and when days are named without dates, work out each date from the week start below (a second week follows the first). If something on the page looks like a schedule but you cannot read it, say so in notes. The manager reviews every row before anything is used, so an honest gap is better than a confident mistake.`
 
 const monthKey = (now) => now.toISOString().slice(0, 7)
 const dayKey = (now) => now.toISOString().slice(0, 10)
@@ -74,10 +77,10 @@ async function checkBudget(db, bizId, now) {
     db.doc(`aiUsage/teams-${bizId}_${dayKey(now)}`).get(),
   ])
   if ((Number(month.data()?.spendUsd) || 0) >= MONTHLY_IMPORT_BUDGET_USD) {
-    throw new TeamsError(429, 'budget', 'This workspace has used this month’s photo and PDF imports. CSV and Excel imports still work.')
+    throw new TeamsError(429, 'budget', 'This workspace has used this month’s photo and PDF imports. Word, Excel and CSV imports still work.')
   }
   if ((Number(day.data()?.calls) || 0) >= MAX_AI_IMPORTS_PER_DAY) {
-    throw new TeamsError(429, 'budget', 'That is today’s limit for photo and PDF imports. Try again tomorrow, or import a CSV or Excel file.')
+    throw new TeamsError(429, 'budget', 'That is today’s limit for photo and PDF imports. Try again tomorrow, or import a Word, Excel or CSV file.')
   }
 }
 
@@ -104,15 +107,13 @@ export async function extractWithClaude({ db, bizId, mediaType, base64, weekStar
   let message
   try {
     // Streamed so a long multi-page schedule never hits a request timeout.
-    message = await anthropic.beta.messages.stream({
+    message = await anthropic.messages.stream({
       model: MODEL,
       max_tokens: 32000,
-      // If a safety classifier declines, the request is rerun on the
-      // recommended fallback model rather than failing.
-      betas: ['server-side-fallback-2026-07-01'],
-      fallbacks: 'default',
       thinking: { type: 'adaptive' },
-      output_config: { effort: 'medium', format: { type: 'json_schema', schema: SCHEMA } },
+      // Copying a table out needs little reasoning; low effort keeps the
+      // thinking, and so the output bill, small.
+      output_config: { effort: 'low', format: { type: 'json_schema', schema: SCHEMA } },
       system: SYSTEM,
       messages: [{
         role: 'user',
@@ -139,7 +140,7 @@ export async function extractWithClaude({ db, bizId, mediaType, base64, weekStar
   await recordUsage(db, bizId, message.usage, now)
 
   if (message.stop_reason === 'refusal') {
-    throw new TeamsError(422, 'unreadable', 'This file could not be read as a schedule. Try a CSV or Excel export instead.')
+    throw new TeamsError(422, 'unreadable', 'This file could not be read as a schedule. Try the Word or Excel file instead.')
   }
   if (message.stop_reason === 'max_tokens') {
     throw new TeamsError(422, 'too_large', 'This schedule is too long to read in one go. Split it into one file per week.')

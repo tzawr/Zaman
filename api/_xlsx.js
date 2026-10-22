@@ -13,19 +13,21 @@ const MAX_ENTRIES = 2000
 
 export class XlsxError extends Error {}
 
-function readZip(buf) {
+// The entries of a zip file, by name. `kind` names the file in errors
+// ("Excel", "Word").
+export function readZip(buf, kind = 'Excel') {
   // The end-of-central-directory record is in the last 64KB.
   let eocd = -1
   for (let i = buf.length - 22; i >= Math.max(0, buf.length - 65557); i--) {
     if (buf.readUInt32LE(i) === 0x06054b50) { eocd = i; break }
   }
-  if (eocd < 0) throw new XlsxError('This is not an Excel file.')
+  if (eocd < 0) throw new XlsxError(`This is not ${kind === 'Excel' ? 'an' : 'a'} ${kind} file.`)
   const count = buf.readUInt16LE(eocd + 10)
   let p = buf.readUInt32LE(eocd + 16)
   if (count > MAX_ENTRIES) throw new XlsxError('This file has too many parts to be a schedule.')
   const entries = new Map()
   for (let n = 0; n < count; n++) {
-    if (buf.readUInt32LE(p) !== 0x02014b50) throw new XlsxError('This Excel file is damaged.')
+    if (buf.readUInt32LE(p) !== 0x02014b50) throw new XlsxError(`This ${kind} file is damaged.`)
     const method = buf.readUInt16LE(p + 10)
     const compressed = buf.readUInt32LE(p + 20)
     const nameLen = buf.readUInt16LE(p + 28)
@@ -42,16 +44,16 @@ function readZip(buf) {
     const start = e.local + 30 + buf.readUInt16LE(e.local + 26) + buf.readUInt16LE(e.local + 28)
     const data = buf.subarray(start, start + e.compressed)
     if (e.method === 0) return data.toString('utf8')
-    if (e.method !== 8) throw new XlsxError('This Excel file uses compression that is not supported.')
+    if (e.method !== 8) throw new XlsxError(`This ${kind} file uses compression that is not supported.`)
     try {
       return inflateRawSync(data, { maxOutputLength: MAX_ENTRY_BYTES }).toString('utf8')
     } catch {
-      throw new XlsxError('This Excel file is too large or damaged.')
+      throw new XlsxError(`This ${kind} file is too large or damaged.`)
     }
   }
 }
 
-const decode = (s) => s
+export const decode = (s) => s
   .replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&apos;/g, "'")
   .replace(/&#x([0-9a-f]+);/gi, (_, h) => String.fromCodePoint(parseInt(h, 16)))
   .replace(/&#(\d+);/g, (_, d) => String.fromCodePoint(Number(d)))

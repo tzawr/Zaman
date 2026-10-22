@@ -16,12 +16,14 @@ import { Badge, Banner, Button, Card, Divider, SkeletonCard, Text } from '../ui/
 import { useTheme } from '../ui/theme'
 
 // The manager's week: build it shift by shift, then publish it to the team.
-export default function ScheduleManager() {
+// `week` opens a given week, as after an import; `imported` says how many
+// shifts that import added, and over how many `weeks`.
+export default function ScheduleManager({ week, imported, weeks }) {
   const router = useRouter()
   const t = useTheme()
   const today = useToday()
   const { activeId, fromHengam } = useWorkspace()
-  const [weekStart, setWeekStart] = useState(() => weekStartOf(today))
+  const [weekStart, setWeekStart] = useState(() => week || weekStartOf(today))
   const { schedule, shifts, loading, error } = useWeekSchedule(weekStart)
   const [busy, setBusy] = useState(false)
   const [confirm, setConfirm] = useState(false)
@@ -96,6 +98,9 @@ export default function ScheduleManager() {
 
       <Banner message={error} />
       <Banner tone={notice?.tone} message={notice?.message} />
+      {imported && !published && !notice ? (
+        <Banner tone="success" message={`${imported} imported ${Number(imported) === 1 ? 'shift is' : 'shifts are'} here as a draft${Number(weeks) > 1 ? `, across ${weeks} weeks (use the arrows for the next one)` : ''}. Check them, then publish so your team can see them.`} />
+      ) : null}
 
       {loading ? <><SkeletonCard lines={2} /><SkeletonCard lines={2} /></> : (
         <>

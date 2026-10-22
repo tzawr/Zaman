@@ -1,7 +1,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import {
-  interpretTable, matchStaff, parseCsv, prepareRows, readDate, readTime, readTimeRange, weekdayOf,
+  importPeople, interpretTable, matchStaff, parseCsv, prepareRows, readDate, readTime, readTimeRange, rowWarnings, weekdayOf,
 } from './imports.js'
 
 test('CSV: quotes, embedded delimiters, CRLF, and the delimiter guessed', () => {
@@ -19,7 +19,7 @@ test('dates as spreadsheets hold them', () => {
   assert.deepEqual(readDate('03/04/2026'), { date: '2026-03-04', sure: false }) // could be either
   assert.deepEqual(readDate('Oct 27', y), { date: '2026-10-27', sure: true })
   assert.deepEqual(readDate('27 October 2026'), { date: '2026-10-27', sure: true })
-  assert.deepEqual(readDate('Tue', y), { date: '2026-10-27', sure: true })
+  assert.deepEqual(readDate('Tue', y), { date: '2026-10-27', sure: true, weekdayOnly: true })
   assert.equal(readDate('soon', y), null)
   assert.equal(weekdayOf('Thu.'), 3)
   assert.equal(weekdayOf('x'), null)
@@ -87,14 +87,22 @@ test('names: exact matches apply, close ones are only suggested', () => {
   assert.deepEqual(matchStaff('Zed', staff), { status: 'none', staffId: null })
 })
 
-test('rows hold for review until every question is answered', () => {
-  const staff = [{ id: 'a', name: 'Ana Lima' }]
-  const [exact, guess, unknown] = prepareRows([
+test('only who and when hold a row back; doubts are warnings, new names are added', () => {
+  const staff = [{ id: 'a', name: 'Ana Lima' }, { id: 'b', name: 'Sam Lee' }, { id: 'c', name: 'Sam Lee' }]
+  const [exact, guess, newcomer, twoSams] = prepareRows([
     { name: 'Ana Lima', date: '2026-10-27', start: '7:00', end: '15:00', sure: { name: true, date: true, times: true } },
     { name: 'Ana', date: '2026-10-27', start: '9', end: '5', sure: { name: true, date: true, times: false } },
     { name: 'Zed', date: null, start: null, end: null },
+    { name: 'Sam Lee', date: '2026-10-27', start: '9:00', end: '17:00' },
   ], staff)
-  assert.deepEqual(exact.issues, [])
-  assert.deepEqual(guess.issues, ['Check this is the right person.', 'The file was unclear here; check the details.'])
-  assert.deepEqual(unknown.issues, ['Not matched to anyone on your team.', 'No date.', 'No start and end time.'])
+  assert.deepEqual([exact.issues, rowWarnings(exact)], [[], []])
+  assert.deepEqual([guess.staffId, guess.match, guess.issues], ['a', 'suggested', []])
+  assert.deepEqual(rowWarnings(guess), ['The times were guessed.'])
+  assert.deepEqual(rowWarnings({ ...guess, confirmed: true }), [])
+  assert.deepEqual([newcomer.staffId, newcomer.match], ['new', 'new'])
+  assert.deepEqual(newcomer.issues, ['No date.', 'No start and end time.'])
+  assert.deepEqual(twoSams.issues, ['More than one person has this name. Pick who it is.'])
+
+  const people = importPeople([exact, guess, newcomer, { ...newcomer, id: 'r9', include: false }])
+  assert.deepEqual(people.map(p => [p.name, p.staffId, p.count, p.included]), [['Ana Lima', 'a', 1, 1], ['Ana', 'a', 1, 1], ['Zed', 'new', 2, 1]])
 })

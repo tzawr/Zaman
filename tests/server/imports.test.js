@@ -8,7 +8,7 @@ import * as sched from '../../api/_teams-schedules.js'
 import * as hg from '../../api/_teams-hengam.js'
 import { applyImport, discardImport, importSchedule } from '../../api/_teams-imports.js'
 import { MONTHLY_IMPORT_BUDGET_USD } from '../../api/_teams-extract.js'
-import { workbookOf } from './_zip.js'
+import { workbookOf, zip } from './_zip.js'
 
 const PROJECT_ID = 'demo-hengam'
 let db
@@ -54,16 +54,16 @@ const readImport = async (bizId, id) => (await db.doc(paths.importJob(bizId, id)
 const reviewed = (rows) => rows.map(r => ({ ...r, staffId: r.staffId || 'new', confirmed: true }))
 
 describe('reading a file', () => {
-  test('a CSV becomes rows held for review, matched where it can be', async () => {
+  test('a CSV becomes rows for review, matched where it can be and new names added', async () => {
     const { bizId, staff } = await setup()
     const r = await call(importSchedule, 'owner', { bizId, weekStart: WEEK, fileName: 'week.csv', mimeType: 'text/csv', data: b64(csv) })
-    assert.deepEqual([r.rows, r.needsReview], [3, 2])
+    assert.deepEqual([r.rows, r.needsReview], [3, 0])
     const job = await readImport(bizId, r.importId)
     assert.equal(job.status, 'review')
     const [ana, ben, zed] = job.rows
     assert.deepEqual([ana.staffId, ana.match, ana.issues], [staff['Ana Lima'], 'exact', []])
     assert.deepEqual([ben.staffId, ben.match, ben.end], [staff['Ben Ortiz'], 'suggested', '17:00'])
-    assert.deepEqual([zed.staffId, zed.match], [null, 'none'])
+    assert.deepEqual([zed.staffId, zed.match], ['new', 'new'])
     assert.equal((await db.collection(`businesses/${bizId}/shifts`).get()).size, 0, 'nothing is a shift yet')
   })
 
@@ -76,9 +76,23 @@ describe('reading a file', () => {
     assert.deepEqual(job.rows.map(x => [x.date, x.start, x.end]), [['2026-10-26', '09:00', '17:00'], ['2026-10-28', '07:00', '15:00']])
   })
 
+  test('a Word file with a table per week reads both weeks, free', async () => {
+    const { bizId } = await setup()
+    const cell = (t) => `<w:tc><w:p><w:r><w:t>${t}</w:t></w:r></w:p></w:tc>`
+    const table = (...rows) => `<w:tbl>${rows.map(r => `<w:tr>${r.map(cell).join('')}</w:tr>`).join('')}</w:tbl>`
+    const file = zip({ 'word/document.xml': `<w:document><w:body>${
+      table(['Name', 'Mon', 'Tue', 'Wed'], ['Ana Lima', '10:30a-7p', 'OFF', ''])}${table(['Name', 'Mon', 'Tue', 'Wed'], ['Ana Lima', '', '6a-2p', ''])}</w:body></w:document>` })
+    const r = await call(importSchedule, 'owner', { bizId, weekStart: WEEK, fileName: 'Promenade.docx', data: file.toString('base64') })
+    const job = await readImport(bizId, r.importId)
+    assert.equal(job.source, 'docx')
+    assert.deepEqual(job.rows.map(x => [x.date, x.start, x.end]), [['2026-10-26', '10:30', '19:00'], ['2026-11-03', '06:00', '14:00']])
+    assert.equal((await db.doc(`aiUsage/teams-${bizId}_2026-10`).get()).exists, false, 'no AI, no spend')
+  })
+
   test('files it cannot use are refused with the reason', async () => {
     const { bizId } = await setup()
     await rejects(call(importSchedule, 'owner', { bizId, weekStart: WEEK, fileName: 'a.docx', data: b64('x') }), 400)
+    await rejects(call(importSchedule, 'owner', { bizId, weekStart: WEEK, fileName: 'a.doc', data: b64('x') }), 400)
     await rejects(call(importSchedule, 'owner', { bizId, weekStart: WEEK, fileName: 'a.xls', data: b64('x') }), 400)
     const err = await rejects(call(importSchedule, 'owner', { bizId, weekStart: WEEK, fileName: 'a.csv', data: b64('hello,world') }), 422, 'unreadable')
     assert.match(err.message, /header row/)
@@ -96,7 +110,7 @@ describe('reading a file', () => {
 
 describe('reading a photo or PDF', () => {
   const fakeClaude = (reply, record = []) => ({
-    beta: { messages: { stream: (params) => { record.push(params); return { finalMessage: async () => reply } } } },
+    messages: { stream: (params) => { record.push(params); return { finalMessage: async () => reply } } },
   })
   const answer = (shifts, stop = 'end_turn') => ({
     stop_reason: stop,
@@ -116,12 +130,14 @@ describe('reading a photo or PDF', () => {
     assert.equal(job.rows[0].date, '2026-10-27', 'a weekday lands in the chosen week')
     assert.equal(job.rows[1].sure.name, false)
     assert.equal(job.notes, 'Bottom row was smudged.')
-    assert.equal(sent[0].model, 'claude-opus-5-5')
-    assert.equal(sent[0].fallbacks, 'default')
+    assert.equal(sent[0].model, 'claude-haiku-5-5')
+    assert.equal(sent[0].fallbacks, undefined, 'Haiku takes no server-side fallback')
+    assert.equal(sent[0].output_config.effort, 'low')
     assert.equal(sent[0].messages[0].content[0].type, 'image')
     const usage = (await db.doc(`aiUsage/teams-${bizId}_2026-10`).get()).data()
     assert.equal(usage.calls, 1)
-    assert.ok(Math.abs(usage.spendUsd - 0.028) < 1e-9)
+    // 2,000 in and 1,000 out on Haiku: seven hundredths of a cent.
+    assert.ok(Math.abs(usage.spendUsd - 0.0007) < 1e-9)
   })
 
   test('a refusal, an over-long schedule, and a spent budget each say what to do', async () => {
@@ -131,9 +147,9 @@ describe('reading a photo or PDF', () => {
     await rejects(call(importSchedule, 'owner', input, { aiClient: fakeClaude(answer([], 'max_tokens')) }), 422, 'too_large')
     await db.doc(`aiUsage/teams-${bizId}_2026-10`).set({ spendUsd: MONTHLY_IMPORT_BUDGET_USD })
     let called = false
-    const err = await rejects(call(importSchedule, 'owner', input, { aiClient: { beta: { messages: { stream: () => { called = true } } } } }), 429, 'budget')
+    const err = await rejects(call(importSchedule, 'owner', input, { aiClient: { messages: { stream: () => { called = true } } } }), 429, 'budget')
     assert.equal(called, false, 'the budget is checked before calling')
-    assert.match(err.message, /CSV and Excel imports still work/)
+    assert.match(err.message, /Word, Excel and CSV imports still work/)
   })
 })
 
@@ -141,16 +157,18 @@ describe('applying', () => {
   test('nothing is applied while a row is unresolved', async () => {
     const { bizId } = await setup()
     const { importId } = await call(importSchedule, 'owner', { bizId, weekStart: WEEK, fileName: 'w.csv', data: b64(csv) })
-    const { rows } = await readImport(bizId, importId)
+    // The manager left Zed without a person.
+    const rows = (await readImport(bizId, importId)).rows.map(r => (r.name === 'Zed Moss' ? { ...r, staffId: null } : r))
     const err = await rejects(call(applyImport, 'owner', { bizId, importId, rows }), 422, 'unresolved')
     assert.match(err.problems.map(p => p.message).join(' '), /Zed Moss is not matched/)
     assert.equal((await db.collection(`businesses/${bizId}/shifts`).get()).size, 0)
   })
 
-  test('a reviewed import adds draft shifts and new people, once', async () => {
+  test('an import adds draft shifts and new people in one step, once', async () => {
     const { bizId } = await setup()
     const { importId } = await call(importSchedule, 'owner', { bizId, weekStart: WEEK, fileName: 'w.csv', data: b64(csv) })
-    const rows = reviewed((await readImport(bizId, importId)).rows)
+    // Exactly as read: nothing to resolve first.
+    const { rows } = await readImport(bizId, importId)
     const r = await call(applyImport, 'owner', { bizId, importId, rows })
     assert.deepEqual([r.created, r.weeks, r.newPeople], [3, [WEEK], 1])
     const shifts = (await db.collection(`businesses/${bizId}/shifts`).get()).docs.map(d => d.data())

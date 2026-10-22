@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useLocalSearchParams } from 'expo-router'
 import { View } from 'react-native'
 import AvailabilityOverview from '../../components/AvailabilityOverview'
 import PoliciesEditor from '../../components/PoliciesEditor'
@@ -11,6 +12,14 @@ import { Screen, Segmented } from '../../ui/components'
 // availability, the team, and the business's rules.
 export default function Manage() {
   const [section, setSection] = useState('schedule')
+  // Arriving from an import: its week, on the schedule. The tab stays
+  // mounted, so a new link is noticed here rather than at first render.
+  const { week, imported, weeks } = useLocalSearchParams()
+  const [seenWeek, setSeenWeek] = useState(week)
+  if (week !== seenWeek) {
+    setSeenWeek(week)
+    if (week) setSection('schedule')
+  }
   return (
     <View style={{ flex: 1 }}>
       <WorkplaceHeader title="Manage" />
@@ -20,7 +29,8 @@ export default function Manage() {
             { value: 'schedule', label: 'Schedule' }, { value: 'availability', label: 'Availability' },
             { value: 'team', label: 'Team' }, { value: 'settings', label: 'Settings' },
           ]} />
-        {section === 'schedule' ? <ScheduleManager />
+        {section === 'schedule' ? <ScheduleManager key={typeof week === 'string' ? week : 'this-week'}
+          week={typeof week === 'string' ? week : undefined} imported={imported} weeks={weeks} />
           : section === 'availability' ? <AvailabilityOverview />
             : section === 'team' ? <TeamManager /> : <PoliciesEditor />}
       </Screen>

@@ -8,6 +8,7 @@ import * as DocumentPicker from 'expo-document-picker'
 export const IMPORT_TYPES = [
   'text/csv', 'text/plain', 'application/pdf', 'image/*',
   'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
 ]
 const MAX_BYTES = 3 * 1024 * 1024
 

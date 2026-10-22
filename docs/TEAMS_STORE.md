@@ -70,7 +70,7 @@ Nothing is used for tracking or advertising, and nothing is sold. Every item bel
 | Name, email address | App functionality, account | From sign-up or Google/Apple |
 | User ID | App functionality | Firebase uid |
 | Other user content: shifts, availability, time off, requests | App functionality | Entered by the person or their manager |
-| Photos or files (optional) | App functionality | Only when a manager imports a schedule. The file is read once and not stored. PDFs and photos are sent to Anthropic to read. |
+| Photos or files (optional) | App functionality | Only when a manager imports a schedule. The file is read once and not stored. Word, Excel and CSV files are read on our server; PDFs and photos are sent to Anthropic to read. |
 | Device ID: push token (optional) | App functionality | Only when push is turned on. Sent through Expo's push service. |
 | Crash data, other diagnostic data | App functionality / diagnostics | Error message, stack, screen name, platform, app version; kept 30 days |
 

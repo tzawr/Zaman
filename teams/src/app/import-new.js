@@ -43,17 +43,18 @@ export default function ImportNew() {
 
   return (
     <Screen>
-      <Text tone="muted">Bring in a schedule you already have. You’ll check every shift before anything is added, and they arrive as a draft you publish when ready.</Text>
-      <Card>
-        <Text variant="label">What works</Text>
-        <Text tone="muted">• CSV or Excel (.xlsx): a row per shift (Name, Date, Start, End) or a person per row with days across.</Text>
-        <Text tone="muted">• PDF or a photo of a printed or handwritten schedule, read by Claude. Anything unclear is marked for you to check.</Text>
-      </Card>
+      <Text tone="muted">Add the schedule you already have, in the file you got it in. You’ll see it all before anything is added.</Text>
       <View style={{ gap: 6 }}>
-        <DateField label="Week the schedule is for" value={weekStart} step={7}
+        <DateField label="First week in the file" value={weekStart} step={7}
           onChange={(d) => setWeekStart(weekStartOf(d))} />
-        <Text variant="caption" tone="faint">{formatWeekRange(weekStart)}. Used for files that show weekdays without dates.</Text>
+        <Text variant="caption" tone="faint">{formatWeekRange(weekStart)}. Only used when the file shows days without dates.</Text>
       </View>
+      <Card style={{ gap: 6 }}>
+        <Text variant="label">Any of these work</Text>
+        <Text tone="muted">• Word or Excel file, like the one your manager emails</Text>
+        <Text tone="muted">• CSV export from another app</Text>
+        <Text tone="muted">• PDF, or a photo or screenshot of the schedule</Text>
+      </Card>
       <Banner message={error?.message} />
       {busy ? <Banner tone="info" message={busy} /> : null}
       <Button title="Choose a file" icon="upload" loading={Boolean(busy)} onPress={choose} />
