@@ -177,6 +177,47 @@ export async function deleteShift({ db, uid, input, now }) {
   })
 }
 
+// Many shifts at once, chosen on the schedule: each removed exactly as
+// deleteShift would (a draft goes, a published shift is cancelled and its
+// offer or swap released), all or none. Each person who loses published
+// shifts hears once per week, not once per shift.
+export const MAX_DELETE_AT_ONCE = 200
+
+export async function deleteShifts({ db, uid, input, now }) {
+  const bizId = requireId(input.bizId, 'workspace')
+  if (!Array.isArray(input.shiftIds) || !input.shiftIds.length) throw invalid('Choose the shifts to delete.')
+  const ids = [...new Set(input.shiftIds.map(id => requireId(id, 'shift')))]
+  if (ids.length > MAX_DELETE_AT_ONCE) throw invalid(`Delete at most ${MAX_DELETE_AT_ONCE} shifts at a time.`)
+  return db.runTransaction(async (tx) => {
+    await readManager(tx, db, bizId, uid)
+    refuseIfHengam((await tx.get(db.doc(paths.business(bizId)))).data())
+    const snaps = await tx.getAll(...ids.map(id => db.doc(paths.shift(bizId, id))))
+    const live = snaps.filter(sn => sn.exists && sn.data().status !== 'cancelled')
+    const locked = live.filter(sn => !canTransition('shift', sn.data().status, 'cancelled'))
+    if (locked.length) throw conflict('shift_locked', `${locked.length} of these shifts cannot be removed.`)
+    const locks = []
+    for (const sn of live) locks.push(await readLocks(tx, db, bizId, { id: sn.id, ...sn.data() }))
+
+    // ---- writes ----
+    const at = Timestamp.fromDate(now)
+    const heard = new Map()
+    live.forEach((sn, i) => {
+      const shift = sn.data()
+      if (shift.published) {
+        tx.update(sn.ref, { status: 'cancelled', cancelledAt: at, version: shift.version + 1, updatedAt: at, openOfferId: null, swapId: null })
+        if (shift.assigneeUid) heard.set(`${shift.assigneeUid}|${shift.scheduleId}`, { to: shift.assigneeUid, weekStart: shift.scheduleId })
+      } else {
+        tx.delete(sn.ref)
+      }
+      writeReleaseLocks(tx, db, bizId, locks[i], now, 'shift_removed')
+      clearBusyBlock(tx, db, bizId, sn.id, shift.assigneeUid)
+    })
+    audit(tx, db, bizId, uid, 'shifts.removed', { count: live.length, shiftIds: live.map(sn => sn.id).slice(0, 200) }, now)
+    const notify = [...heard.values()].map(h => ({ kind: 'scheduleChanged', bizId, to: h.to, params: { weekStart: h.weekStart, version: now.getTime() } }))
+    return { removed: live.length, notify }
+  })
+}
+
 export async function publishSchedule({ db, uid, input, now }) {
   const bizId = requireId(input.bizId, 'workspace')
   if (!isDateString(input.weekStart) || weekStartOf(input.weekStart) !== input.weekStart) {

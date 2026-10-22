@@ -34,6 +34,7 @@ const ACTIONS = {
   // Building a week is many small saves, so these allow a steady pace.
   saveShift: { run: schedules.saveShift, limit: [600, 60 * 60] },
   deleteShift: { run: schedules.deleteShift, limit: [600, 60 * 60] },
+  deleteShifts: { run: schedules.deleteShifts, limit: [60, 60 * 60] },
   publishSchedule: { run: schedules.publishSchedule, limit: [60, 60 * 60] },
   offerShift: { run: marketplace.offerShift, limit: [60, 60 * 60] },
   cancelOffer: { run: marketplace.cancelOffer, limit: [120, 60 * 60] },

@@ -169,6 +169,10 @@ A shift stores the business-local date and times people read (`date`, `startLoca
 
 Employees read their own published shifts from every workplace with one query per workplace, merged and coloured by workplace on Home and Calendar. The queries need the composite indexes in `firestore.indexes.json`, which also keeps Hengam's two existing indexes so a deploy does not drop them.
 
+### Deleting many shifts
+
+Manage → Schedule has **Select shifts**: tap shifts, or **Select day** / **Select all**, then delete them together. `deleteShifts` treats each exactly as `deleteShift` does (a draft is removed; a published shift is cancelled, its offer or swap released and its busy-index entry cleared), up to 200 at once in one transaction. Each person who loses published shifts gets one "your schedule changed" notice per week, not one per shift.
+
 ## Marketplace and swaps (Phase 6)
 
 ### Validation

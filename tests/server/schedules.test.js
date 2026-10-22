@@ -129,3 +129,30 @@ test('someone who joins after being scheduled sees the shifts already assigned t
   await call(ws.acceptInvite, 'ben', { code: benCode })
   assert.equal((await shiftOf(bizId, shiftId)).assigneeUid, 'ben')
 })
+
+describe('deleting many shifts at once', () => {
+  test('drafts go, published shifts are cancelled, and each person hears once per week', async () => {
+    const { bizId, ana, ben } = await setup()
+    const save = (staffId, date) => call(sched.saveShift, 'owner', { bizId, staffId, date, start: '09:00', end: '13:00' })
+    const a1 = await save(ana, '2026-10-26')
+    const a2 = await save(ana, '2026-10-27')
+    const b1 = await save(ben, '2026-10-27')
+    await call(sched.publishSchedule, 'owner', { bizId, weekStart: '2026-10-26' })
+    const draft = await save(ana, '2026-11-02')
+
+    await rejects(call(sched.deleteShifts, 'ana', { bizId, shiftIds: [a1.shiftId] }), 403)
+    await rejects(call(sched.deleteShifts, 'owner', { bizId, shiftIds: [] }), 400)
+
+    const r = await call(sched.deleteShifts, 'owner', { bizId, shiftIds: [a1.shiftId, a2.shiftId, b1.shiftId, draft.shiftId, draft.shiftId] })
+    assert.equal(r.removed, 4)
+    assert.equal((await shiftOf(bizId, a1.shiftId)).status, 'cancelled')
+    assert.equal((await shiftOf(bizId, b1.shiftId)).status, 'cancelled')
+    assert.equal(await shiftOf(bizId, draft.shiftId), undefined, 'a draft is simply removed')
+    // Ana lost two published shifts in one week: one notice. Ben has no account yet.
+    assert.deepEqual(r.notify.map(n => [n.kind, n.to, n.params.weekStart]), [['scheduleChanged', 'ana', '2026-10-26']])
+    assert.equal((await db.collection('userBusy/ana/blocks').get()).size, 0, 'off the busy index')
+
+    // Deleting them again changes nothing.
+    assert.equal((await call(sched.deleteShifts, 'owner', { bizId, shiftIds: [a1.shiftId] })).removed, 0)
+  })
+})

@@ -29,6 +29,17 @@ export default function ScheduleManager({ week, imported, weeks }) {
   const [confirm, setConfirm] = useState(false)
   const [notice, setNotice] = useState(null)
   const importedWeeks = typeof weeks === 'string' && weeks ? weeks.split(',') : []
+  // Select mode: tap shifts (or a whole day) to delete many at once.
+  const [selecting, setSelecting] = useState(false)
+  const [selected, setSelected] = useState(() => new Set())
+  const [confirmDelete, setConfirmDelete] = useState(false)
+  const toggle = (ids, on) => setSelected(prev => {
+    const next = new Set(prev)
+    ids.forEach(id => (on ? next.add(id) : next.delete(id)))
+    return next
+  })
+  const stopSelecting = () => { setSelecting(false); setSelected(new Set()); setConfirmDelete(false) }
+  const goToWeek = (w) => { setWeekStart(w); setConfirm(false); stopSelecting() }
 
   const availability = useTeamAvailability()
   const timeOff = useTeamTimeOff(weekStart)
@@ -89,6 +100,20 @@ export default function ScheduleManager({ week, imported, weeks }) {
       : { tone: 'success', message: `Published ${shiftsOut} shifts across ${list.length} weeks. Your team can see them now.` })
   }
 
+  async function deleteSelected() {
+    setBusy(true)
+    setNotice(null)
+    try {
+      const r = await callTeams('deleteShifts', { bizId: activeId, shiftIds: [...selected] })
+      setNotice({ tone: 'success', message: `Deleted ${r.removed} ${r.removed === 1 ? 'shift' : 'shifts'}.` })
+      stopSelecting()
+    } catch (err) {
+      setNotice({ tone: 'danger', message: err instanceof ApiError ? err.message : 'Could not delete those shifts.' })
+    } finally {
+      setBusy(false)
+    }
+  }
+
   async function publish() {
     setBusy(true)
     setNotice(null)
@@ -108,14 +133,14 @@ export default function ScheduleManager({ week, imported, weeks }) {
   return (
     <>
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-        <IconButton icon="chevron-left" label="Previous week" onPress={() => { setWeekStart(addDays(weekStart, -7)); setConfirm(false) }} />
+        <IconButton icon="chevron-left" label="Previous week" onPress={() => goToWeek(addDays(weekStart, -7))} />
         <View style={{ flex: 1, alignItems: 'center', gap: 4 }}>
           <Text variant="heading" accessibilityRole="header" accessibilityLiveRegion="polite">{formatWeekRange(weekStart)}</Text>
           {!loading ? (
             <Badge label={!schedule ? 'Not started' : published ? 'Published' : 'Draft'} tone={published ? 'success' : schedule ? 'warning' : 'neutral'} />
           ) : null}
         </View>
-        <IconButton icon="chevron-right" label="Next week" onPress={() => { setWeekStart(addDays(weekStart, 7)); setConfirm(false) }} />
+        <IconButton icon="chevron-right" label="Next week" onPress={() => goToWeek(addDays(weekStart, 7))} />
       </View>
 
       <Banner message={error} />
@@ -160,13 +185,64 @@ export default function ScheduleManager({ week, imported, weeks }) {
             )
           ) : null}
 
+          {!fromHengam && count ? (
+            selecting ? (
+              <Card style={{ gap: 10, borderColor: t.color.accent }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                  <Text variant="label" style={{ flex: 1 }} accessibilityLiveRegion="polite">
+                    {selected.size ? `${selected.size} ${selected.size === 1 ? 'shift' : 'shifts'} selected` : 'Tap shifts to select them'}
+                  </Text>
+                  <Button title="Cancel" variant="ghost" style={{ minHeight: 36, paddingHorizontal: 8 }} onPress={stopSelecting} />
+                </View>
+                <View style={{ flexDirection: 'row', gap: 8 }}>
+                  <Button title={`Select all ${count}`} variant="secondary" style={{ flex: 1, minHeight: 40 }}
+                    onPress={() => toggle((shifts || []).map(s => s.id), true)} />
+                  <Button title="Clear" variant="secondary" style={{ flex: 1, minHeight: 40 }} disabled={!selected.size}
+                    onPress={() => setSelected(new Set())} />
+                </View>
+                {confirmDelete ? (
+                  <View style={{ gap: 8 }}>
+                    <Text>
+                      Delete {selected.size} {selected.size === 1 ? 'shift' : 'shifts'}?
+                      {(() => {
+                        const live = (shifts || []).filter(s => selected.has(s.id) && s.published).length
+                        return live ? ` ${live} ${live === 1 ? 'is' : 'are'} published, so the people working ${live === 1 ? 'it' : 'them'} will be told.` : ''
+                      })()}
+                    </Text>
+                    <View style={{ flexDirection: 'row', gap: 8 }}>
+                      <Button title="Delete" variant="danger" icon="trash-2" loading={busy} style={{ flex: 1 }} onPress={deleteSelected} />
+                      <Button title="Keep" variant="secondary" style={{ flex: 1 }} onPress={() => setConfirmDelete(false)} />
+                    </View>
+                  </View>
+                ) : (
+                  <Button title={selected.size ? `Delete ${selected.size} ${selected.size === 1 ? 'shift' : 'shifts'}` : 'Delete'}
+                    variant="danger" icon="trash-2" disabled={!selected.size} onPress={() => setConfirmDelete(true)} />
+                )}
+              </Card>
+            ) : (
+              <Button title="Select shifts" variant="ghost" icon="check-square" onPress={() => { setNotice(null); setSelecting(true) }} />
+            )
+          ) : null}
+
           {weekDates(weekStart).map(date => (
             <Card key={date} style={{ gap: 8 }}>
               <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
                 <Text variant="label" style={date === today ? { color: t.color.accent } : null} accessibilityRole="header">
                   {formatDateShort(date)}{date === today ? ' · Today' : ''}
                 </Text>
-                {fromHengam ? null : <Pressable onPress={() => add(date)} accessibilityRole="button" accessibilityLabel={`Add a shift on ${formatDateShort(date)}`}
+                {fromHengam ? null : selecting ? (() => {
+                  const ids = (byDate[date] || []).map(s => s.id)
+                  if (!ids.length) return null
+                  const all = ids.every(id => selected.has(id))
+                  return (
+                    <Pressable onPress={() => toggle(ids, !all)} accessibilityRole="button"
+                      accessibilityLabel={`${all ? 'Unselect' : 'Select'} every shift on ${formatDateShort(date)}`}
+                      hitSlop={8} style={{ flexDirection: 'row', alignItems: 'center', gap: 4, minHeight: 32, paddingHorizontal: 6 }}>
+                      <Feather name={all ? 'check-square' : 'square'} size={16} color={t.color.accent} />
+                      <Text variant="label" tone="accent">{all ? 'Unselect day' : 'Select day'}</Text>
+                    </Pressable>
+                  )
+                })() : <Pressable onPress={() => add(date)} accessibilityRole="button" accessibilityLabel={`Add a shift on ${formatDateShort(date)}`}
                   hitSlop={8} style={{ flexDirection: 'row', alignItems: 'center', gap: 4, minHeight: 32, paddingHorizontal: 6 }}>
                   <Feather name="plus" size={16} color={t.color.accent} />
                   <Text variant="label" tone="accent">Add</Text>
@@ -178,10 +254,14 @@ export default function ScheduleManager({ week, imported, weeks }) {
               {(byDate[date] || []).length ? (byDate[date]).map((s, i) => (
                 <View key={s.id}>
                   {i > 0 ? <Divider /> : null}
-                  <Pressable onPress={() => router.push(fromHengam ? `/shift/${activeId}/${s.id}` : { pathname: '/shift-edit', params: { shiftId: s.id } })}
-                    accessibilityRole="button"
-                    accessibilityLabel={`${s.staffName}, ${formatShiftRange(s)}${s.positionName ? `, ${s.positionName}` : ''}${concerns[s.id] ? `. Warning: ${concerns[s.id]}` : ''}. Edit`}
-                    style={({ pressed }) => ({ flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 8, opacity: pressed ? 0.7 : 1 })}>
+                  <Pressable onPress={() => (selecting ? toggle([s.id], !selected.has(s.id))
+                    : router.push(fromHengam ? `/shift/${activeId}/${s.id}` : { pathname: '/shift-edit', params: { shiftId: s.id } }))}
+                    accessibilityRole={selecting ? 'checkbox' : 'button'}
+                    aria-checked={selecting ? selected.has(s.id) : undefined}
+                    accessibilityLabel={`${s.staffName}, ${formatShiftRange(s)}${s.positionName ? `, ${s.positionName}` : ''}${concerns[s.id] ? `. Warning: ${concerns[s.id]}` : ''}${selecting ? '' : '. Edit'}`}
+                    style={({ pressed }) => ({ flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 8, opacity: pressed ? 0.7 : 1,
+                      ...(selecting && selected.has(s.id) ? { backgroundColor: t.color.accentBg, borderRadius: t.radius.sm, paddingHorizontal: 6 } : null) })}>
+                    {selecting ? <Feather name={selected.has(s.id) ? 'check-square' : 'square'} size={20} color={selected.has(s.id) ? t.color.accent : t.color.textFaint} /> : null}
                     <View style={{ flex: 1, gap: 2 }}>
                       <Text numberOfLines={1}>{s.staffName}</Text>
                       <Text variant="caption" tone="muted">
@@ -190,7 +270,7 @@ export default function ScheduleManager({ week, imported, weeks }) {
                       {concerns[s.id] ? <Text variant="caption" style={{ color: t.color.warning }}>⚠ {concerns[s.id]}</Text> : null}
                     </View>
                     {!s.assigneeUid ? <Badge label="No account" tone="neutral" /> : null}
-                    <Feather name="chevron-right" size={16} color={t.color.textFaint} />
+                    {selecting ? null : <Feather name="chevron-right" size={16} color={t.color.textFaint} />}
                   </Pressable>
                 </View>
               )) : <Text variant="caption" tone="faint">No shifts</Text>}
