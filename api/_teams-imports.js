@@ -1,7 +1,7 @@
 import { Timestamp } from 'firebase-admin/firestore'
 import { canTransition, paths } from '../shared/teams/schema.js'
 import { MAX_IMPORT_ROWS, importWeek, interpretTable, parseCsv, prepareRows, readDate, rowIssues } from '../shared/teams/imports.js'
-import { addDays, isDateString, overlaps, resolveShiftTimes, weekStartOf } from '../shared/teams/time.js'
+import { addDays, formatWeekRange, isDateString, overlaps, resolveShiftTimes, weekStartOf } from '../shared/teams/time.js'
 import { validatePersonName } from '../shared/teams/workspace.js'
 import { TeamsError, conflict, invalid, notFound } from './_teams-http.js'
 import { audit, readManager, requireId } from './_teams-common.js'
@@ -231,5 +231,45 @@ export async function discardImport({ db, uid, input, now }) {
     tx.update(ref, { status: 'discarded', updatedAt: Timestamp.fromDate(now) })
     audit(tx, db, bizId, uid, 'import.discarded', { importId }, now)
     return { ok: true }
+  })
+}
+
+// Takes an applied import back off the schedule: every shift it added is
+// removed, and a week left with nothing in it goes too. Only while those
+// weeks are drafts; once a week is published the team has seen it, so its
+// shifts are changed one by one instead. People the import added to the team
+// stay, as they may well be the right people.
+export async function undoImport({ db, uid, input, now }) {
+  const bizId = requireId(input.bizId, 'workspace')
+  const importId = requireId(input.importId, 'import')
+  return db.runTransaction(async (tx) => {
+    await readManager(tx, db, bizId, uid)
+    const ref = db.doc(paths.importJob(bizId, importId))
+    const snap = await tx.get(ref)
+    if (!snap.exists) throw notFound('That import no longer exists.')
+    if (!canTransition('importJob', snap.data().status, 'undone')) {
+      throw conflict('closed', snap.data().status === 'undone' ? 'This import was already undone.' : 'Only an import that was added can be undone.')
+    }
+    const shiftsSnap = await tx.get(db.collection(`businesses/${bizId}/shifts`).where('importId', '==', importId))
+    const weeks = [...new Set(shiftsSnap.docs.map(d => d.data().scheduleId))].sort()
+    const [weekSnaps, weekShifts] = await Promise.all([
+      Promise.all(weeks.map(w => tx.get(db.doc(paths.schedule(bizId, w))))),
+      Promise.all(weeks.map(w => tx.get(db.collection(`businesses/${bizId}/shifts`).where('scheduleId', '==', w)))),
+    ])
+    const published = weeks.filter((w, i) => weekSnaps[i].exists && weekSnaps[i].data().status === 'published')
+    if (published.length) {
+      throw conflict('published', `${published.length === 1 ? 'The week of' : 'The weeks of'} ${published.map(formatWeekRange).join(', ')} ${published.length === 1 ? 'is' : 'are'} already published, so the team has seen ${published.length === 1 ? 'it' : 'them'}. Remove those shifts one by one instead.`)
+    }
+
+    // ---- writes ----
+    shiftsSnap.docs.forEach(d => tx.delete(d.ref))
+    weeks.forEach((w, i) => {
+      const others = weekShifts[i].docs.filter(d => d.data().importId !== importId)
+      if (weekSnaps[i].exists && !others.length) tx.delete(weekSnaps[i].ref)
+    })
+    const at = Timestamp.fromDate(now)
+    tx.update(ref, { status: 'undone', undoneAt: at, undoneBy: uid, shiftsRemoved: shiftsSnap.size, updatedAt: at })
+    audit(tx, db, bizId, uid, 'import.undone', { importId, shifts: shiftsSnap.size, weeks }, now)
+    return { removed: shiftsSnap.size, weeks }
   })
 }

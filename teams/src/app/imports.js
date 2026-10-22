@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'expo-router'
 import { View } from 'react-native'
 import { collection, getDocs, limit, onSnapshot, orderBy, query, where } from 'firebase/firestore'
+import { ApiError, callTeams } from '../lib/api'
 import { db } from '../lib/firebase'
 import { useWorkspace } from '../state/workspace'
 import { formatDateShort, formatWeekRange } from '../../../shared/teams/time'
@@ -39,11 +40,28 @@ export default function Imports() {
 }
 
 function ImportCard({ item, bizId, onOpenWeek, onReview }) {
+  async function undo() {
+    setBusy(true)
+    setMessage(null)
+    try {
+      const r = await callTeams('undoImport', { bizId, importId: item.id })
+      setMessage({ tone: 'success', message: `Removed ${r.removed} ${r.removed === 1 ? 'shift' : 'shifts'}. You can import the right file now.` })
+    } catch (err) {
+      setMessage({ tone: 'danger', message: err instanceof ApiError ? err.message : 'Could not undo this import.' })
+    } finally {
+      setBusy(false)
+      setConfirming(false)
+    }
+  }
+
   const weeks = useImportWeeks(bizId, item)
   // The day it was imported where the manager is, not in UTC.
   const at = item.createdAt?.toDate?.()
   const added = at ? formatDateShort(`${at.getFullYear()}-${String(at.getMonth() + 1).padStart(2, '0')}-${String(at.getDate()).padStart(2, '0')}`) : ''
-  const status = { review: ['Waiting for review', 'warning'], published: ['Added', 'success'], discarded: ['Discarded', 'neutral'] }[item.status]
+  const [confirming, setConfirming] = useState(false)
+  const [busy, setBusy] = useState(false)
+  const [message, setMessage] = useState(null)
+  const status = { review: ['Waiting for review', 'warning'], published: ['Added', 'success'], discarded: ['Discarded', 'neutral'], undone: ['Undone', 'neutral'] }[item.status]
     || [item.status, 'neutral']
 
   return (
@@ -55,8 +73,11 @@ function ImportCard({ item, bizId, onOpenWeek, onReview }) {
       <Text variant="caption" tone="muted">
         {added ? `Imported ${added} · ` : ''}{item.status === 'published'
           ? `${item.shiftsCreated ?? 0} ${item.shiftsCreated === 1 ? 'shift' : 'shifts'} added`
-          : `${item.rows?.length || 0} shifts read`}
+          : item.status === 'undone'
+            ? `${item.shiftsRemoved ?? 0} ${item.shiftsRemoved === 1 ? 'shift' : 'shifts'} removed`
+            : `${item.rows?.length || 0} shifts read`}
       </Text>
+      <Banner tone={message?.tone} message={message?.message} />
       {item.status === 'review' ? <Button title="Review and add" variant="secondary" onPress={onReview} /> : null}
       {item.status === 'published' ? (
         weeks === null ? <Text variant="caption" tone="faint">Finding its weeks…</Text>
@@ -68,6 +89,17 @@ function ImportCard({ item, bizId, onOpenWeek, onReview }) {
               ))}
             </View>
           ) : <Banner tone="warning" message="None of this import’s shifts are on the schedule any more. They may have been deleted." />
+      ) : null}
+      {item.status === 'published' ? (
+        confirming ? (
+          <View style={{ gap: 8 }}>
+            <Text>Remove the {item.shiftsCreated ?? ''} shifts this import added? Weeks you have published can’t be undone this way.</Text>
+            <View style={{ flexDirection: 'row', gap: 8 }}>
+              <Button title="Remove them" variant="danger" loading={busy} style={{ flex: 1 }} onPress={undo} />
+              <Button title="Keep" variant="secondary" style={{ flex: 1 }} onPress={() => setConfirming(false)} />
+            </View>
+          </View>
+        ) : <Button title="Undo this import" variant="ghost" icon="rotate-ccw" onPress={() => setConfirming(true)} />
       ) : null}
     </Card>
   )

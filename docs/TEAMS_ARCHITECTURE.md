@@ -281,7 +281,7 @@ Review is one screen and, usually, one tap (`teams/src/app/import/[importId].js`
 
 Applying refuses any shift still unresolved, any overlap, and any week already published; a month of 500 shifts applies in one transaction. The shifts arrive as a **draft**, and the app opens the first imported week with a banner saying how many shifts came in and over which weeks. For a bi-weekly or monthly file the banner offers **Publish all N weeks**, which publishes each week in turn. An import is applied once, then marked published with the weeks it filled; a discarded one is closed.
 
-**Your imports** (Manage → "Past imports and where they went") lists every import with its status and, for an applied one, each week its shifts are in now, counted from the shifts themselves, so it also covers imports made before weeks were recorded.
+**Your imports** (Manage → "Past imports and where they went") lists every import with its status and, for an applied one, each week its shifts are in now, counted from the shifts themselves, so it also covers imports made before weeks were recorded. **Undo this import** (`undoImport`) removes every shift it added, and any week left empty, in one transaction; it refuses while any of those weeks is published, since the team has seen them. People the import added stay on the team.
 
 ## Launch readiness (Phase 10)
 

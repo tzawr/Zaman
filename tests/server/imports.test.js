@@ -6,7 +6,7 @@ import { paths } from '../../shared/teams/schema.js'
 import * as ws from '../../api/_teams-workspaces.js'
 import * as sched from '../../api/_teams-schedules.js'
 import * as hg from '../../api/_teams-hengam.js'
-import { applyImport, discardImport, importSchedule } from '../../api/_teams-imports.js'
+import { applyImport, discardImport, importSchedule, undoImport } from '../../api/_teams-imports.js'
 import { MONTHLY_IMPORT_BUDGET_USD } from '../../api/_teams-extract.js'
 import { workbookOf, zip } from './_zip.js'
 
@@ -211,5 +211,42 @@ describe('applying', () => {
     assert.equal((await db.collection(`businesses/${bizId}/shifts`).get()).size, 1)
     await call(discardImport, 'owner', { bizId, importId })
     assert.equal((await readImport(bizId, importId)).status, 'discarded')
+  })
+})
+
+describe('undoing an import', () => {
+  test('removes only the import’s shifts, keeps weeks with other shifts, and happens once', async () => {
+    const { bizId, staff } = await setup()
+    // A shift the manager added by hand, in a week the import also fills.
+    await call(sched.saveShift, 'owner', { bizId, staffId: staff['Ben Ortiz'], date: '2026-10-29', start: '18:00', end: '22:00' })
+    const { importId } = await call(importSchedule, 'owner', { bizId, weekStart: WEEK, fileName: 'w.csv', data: b64(csv) })
+    await call(applyImport, 'owner', { bizId, importId, rows: (await readImport(bizId, importId)).rows })
+    assert.equal((await db.collection(`businesses/${bizId}/shifts`).get()).size, 4)
+
+    await rejects(call(undoImport, 'stranger', { bizId, importId }), 404)
+    const r = await call(undoImport, 'owner', { bizId, importId })
+    assert.deepEqual(r, { removed: 3, weeks: [WEEK] })
+    const left = (await db.collection(`businesses/${bizId}/shifts`).get()).docs.map(d => d.data())
+    assert.deepEqual(left.map(s => [s.staffName, s.date]), [['Ben Ortiz', '2026-10-29']])
+    assert.ok((await db.doc(paths.schedule(bizId, WEEK)).get()).exists, 'the week keeps its hand-added shift')
+    const job = await readImport(bizId, importId)
+    assert.deepEqual([job.status, job.shiftsRemoved], ['undone', 3])
+    await rejects(call(undoImport, 'owner', { bizId, importId }), 409, 'closed')
+  })
+
+  test('a week left empty goes too; a published week is refused with nothing removed', async () => {
+    const { bizId } = await setup()
+    const first = await call(importSchedule, 'owner', { bizId, weekStart: WEEK, fileName: 'w.csv', data: b64(csv) })
+    await call(applyImport, 'owner', { bizId, importId: first.importId, rows: (await readImport(bizId, first.importId)).rows })
+    await call(undoImport, 'owner', { bizId, importId: first.importId })
+    assert.equal((await db.doc(paths.schedule(bizId, WEEK)).get()).exists, false)
+
+    const second = await call(importSchedule, 'owner', { bizId, weekStart: WEEK, fileName: 'w.csv', data: b64(csv) })
+    await call(applyImport, 'owner', { bizId, importId: second.importId, rows: (await readImport(bizId, second.importId)).rows })
+    await call(sched.publishSchedule, 'owner', { bizId, weekStart: WEEK })
+    const err = await rejects(call(undoImport, 'owner', { bizId, importId: second.importId }), 409, 'published')
+    assert.match(err.message, /already published/)
+    assert.equal((await db.collection(`businesses/${bizId}/shifts`).get()).size, 3)
+    assert.equal((await readImport(bizId, second.importId)).status, 'published')
   })
 })

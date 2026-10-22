@@ -78,9 +78,11 @@ export const TRANSITIONS = {
   importJob: {
     extracting: ['review', 'failed'],
     review: ['published', 'discarded'],
-    published: [],
+    // Undone: its shifts taken back off the schedule, while still drafts.
+    published: ['undone'],
     failed: [],
     discarded: [],
+    undone: [],
   },
 }
 
