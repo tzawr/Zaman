@@ -1,6 +1,6 @@
 import { Timestamp } from 'firebase-admin/firestore'
 import { canTransition, paths } from '../shared/teams/schema.js'
-import { importWeek, interpretTable, parseCsv, prepareRows, readDate, rowIssues } from '../shared/teams/imports.js'
+import { MAX_IMPORT_ROWS, importWeek, interpretTable, parseCsv, prepareRows, readDate, rowIssues } from '../shared/teams/imports.js'
 import { addDays, isDateString, overlaps, resolveShiftTimes, weekStartOf } from '../shared/teams/time.js'
 import { validatePersonName } from '../shared/teams/workspace.js'
 import { TeamsError, conflict, invalid, notFound } from './_teams-http.js'
@@ -16,7 +16,8 @@ import { XlsxError, readXlsx } from './_xlsx.js'
 
 // Vercel caps a request body at 4.5 MB; base64 adds a third.
 export const MAX_FILE_BYTES = 3 * 1024 * 1024
-const MAX_APPLY_ROWS = 300
+// One import's worth: a month of a large team's shifts.
+const MAX_APPLY_ROWS = MAX_IMPORT_ROWS
 
 function kindOf(fileName, mimeType) {
   const ext = String(fileName || '').toLowerCase().split('.').pop()
@@ -96,6 +97,9 @@ export async function importSchedule({ db, uid, input, now, aiClient }) {
     }
   }
 
+  if (extracted.length > MAX_IMPORT_ROWS) {
+    notes = [notes, `This file has ${extracted.length} shifts. The first ${MAX_IMPORT_ROWS} were read; import the rest as a second file.`].filter(Boolean).join(' ')
+  }
   const rows = prepareRows(extracted, staff)
   const ref = db.collection(`businesses/${bizId}/imports`).doc()
   const at = Timestamp.fromDate(now)
@@ -207,7 +211,9 @@ export async function applyImport({ db, uid, input, now }) {
         openOfferId: null, swapId: null, version: 1, createdAt: at, updatedAt: at,
       })
     }
-    tx.update(ref, { status: 'published', appliedAt: at, appliedBy: uid, shiftsCreated: resolved.length, updatedAt: at })
+    // The weeks it filled, so the import can always be traced to its shifts.
+    weeks.sort()
+    tx.update(ref, { status: 'published', appliedAt: at, appliedBy: uid, shiftsCreated: resolved.length, weeks, updatedAt: at })
     audit(tx, db, bizId, uid, 'import.applied', { importId, shifts: resolved.length, weeks, newPeople: newPeople.size }, now)
     return { created: resolved.length, weeks, newPeople: newPeople.size }
   })

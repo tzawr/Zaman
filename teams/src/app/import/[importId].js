@@ -59,8 +59,8 @@ export default function ImportReview() {
     try {
       const result = await callTeams('applyImport', { bizId: activeId, importId, rows: working })
       // Straight to the week the shifts went into, where they are published.
-      const week = [...(result.weeks || [])].sort()[0]
-      router.replace({ pathname: '/manage', params: { week, imported: String(result.created), weeks: String(result.weeks?.length || 1) } })
+      const weeks = [...(result.weeks || [])].sort()
+      router.replace({ pathname: '/manage', params: { week: weeks[0], imported: String(result.created), weeks: weeks.join(',') } })
     } catch (err) {
       setError(err instanceof ApiError ? { message: err.message, problems: err.problems } : { message: 'Could not add these shifts.' })
       setBusy(null)

@@ -78,6 +78,7 @@ function Navigator() {
           <Stack.Screen name="calendar-sync" options={{ ...modal, title: 'Calendar sync' }} />
           <Stack.Screen name="import-new" options={{ ...modal, title: 'Import a schedule' }} />
           <Stack.Screen name="import/[importId]" options={{ ...modal, title: 'Review import' }} />
+          <Stack.Screen name="imports" options={{ ...modal, title: 'Your imports' }} />
           <Stack.Screen name="verify-email" options={{ ...modal, title: 'Verify your email' }} />
           <Stack.Screen name="delete-account" options={{ ...modal, title: 'Delete account' }} />
         </Stack.Protected>

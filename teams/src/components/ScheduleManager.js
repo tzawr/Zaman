@@ -17,7 +17,7 @@ import { useTheme } from '../ui/theme'
 
 // The manager's week: build it shift by shift, then publish it to the team.
 // `week` opens a given week, as after an import; `imported` says how many
-// shifts that import added, and over how many `weeks`.
+// shifts that import added, and `weeks` (comma-separated) which weeks.
 export default function ScheduleManager({ week, imported, weeks }) {
   const router = useRouter()
   const t = useTheme()
@@ -28,6 +28,7 @@ export default function ScheduleManager({ week, imported, weeks }) {
   const [busy, setBusy] = useState(false)
   const [confirm, setConfirm] = useState(false)
   const [notice, setNotice] = useState(null)
+  const importedWeeks = typeof weeks === 'string' && weeks ? weeks.split(',') : []
 
   const availability = useTeamAvailability()
   const timeOff = useTeamTimeOff(weekStart)
@@ -67,6 +68,27 @@ export default function ScheduleManager({ week, imported, weeks }) {
   const minutes = (shifts || []).reduce((sum, s) => sum + (s.minutes || 0), 0)
   const people = new Set((shifts || []).map(s => s.staffId)).size
 
+  // A bi-weekly or monthly import, published in one go. A week already live
+  // publishes nothing; each is still its own publish, as the team hears per week.
+  async function publishWeeks(list) {
+    setBusy(true)
+    setNotice(null)
+    let shiftsOut = 0
+    const failed = []
+    for (const w of list) {
+      try {
+        const result = await callTeams('publishSchedule', { bizId: activeId, weekStart: w })
+        shiftsOut += result.published || 0
+      } catch (err) {
+        failed.push(`${formatWeekRange(w)}: ${err instanceof ApiError ? err.message : 'could not publish'}`)
+      }
+    }
+    setBusy(false)
+    setNotice(failed.length
+      ? { tone: 'danger', message: `Published ${shiftsOut} shifts, but not every week. ${failed.join(' ')}` }
+      : { tone: 'success', message: `Published ${shiftsOut} shifts across ${list.length} weeks. Your team can see them now.` })
+  }
+
   async function publish() {
     setBusy(true)
     setNotice(null)
@@ -98,8 +120,18 @@ export default function ScheduleManager({ week, imported, weeks }) {
 
       <Banner message={error} />
       <Banner tone={notice?.tone} message={notice?.message} />
-      {imported && !published && !notice ? (
-        <Banner tone="success" message={`${imported} imported ${Number(imported) === 1 ? 'shift is' : 'shifts are'} here as a draft${Number(weeks) > 1 ? `, across ${weeks} weeks (use the arrows for the next one)` : ''}. Check them, then publish so your team can see them.`} />
+      {imported && !notice ? (
+        <Card style={{ gap: 10 }}>
+          <Text>
+            {importedWeeks.length > 1
+              ? `${imported} imported shifts are in ${importedWeeks.length} weeks, ${formatWeekRange(importedWeeks[0])} to ${formatWeekRange(importedWeeks.at(-1))}. They’re drafts until you publish.`
+              : `${imported} imported ${Number(imported) === 1 ? 'shift is' : 'shifts are'} here as a draft. Check them, then publish.`}
+          </Text>
+          {importedWeeks.length > 1 ? (
+            <Button title={`Publish all ${importedWeeks.length} weeks`} icon="send" loading={busy}
+              onPress={() => publishWeeks(importedWeeks)} />
+          ) : null}
+        </Card>
       ) : null}
 
       {loading ? <><SkeletonCard lines={2} /><SkeletonCard lines={2} /></> : (
@@ -110,7 +142,8 @@ export default function ScheduleManager({ week, imported, weeks }) {
             <Stat label="People" value={String(people)} />
           </Card>
 
-          {!fromHengam ? <PendingImports onImport={() => router.push('/import-new')} onOpen={(id) => router.push(`/import/${id}`)} /> : null}
+          {!fromHengam ? <PendingImports onImport={() => router.push('/import-new')} onOpen={(id) => router.push(`/import/${id}`)}
+            onHistory={() => router.push('/imports')} /> : null}
           {fromHengam ? (
             <Banner tone="info" message="This schedule comes from Hengam. Change it there and publish it again; pickups and swaps approved here are written back to Hengam." />
           ) : published ? (
@@ -190,7 +223,7 @@ function IconButton({ icon, label, onPress }) {
 }
 
 // Imports read but not yet reviewed, and the way to start a new one.
-function PendingImports({ onImport, onOpen }) {
+function PendingImports({ onImport, onOpen, onHistory }) {
   const { activeId } = useWorkspace()
   const [state, setState] = useState({ key: null, items: [] })
   useEffect(() => {
@@ -212,6 +245,7 @@ function PendingImports({ onImport, onOpen }) {
         </Card>
       ))}
       <Button title="Import a schedule" icon="upload" variant="secondary" onPress={onImport} />
+      <Button title="Past imports and where they went" variant="ghost" onPress={onHistory} />
     </View>
   )
 }

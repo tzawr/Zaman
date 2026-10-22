@@ -179,6 +179,26 @@ describe('applying', () => {
     await rejects(call(applyImport, 'owner', { bizId, importId, rows }), 409, 'closed')
   })
 
+  test('a month for a big team imports and applies in one go, and the import knows its weeks', async () => {
+    const { bizId } = await setup()
+    const lines = ['Employee,Date,Start,End']
+    for (let p = 0; p < 25; p++) {
+      for (let d = 0; d < 28; d++) {
+        if (d % 7 === 6 || d % 7 === 5) continue // weekends off: 20 shifts each
+        const day = new Date(Date.UTC(2026, 9, 26 + d)).toISOString().slice(0, 10)
+        lines.push(`Person ${String.fromCharCode(65 + p)},${day},9:00,17:00`)
+      }
+    }
+    const { importId, rows } = await call(importSchedule, 'owner', { bizId, weekStart: WEEK, fileName: 'november.csv', data: b64(lines.join('\n')) })
+    assert.equal(rows, 500)
+    const job = await readImport(bizId, importId)
+    const r = await call(applyImport, 'owner', { bizId, importId, rows: job.rows })
+    assert.deepEqual([r.created, r.newPeople], [500, 25])
+    assert.deepEqual(r.weeks, ['2026-10-26', '2026-11-02', '2026-11-09', '2026-11-16'])
+    assert.deepEqual((await readImport(bizId, importId)).weeks, r.weeks)
+    assert.equal((await db.collection(`businesses/${bizId}/shifts`).where('importId', '==', importId).get()).size, 500)
+  })
+
   test('published weeks and overlapping shifts are refused, with nothing written', async () => {
     const { bizId, staff } = await setup()
     await call(sched.saveShift, 'owner', { bizId, staffId: staff['Ana Lima'], date: '2026-10-26', start: '10:00', end: '12:00' })

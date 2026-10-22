@@ -109,7 +109,8 @@ export async function extractWithClaude({ db, bizId, mediaType, base64, weekStar
     // Streamed so a long multi-page schedule never hits a request timeout.
     message = await anthropic.messages.stream({
       model: MODEL,
-      max_tokens: 32000,
+      // A month for a large team runs to some 50K tokens of rows.
+      max_tokens: 64000,
       thinking: { type: 'adaptive' },
       // Copying a table out needs little reasoning; low effort keeps the
       // thinking, and so the output bill, small.

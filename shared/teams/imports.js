@@ -8,7 +8,8 @@
 
 import { addDays, isDateString, normalizeTimeInput, parseTime, weekStartOf } from './time.js'
 
-export const MAX_IMPORT_ROWS = 400
+// A month for a large team; a file with more is read up to here, and says so.
+export const MAX_IMPORT_ROWS = 1000
 
 // ---- CSV --------------------------------------------------------------------
 
@@ -227,7 +228,7 @@ export function interpretTable(table, { weekStart, year } = {}) {
         }
       })
     }
-    return { layout: 'grid', rows: rows.slice(0, MAX_IMPORT_ROWS), problems }
+    return { layout: 'grid', rows, problems }
   }
 
   const col = (k) => kinds.indexOf(k)
@@ -257,7 +258,7 @@ export function interpretTable(table, { weekStart, year } = {}) {
       sure: { name: true, date: Boolean(day?.sure), times: Boolean(start && end) && (range ? range.sure : false) },
     })
   }
-  return { layout: 'list', rows: rows.slice(0, MAX_IMPORT_ROWS), problems }
+  return { layout: 'list', rows, problems }
 }
 
 // ---- Matching names to the roster -------------------------------------------

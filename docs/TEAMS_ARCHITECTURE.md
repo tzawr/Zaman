@@ -269,7 +269,7 @@ Word, Excel and CSV are read on our own server and cost nothing. Only PDFs and p
 - **CSV** (`shared/teams/imports.js`): RFC 4180, with comma, semicolon or tab detected and a BOM stripped.
 - **PDF and photos** (`api/_teams-extract.js`): Claude Haiku 5.5, at low effort, returns rows against a JSON schema and lists what it could not read. A one-week roster costs about $0.001 (2,000 tokens in, 1,400 out) and takes about 6 seconds. Each workspace may spend $1 a month and make 20 such imports a day, recorded in `aiUsage/teams-{bizId}_…`. This needs `ANTHROPIC_API_KEY` on Vercel. Haiku has no server-side fallback, so a refusal asks for the Word or Excel file.
 
-Tables are read in two layouts. A **list** has a row per shift with name, date and time columns. A **grid** has a row per person and a column per day; a weekday seen again is the following week. "Off" cells are skipped, and split shifts like "10-2 / 5-9" become two shifts. Files are capped at 3 MB and 400 rows, and are not stored: only the rows read from them are.
+Tables are read in two layouts. A **list** has a row per shift with name, date and time columns. A **grid** has a row per person and a column per day; a weekday seen again is the following week. "Off" cells are skipped, and split shifts like "10-2 / 5-9" become two shifts. Files are capped at 3 MB and 1,000 shifts (a month for a large team), and are not stored: only the rows read from them are. A file with more is read up to the cap, and the review says so.
 
 ### Review
 
@@ -279,7 +279,9 @@ Review is one screen and, usually, one tap (`teams/src/app/import/[importId].js`
 - **Only who and when hold the import back** (`rowIssues`): a shift with no person (two people share the name), no date, or no times.
 - **What the file left uncertain is shown, not demanded** (`rowWarnings`): a guessed time ("9-5" read as 09:00–17:00), a date that could be read two ways, a name that was hard to read. "Worth a look" lists these; adding the shifts accepts them.
 
-Applying refuses any shift still unresolved, any overlap, and any week already published. The shifts arrive as a **draft**, and the app opens the first imported week with a banner saying how many shifts came in, over how many weeks, and to publish when ready. An import is applied once, then marked published; a discarded one is closed.
+Applying refuses any shift still unresolved, any overlap, and any week already published; a month of 500 shifts applies in one transaction. The shifts arrive as a **draft**, and the app opens the first imported week with a banner saying how many shifts came in and over which weeks. For a bi-weekly or monthly file the banner offers **Publish all N weeks**, which publishes each week in turn. An import is applied once, then marked published with the weeks it filled; a discarded one is closed.
+
+**Your imports** (Manage → "Past imports and where they went") lists every import with its status and, for an applied one, each week its shifts are in now, counted from the shifts themselves, so it also covers imports made before weeks were recorded.
 
 ## Launch readiness (Phase 10)
 
