@@ -7,7 +7,8 @@ import { ApiError, callTeams } from '../../lib/api'
 import { db } from '../../lib/firebase'
 import { useStaff } from '../../state/shifts'
 import { useWorkspace } from '../../state/workspace'
-import { importPeople, rowIssues, rowWarnings } from '../../../../shared/teams/imports'
+import RangeCalendar from '../../components/RangeCalendar'
+import { importPeople, placeInRange, rowIssues, rowWarnings } from '../../../../shared/teams/imports'
 import { formatDateShort, isDateString, normalizeTimeInput, weekStartOf } from '../../../../shared/teams/time'
 import { Banner, Button, Card, Divider, Screen, SkeletonCard, Text, TextField } from '../../ui/components'
 import { useTheme } from '../../ui/theme'
@@ -28,6 +29,8 @@ export default function ImportReview() {
   const [error, setError] = useState(null)
   const [openRow, setOpenRow] = useState(null)
   const [showWarnings, setShowWarnings] = useState(false)
+  const [range, setRange] = useState(null)
+  const [pickingDates, setPickingDates] = useState(false)
   const key = `${activeId}/${importId}`
 
   useEffect(() => {
@@ -47,7 +50,13 @@ export default function ImportReview() {
   const blocked = included.filter(r => r.issues.length)
   const unsure = included.filter(r => !r.issues.length && r.warnings.length)
   const people = useMemo(() => importPeople(working), [working])
-  const dates = [...new Set(included.map(r => r.date).filter(Boolean))].sort()
+
+  // The days the import covers: as chosen, or else as the file had them.
+  const allDates = working.map(r => r.date).filter(Boolean).sort()
+  const shownRange = range || (data?.from && data?.to ? { from: data.from, to: data.to }
+    : allDates.length ? { from: allDates[0], to: allDates.at(-1) } : null)
+  const outside = working.filter(r => r.outOfRange).length
+  const changeDates = (next) => { setRange(next); setRows(placeInRange(working, next).rows) }
 
   const update = (id, patch) => setRows(working.map(r => (r.id === id ? { ...r, ...patch } : r)))
   // A decision about a person applies to every shift with their name.
@@ -90,7 +99,6 @@ export default function ImportReview() {
     )
   }
 
-  const range = dates.length ? (dates.length === 1 ? formatDateShort(dates[0]) : `${formatDateShort(dates[0])} – ${formatDateShort(dates.at(-1))}`) : ''
   const peopleCount = people.filter(p => p.included).length
   const byDate = {}
   checked.forEach(r => { (byDate[r.date || 'none'] ||= []).push(r) })
@@ -106,9 +114,23 @@ export default function ImportReview() {
           <Text variant="heading" accessibilityRole="header">
             {included.length} {included.length === 1 ? 'shift' : 'shifts'} for {peopleCount} {peopleCount === 1 ? 'person' : 'people'}
           </Text>
-          <Text tone="muted">{range ? `${range} · ` : ''}from {data.fileName}</Text>
+          <Text tone="muted">from {data.fileName}</Text>
         </View>
-        {data.notes ? <Banner tone="info" message={`From the reader: ${data.notes}`} /> : null}
+        {shownRange ? (
+          <Card style={{ gap: 10 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+              <Feather name="calendar" size={16} color={t.color.textMuted} />
+              <Text style={{ flex: 1 }}>
+                {formatDateShort(shownRange.from)} – {formatDateShort(shownRange.to)}
+                {outside ? ` · ${outside} outside these dates left out` : ''}
+              </Text>
+              <Button title={pickingDates ? 'Done' : 'Change dates'} variant="ghost" style={{ minHeight: 40, paddingHorizontal: 8 }}
+                onPress={() => setPickingDates(!pickingDates)} />
+            </View>
+            {pickingDates ? <RangeCalendar value={shownRange} onChange={changeDates} /> : null}
+          </Card>
+        ) : null}
+        {data.notes && !range ? <Banner tone="info" message={data.notes} /> : null}
 
         {blocked.length ? (
           <View style={{ gap: 8 }}>

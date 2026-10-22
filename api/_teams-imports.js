@@ -1,7 +1,7 @@
 import { Timestamp } from 'firebase-admin/firestore'
 import { canTransition, paths } from '../shared/teams/schema.js'
-import { MAX_IMPORT_ROWS, importWeek, interpretTable, parseCsv, prepareRows, readDate, rowIssues } from '../shared/teams/imports.js'
-import { addDays, formatWeekRange, isDateString, overlaps, resolveShiftTimes, weekStartOf } from '../shared/teams/time.js'
+import { MAX_IMPORT_ROWS, MAX_RANGE_DAYS, importWeek, interpretTable, parseCsv, placeInRange, prepareRows, readDate, rowIssues } from '../shared/teams/imports.js'
+import { addDays, daysBetween, formatDateShort, formatWeekRange, isDateString, overlaps, resolveShiftTimes, weekStartOf } from '../shared/teams/time.js'
 import { validatePersonName } from '../shared/teams/workspace.js'
 import { TeamsError, conflict, invalid, notFound } from './_teams-http.js'
 import { audit, readManager, requireId } from './_teams-common.js'
@@ -35,8 +35,17 @@ const IMAGE_TYPES = { jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png', w
 
 export async function importSchedule({ db, uid, input, now, aiClient }) {
   const bizId = requireId(input.bizId, 'workspace')
-  if (!isDateString(input.weekStart) || weekStartOf(input.weekStart) !== input.weekStart) throw invalid('Choose the week this schedule is for.')
-  const weekStart = input.weekStart
+  // The days the schedule covers, chosen on a calendar. Older versions of
+  // the app send only the week it starts.
+  let range = null
+  if (input.from !== undefined || input.to !== undefined) {
+    if (!isDateString(input.from) || !isDateString(input.to) || input.to < input.from) throw invalid('Choose the first and last day this schedule covers.')
+    if (daysBetween(input.from, input.to) >= MAX_RANGE_DAYS) throw invalid(`Choose at most ${MAX_RANGE_DAYS} days. Import a longer schedule in parts.`)
+    range = { from: input.from, to: input.to }
+  } else if (!isDateString(input.weekStart) || weekStartOf(input.weekStart) !== input.weekStart) {
+    throw invalid('Choose the week this schedule is for.')
+  }
+  const weekStart = range ? weekStartOf(range.from) : input.weekStart
   const fileName = String(input.fileName || 'schedule').slice(0, 120)
   const kind = kindOf(fileName, input.mimeType)
   if (!kind) throw invalid('Upload a Word (.docx), Excel (.xlsx) or CSV file, a PDF, or a photo of the schedule.')
@@ -100,17 +109,24 @@ export async function importSchedule({ db, uid, input, now, aiClient }) {
   if (extracted.length > MAX_IMPORT_ROWS) {
     notes = [notes, `This file has ${extracted.length} shifts. The first ${MAX_IMPORT_ROWS} were read; import the rest as a second file.`].filter(Boolean).join(' ')
   }
-  const rows = prepareRows(extracted, staff)
+  let rows = prepareRows(extracted, staff)
+  if (range) {
+    const placed = placeInRange(rows, range)
+    rows = placed.rows
+    const weeks = Math.round(Math.abs(placed.movedByDays) / 7)
+    if (weeks) notes = [notes, `The file’s dates didn’t match the dates you chose, so its shifts were moved ${weeks} ${weeks === 1 ? 'week' : 'weeks'} ${placed.movedByDays > 0 ? 'later' : 'earlier'} to start ${formatDateShort(range.from)}.`].filter(Boolean).join(' ')
+    if (placed.leftOut) notes = [notes, `${placed.leftOut} ${placed.leftOut === 1 ? 'shift falls' : 'shifts fall'} outside your dates and ${placed.leftOut === 1 ? 'was' : 'were'} left out. Change the dates to bring ${placed.leftOut === 1 ? 'it' : 'them'} in.`].filter(Boolean).join(' ')
+  }
   const ref = db.collection(`businesses/${bizId}/imports`).doc()
   const at = Timestamp.fromDate(now)
   await db.runTransaction(async (tx) => {
     tx.set(ref, {
-      status: 'review', source: kind, fileName, weekStart, layout, notes: notes || null,
-      rows, week: importWeek(rows), createdBy: uid, createdAt: at, updatedAt: at,
+      status: 'review', source: kind, fileName, weekStart, from: range?.from || null, to: range?.to || null, layout, notes: notes || null,
+      rows, week: importWeek(rows.filter(r => r.include)), createdBy: uid, createdAt: at, updatedAt: at,
     })
     audit(tx, db, bizId, uid, 'import.read', { importId: ref.id, source: kind, rows: rows.length }, now)
   })
-  return { importId: ref.id, rows: rows.length, needsReview: rows.filter(r => r.issues.length).length }
+  return { importId: ref.id, rows: rows.filter(r => r.include).length, needsReview: rows.filter(r => r.include && r.issues.length).length }
 }
 
 // Applies a reviewed import. The rows sent are the manager's final version;
@@ -271,5 +287,81 @@ export async function undoImport({ db, uid, input, now }) {
     tx.update(ref, { status: 'undone', undoneAt: at, undoneBy: uid, shiftsRemoved: shiftsSnap.size, updatedAt: at })
     audit(tx, db, bizId, uid, 'import.undone', { importId, shifts: shiftsSnap.size, weeks }, now)
     return { removed: shiftsSnap.size, weeks }
+  })
+}
+
+// Moves an applied import to other weeks: every shift it added shifts by the
+// same whole number of weeks, so Mondays stay Mondays, and its times are
+// worked out again for the new dates (clock changes included). Only while
+// the weeks it leaves and the weeks it lands in are drafts, and only if no
+// one would end up working two shifts at once.
+export async function moveImport({ db, uid, input, now }) {
+  const bizId = requireId(input.bizId, 'workspace')
+  const importId = requireId(input.importId, 'import')
+  if (!isDateString(input.toWeek) || weekStartOf(input.toWeek) !== input.toWeek) throw invalid('Choose the week it should start in.')
+  return db.runTransaction(async (tx) => {
+    await readManager(tx, db, bizId, uid)
+    const ref = db.doc(paths.importJob(bizId, importId))
+    const [snap, bizSnap] = await Promise.all([tx.get(ref), tx.get(db.doc(paths.business(bizId)))])
+    if (!snap.exists) throw notFound('That import no longer exists.')
+    if (snap.data().status !== 'published') throw conflict('closed', 'Only an import that was added can be moved.')
+    const timezone = bizSnap.data().timezone
+    const mine = (await tx.get(db.collection(`businesses/${bizId}/shifts`).where('importId', '==', importId))).docs
+      .filter(d => d.data().status !== 'cancelled')
+    if (!mine.length) throw conflict('empty', 'None of this import’s shifts are on the schedule any more.')
+
+    const fromWeeks = [...new Set(mine.map(d => d.data().scheduleId))].sort()
+    const byDays = daysBetween(fromWeeks[0], input.toWeek)
+    if (!byDays) return { moved: 0, weeks: fromWeeks }
+    if (Math.abs(byDays) > 7 * 52) throw invalid('Move it at most a year.')
+
+    // Each shift at its new date, with its times worked out again there.
+    const moved = mine.map(d => {
+      const s = d.data()
+      const date = addDays(s.date, byDays)
+      const times = resolveShiftTimes({ date, start: s.startLocal, end: s.endLocal, timezone })
+      if (!times.ok) throw invalid(`${s.staffName} on ${formatDateShort(date)}: ${times.message}`)
+      return { ref: d.ref, data: s, date, times: times.value, week: weekStartOf(date) }
+    })
+    const toWeeks = [...new Set(moved.map(m => m.week))].sort()
+    const allWeeks = [...new Set([...fromWeeks, ...toWeeks])].sort()
+    const [weekSnaps, weekShifts] = await Promise.all([
+      Promise.all(allWeeks.map(w => tx.get(db.doc(paths.schedule(bizId, w))))),
+      Promise.all(allWeeks.map(w => tx.get(db.collection(`businesses/${bizId}/shifts`).where('scheduleId', '==', w)))),
+    ])
+    const weekDoc = Object.fromEntries(allWeeks.map((w, i) => [w, weekSnaps[i]]))
+    const published = allWeeks.filter(w => weekDoc[w].exists && weekDoc[w].data().status === 'published')
+    if (published.length) {
+      throw conflict('published', `The week of ${published.map(formatWeekRange).join(', ')} is published, so the team has seen it. Move only between draft weeks.`)
+    }
+    // Shifts already in those weeks that are not part of this import.
+    const others = weekShifts.flatMap(q => q.docs).filter(d => d.data().importId !== importId && d.data().status !== 'cancelled')
+      .map(d => ({ ...d.data(), startAt: d.data().startAt.toDate(), endAt: d.data().endAt.toDate() }))
+    const clashes = moved.filter(m => others.some(o => o.staffId === m.data.staffId
+      && overlaps(o, { startAt: m.times.startAt, endAt: m.times.endAt })))
+    if (clashes.length) {
+      throw new TeamsError(422, 'overlap', `${clashes.length} ${clashes.length === 1 ? 'shift would overlap' : 'shifts would overlap'} with shifts already there.`,
+        clashes.slice(0, 20).map(m => ({ code: 'overlap', message: `${m.data.staffName} on ${formatDateShort(m.date)}` })))
+    }
+
+    // ---- writes ----
+    const at = Timestamp.fromDate(now)
+    for (const m of moved) {
+      tx.update(m.ref, {
+        date: m.date, scheduleId: m.week, startLocal: m.times.startLocal, endLocal: m.times.endLocal, overnight: m.times.overnight,
+        minutes: m.times.minutes, startAt: Timestamp.fromDate(m.times.startAt), endAt: Timestamp.fromDate(m.times.endAt),
+        version: (m.data.version || 1) + 1, updatedAt: at,
+      })
+    }
+    for (const w of toWeeks) {
+      if (!weekDoc[w].exists) tx.set(weekDoc[w].ref, { weekStart: w, status: 'draft', source: snap.data().source, version: 1, createdAt: at, updatedAt: at, createdBy: uid })
+    }
+    // A week the import leaves with nothing else in it goes.
+    for (const w of fromWeeks) {
+      if (!toWeeks.includes(w) && weekDoc[w].exists && !others.some(o => o.scheduleId === w)) tx.delete(weekDoc[w].ref)
+    }
+    tx.update(ref, { weeks: toWeeks, movedAt: at, updatedAt: at })
+    audit(tx, db, bizId, uid, 'import.moved', { importId, byDays, from: fromWeeks, to: toWeeks }, now)
+    return { moved: moved.length, weeks: toWeeks }
   })
 }

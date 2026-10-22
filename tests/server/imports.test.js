@@ -6,7 +6,7 @@ import { paths } from '../../shared/teams/schema.js'
 import * as ws from '../../api/_teams-workspaces.js'
 import * as sched from '../../api/_teams-schedules.js'
 import * as hg from '../../api/_teams-hengam.js'
-import { applyImport, discardImport, importSchedule, undoImport } from '../../api/_teams-imports.js'
+import { applyImport, discardImport, importSchedule, moveImport, undoImport } from '../../api/_teams-imports.js'
 import { MONTHLY_IMPORT_BUDGET_USD } from '../../api/_teams-extract.js'
 import { workbookOf, zip } from './_zip.js'
 
@@ -87,6 +87,19 @@ describe('reading a file', () => {
     assert.equal(job.source, 'docx')
     assert.deepEqual(job.rows.map(x => [x.date, x.start, x.end]), [['2026-10-26', '10:30', '19:00'], ['2026-11-03', '06:00', '14:00']])
     assert.equal((await db.doc(`aiUsage/teams-${bizId}_2026-10`).get()).exists, false, 'no AI, no spend')
+  })
+
+  test('a file for other dates lands in the dates chosen on the calendar', async () => {
+    const { bizId } = await setup()
+    const sept = ['Employee,Date,Start,End', 'Ana Lima,2026-09-07,7:00,15:00', 'Ana Lima,2026-09-21,7:00,15:00'].join('\n')
+    const r = await call(importSchedule, 'owner', { bizId, from: '2026-10-19', to: '2026-11-01', fileName: 'Prom 9.7-9.20.docx.csv', data: b64(sept) })
+    const job = await readImport(bizId, r.importId)
+    assert.deepEqual([job.from, job.to, r.rows], ['2026-10-19', '2026-11-01', 1])
+    assert.deepEqual(job.rows.map(x => [x.fileDate, x.date, x.include]), [['2026-09-07', '2026-10-19', true], ['2026-09-21', '2026-11-02', false]])
+    assert.match(job.notes, /moved 6 weeks later to start Mon, Oct 19/)
+    assert.match(job.notes, /1 shift falls outside your dates/)
+    await rejects(call(importSchedule, 'owner', { bizId, from: '2026-10-19', to: '2027-01-30', fileName: 'w.csv', data: b64(csv) }), 400)
+    await rejects(call(importSchedule, 'owner', { bizId, from: '2026-11-01', to: '2026-10-19', fileName: 'w.csv', data: b64(csv) }), 400)
   })
 
   test('files it cannot use are refused with the reason', async () => {
@@ -248,5 +261,41 @@ describe('undoing an import', () => {
     assert.match(err.message, /already published/)
     assert.equal((await db.collection(`businesses/${bizId}/shifts`).get()).size, 3)
     assert.equal((await readImport(bizId, second.importId)).status, 'published')
+  })
+})
+
+describe('moving an import', () => {
+  const applied = async () => {
+    const ctx = await setup()
+    const { importId } = await call(importSchedule, 'owner', { bizId: ctx.bizId, weekStart: WEEK, fileName: 'w.csv', data: b64(csv) })
+    await call(applyImport, 'owner', { bizId: ctx.bizId, importId, rows: (await readImport(ctx.bizId, importId)).rows })
+    return { ...ctx, importId }
+  }
+
+  test('moves every shift by whole weeks, times kept, and the empty week goes', async () => {
+    const { bizId, importId } = await applied()
+    const r = await call(moveImport, 'owner', { bizId, importId, toWeek: '2026-11-09' })
+    assert.deepEqual(r, { moved: 3, weeks: ['2026-11-09'] })
+    const shifts = (await db.collection(`businesses/${bizId}/shifts`).get()).docs.map(d => d.data()).sort((a, b) => a.date.localeCompare(b.date))
+    assert.deepEqual(shifts.map(s => [s.date, s.startLocal, s.endLocal, s.scheduleId]), [
+      ['2026-11-09', '07:00', '15:00', '2026-11-09'], ['2026-11-10', '09:00', '17:00', '2026-11-09'], ['2026-11-11', '10:00', '18:00', '2026-11-09'],
+    ])
+    // Pacific time fell back on Nov 1: the instant follows the local time.
+    assert.equal(shifts[0].startAt.toDate().toISOString(), '2026-11-09T15:00:00.000Z')
+    assert.equal((await db.doc(paths.schedule(bizId, WEEK)).get()).exists, false)
+    assert.equal((await db.doc(paths.schedule(bizId, '2026-11-09')).get()).data().status, 'draft')
+    assert.deepEqual((await readImport(bizId, importId)).weeks, ['2026-11-09'])
+  })
+
+  test('refuses published weeks and clashes, changing nothing', async () => {
+    const { bizId, importId, staff } = await applied()
+    await call(sched.saveShift, 'owner', { bizId, staffId: staff['Ana Lima'], date: '2026-11-16', start: '06:00', end: '09:00' })
+    const clash = await rejects(call(moveImport, 'owner', { bizId, importId, toWeek: '2026-11-16' }), 422, 'overlap')
+    assert.match(clash.problems[0].message, /Ana Lima/)
+    await call(sched.publishSchedule, 'owner', { bizId, weekStart: '2026-11-16' })
+    await rejects(call(moveImport, 'owner', { bizId, importId, toWeek: '2026-11-16' }), 409, 'published')
+    await rejects(call(moveImport, 'owner', { bizId, importId, toWeek: '2026-11-17' }), 400)
+    const dates = (await db.collection(`businesses/${bizId}/shifts`).where('importId', '==', importId).get()).docs.map(d => d.data().date).sort()
+    assert.deepEqual(dates, ['2026-10-26', '2026-10-27', '2026-10-28'])
   })
 })

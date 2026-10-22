@@ -63,6 +63,7 @@ const ACTIONS = {
   applyImport: { run: imports.applyImport, limit: [60, 60 * 60] },
   discardImport: { run: imports.discardImport, limit: [60, 60 * 60] },
   undoImport: { run: imports.undoImport, limit: [30, 60 * 60] },
+  moveImport: { run: imports.moveImport, limit: [60, 60 * 60] },
   // The same erasure as Hengam's Settings; the app re-authenticates first.
   deleteAccount: { run: deleteAccount, limit: [5, 60 * 60] },
   // A phone that signed out offline, removing its push entry afterwards.

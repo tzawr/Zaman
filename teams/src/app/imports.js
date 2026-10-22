@@ -2,10 +2,11 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'expo-router'
 import { View } from 'react-native'
 import { collection, getDocs, limit, onSnapshot, orderBy, query, where } from 'firebase/firestore'
+import DateField from '../components/DateField'
 import { ApiError, callTeams } from '../lib/api'
 import { db } from '../lib/firebase'
 import { useWorkspace } from '../state/workspace'
-import { formatDateShort, formatWeekRange } from '../../../shared/teams/time'
+import { addDays, daysBetween, formatDateShort, formatWeekRange, weekStartOf } from '../../../shared/teams/time'
 import { Badge, Banner, Button, Card, EmptyState, Screen, SkeletonCard, Text } from '../ui/components'
 
 // Every schedule imported here, newest first, and where its shifts went: an
@@ -40,6 +41,21 @@ export default function Imports() {
 }
 
 function ImportCard({ item, bizId, onOpenWeek, onReview }) {
+  async function move() {
+    setBusy(true)
+    setMessage(null)
+    try {
+      const r = await callTeams('moveImport', { bizId, importId: item.id, toWeek: moveTo })
+      setMessage({ tone: 'success', message: `Moved ${r.moved} ${r.moved === 1 ? 'shift' : 'shifts'} to start ${formatWeekRange(r.weeks[0])}.` })
+      setMoveTo(null)
+    } catch (err) {
+      setMessage({ tone: 'danger', message: err instanceof ApiError
+        ? [err.message, ...(err.problems || []).slice(0, 4).map(p => p.message)].join(' ') : 'Could not move this import.' })
+    } finally {
+      setBusy(false)
+    }
+  }
+
   async function undo() {
     setBusy(true)
     setMessage(null)
@@ -59,6 +75,7 @@ function ImportCard({ item, bizId, onOpenWeek, onReview }) {
   const at = item.createdAt?.toDate?.()
   const added = at ? formatDateShort(`${at.getFullYear()}-${String(at.getMonth() + 1).padStart(2, '0')}-${String(at.getDate()).padStart(2, '0')}`) : ''
   const [confirming, setConfirming] = useState(false)
+  const [moveTo, setMoveTo] = useState(null)
   const [busy, setBusy] = useState(false)
   const [message, setMessage] = useState(null)
   const status = { review: ['Waiting for review', 'warning'], published: ['Added', 'success'], discarded: ['Discarded', 'neutral'], undone: ['Undone', 'neutral'] }[item.status]
@@ -90,7 +107,26 @@ function ImportCard({ item, bizId, onOpenWeek, onReview }) {
             </View>
           ) : <Banner tone="warning" message="None of this import’s shifts are on the schedule any more. They may have been deleted." />
       ) : null}
-      {item.status === 'published' ? (
+      {item.status === 'published' && weeks?.length && !confirming ? (
+        moveTo ? (
+          <View style={{ gap: 8 }}>
+            <DateField label="New first week" value={moveTo} step={7} onChange={(d) => setMoveTo(weekStartOf(d))} />
+            <Text variant="caption" tone="muted">
+              {(() => {
+                const by = daysBetween(weeks[0].week, moveTo)
+                const end = addDays(weeks.at(-1).week, by + 6)
+                return by ? `Moves it to ${formatDateShort(moveTo)} – ${formatDateShort(end)}, ${Math.abs(by / 7)} ${Math.abs(by) === 7 ? 'week' : 'weeks'} ${by > 0 ? 'later' : 'earlier'}. Every shift keeps its weekday and times.`
+                  : 'This is where it is now. Step to another week.'
+              })()}
+            </Text>
+            <View style={{ flexDirection: 'row', gap: 8 }}>
+              <Button title="Move it" loading={busy} disabled={moveTo === weeks[0].week} style={{ flex: 1 }} onPress={move} />
+              <Button title="Cancel" variant="secondary" style={{ flex: 1 }} onPress={() => setMoveTo(null)} />
+            </View>
+          </View>
+        ) : <Button title="Move to other dates" variant="ghost" icon="move" onPress={() => { setMessage(null); setMoveTo(weeks[0].week) }} />
+      ) : null}
+      {item.status === 'published' && !moveTo ? (
         confirming ? (
           <View style={{ gap: 8 }}>
             <Text>Remove the {item.shiftsCreated ?? ''} shifts this import added? Weeks you have published can’t be undone this way.</Text>

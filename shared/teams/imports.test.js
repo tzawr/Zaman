@@ -1,7 +1,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import {
-  importPeople, interpretTable, matchStaff, parseCsv, prepareRows, readDate, readTime, readTimeRange, rowWarnings, weekdayOf,
+  importPeople, interpretTable, matchStaff, parseCsv, placeInRange, prepareRows, readDate, readTime, readTimeRange, rowWarnings, weekdayOf,
 } from './imports.js'
 
 test('CSV: quotes, embedded delimiters, CRLF, and the delimiter guessed', () => {
@@ -105,4 +105,30 @@ test('only who and when hold a row back; doubts are warnings, new names are adde
 
   const people = importPeople([exact, guess, newcomer, { ...newcomer, id: 'r9', include: false }])
   assert.deepEqual(people.map(p => [p.name, p.staffId, p.count, p.included]), [['Ana Lima', 'a', 1, 1], ['Ana', 'a', 1, 1], ['Zed', 'new', 2, 1]])
+})
+
+test('shifts land in the dates the manager chose', () => {
+  const row = (id, date, include = true) => ({ id, date, include })
+  const twoWeeks = { from: '2026-10-19', to: '2026-11-01' }
+
+  // A file for those very weeks stays where it is.
+  const same = placeInRange([row('a', '2026-10-19'), row('b', '2026-10-30')], twoWeeks)
+  assert.deepEqual([same.movedByDays, same.rows.map(r => r.date)], [0, ['2026-10-19', '2026-10-30']])
+
+  // A September file, chosen for October, moves by whole weeks: Monday stays Monday.
+  const sept = placeInRange([row('a', '2026-09-07'), row('b', '2026-09-13'), row('c', '2026-09-21')], twoWeeks)
+  assert.equal(sept.movedByDays, 42)
+  assert.deepEqual(sept.rows.map(r => [r.fileDate, r.date, r.include]), [
+    ['2026-09-07', '2026-10-19', true], ['2026-09-13', '2026-10-25', true], ['2026-09-21', '2026-11-02', false],
+  ])
+  assert.equal(sept.leftOut, 1)
+
+  // Widening the dates brings the left-out shift back; one the manager left out stays out.
+  const wider = placeInRange([...sept.rows.slice(0, 2), sept.rows[2], { ...row('d', '2026-09-08'), include: false }], { from: '2026-10-19', to: '2026-11-08' })
+  assert.deepEqual(wider.rows.map(r => [r.date, r.include]), [
+    ['2026-10-19', true], ['2026-10-25', true], ['2026-11-02', true], ['2026-10-20', false],
+  ])
+
+  // Rows with no date are left for the manager to date.
+  assert.deepEqual(placeInRange([row('x', null)], twoWeeks).rows[0].date, null)
 })

@@ -6,7 +6,7 @@
 // a person needs to check. Nothing an import produces becomes a shift until a
 // manager has reviewed it.
 
-import { addDays, isDateString, normalizeTimeInput, parseTime, weekStartOf } from './time.js'
+import { addDays, daysBetween, isDateString, normalizeTimeInput, parseTime, weekStartOf } from './time.js'
 
 // A month for a large team; a file with more is read up to here, and says so.
 export const MAX_IMPORT_ROWS = 1000
@@ -372,4 +372,31 @@ export function importWeek(rows) {
   const counts = {}
   rows.filter(r => r.date).forEach(r => { const w = weekStartOf(r.date); counts[w] = (counts[w] || 0) + 1 })
   return Object.entries(counts).sort((a, b) => b[1] - a[1])[0]?.[0] || null
+}
+
+// The longest stretch one import may cover: a month and a bit.
+export const MAX_RANGE_DAYS = 62
+
+// Places an import's shifts in the days the manager chose. Each row keeps
+// the date the file gave it as `fileDate`, so the range can change again.
+//
+// When none of the file's dates fall in the range (a file for September, a
+// range in October), the whole file moves by whole weeks so its first week
+// starts the range: weekdays stay where the file put them. Shifts that end
+// up outside the range are left out, not deleted, and can be put back.
+export function placeInRange(rows, { from, to }) {
+  const base = rows.map(r => ({ ...r, fileDate: r.fileDate ?? r.date }))
+  const dated = base.map(r => r.fileDate).filter(Boolean).sort()
+  if (!dated.length) return { rows: base, movedByDays: 0, leftOut: 0 }
+  const fits = dated.some(d => d >= from && d <= to)
+  const movedByDays = fits ? 0 : daysBetween(weekStartOf(dated[0]), weekStartOf(from))
+  let leftOut = 0
+  const placed = base.map(r => {
+    if (!r.fileDate) return r
+    const date = addDays(r.fileDate, movedByDays)
+    const inside = date >= from && date <= to
+    if (!inside && r.include !== false) leftOut++
+    return { ...r, date, include: inside ? (r.outOfRange ? true : r.include) : false, outOfRange: !inside }
+  })
+  return { rows: placed, movedByDays, leftOut }
 }

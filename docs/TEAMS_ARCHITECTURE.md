@@ -271,6 +271,12 @@ Word, Excel and CSV are read on our own server and cost nothing. Only PDFs and p
 
 Tables are read in two layouts. A **list** has a row per shift with name, date and time columns. A **grid** has a row per person and a column per day; a weekday seen again is the following week. "Off" cells are skipped, and split shifts like "10-2 / 5-9" become two shifts. Files are capped at 3 MB and 1,000 shifts (a month for a large team), and are not stored: only the rows read from them are. A file with more is read up to the cap, and the review says so.
 
+### Dates
+
+The manager picks the days a schedule covers on a calendar (`teams/src/components/RangeCalendar.js`): the first and last day, or 1, 2 or 4 weeks; at most 62 days. `placeInRange` (`shared/teams/imports.js`) puts the file's shifts there. A file whose dates fit the range keeps them; a file for other dates (last month's schedule, say) moves by whole weeks so its first week starts the range, keeping each shift's weekday; shifts that land outside are left out, not lost. Each row keeps its `fileDate`, so the review's **Change dates** re-places everything before anything is added.
+
+After an import is added, **Move to other dates** in Your imports (`moveImport`) shifts every one of its shifts by the same number of weeks, working the times out again for the new dates (clock changes included). It refuses published weeks, at either end, and anyone ending up with two shifts at once. A single shift is moved by editing it.
+
 ### Review
 
 Review is one screen and, usually, one tap (`teams/src/app/import/[importId].js`):
