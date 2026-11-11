@@ -20,14 +20,14 @@ import * as workspaces from '../_teams-workspaces.js'
 // POST /api/teams/<action> with a JSON body. Each action declares whether it
 // needs a signed-in caller and how hard it may be hit; the workflow itself
 // does the authorization against what it reads inside its transaction.
-const ACTIONS = {
+export const ACTIONS = {
   createBusiness: { run: workspaces.createBusiness, limit: [10, 60 * 60] },
   createInvite: { run: workspaces.createInvite, limit: [60, 60 * 60] },
   revokeInvite: { run: workspaces.revokeInvite, limit: [60, 60 * 60] },
   // Called before sign-in, so it is limited by address. The limit is what
   // keeps invite codes out of reach of guessing.
-  previewInvite: { run: workspaces.previewInvite, auth: false, limit: [30, 15 * 60] },
-  acceptInvite: { run: workspaces.acceptInvite, limit: [20, 15 * 60] },
+  previewInvite: { run: workspaces.previewInvite, auth: false, limit: [30, 15 * 60], everyone: [600, 15 * 60], failClosed: true },
+  acceptInvite: { run: workspaces.acceptInvite, limit: [20, 15 * 60], failClosed: true },
   updateMemberRole: { run: workspaces.updateMemberRole, limit: [60, 60 * 60] },
   removeMember: { run: workspaces.removeMember, limit: [60, 60 * 60] },
   leaveBusiness: { run: workspaces.leaveBusiness, limit: [20, 60 * 60] },
@@ -69,10 +69,12 @@ const ACTIONS = {
   deleteAccount: { run: deleteAccount, limit: [5, 60 * 60] },
   // A phone that signed out offline, removing its push entry afterwards.
   // Called signed out, so limited by address.
-  forgetDevice: { run: forgetDevice, auth: false, limit: [30, 60 * 60] },
+  forgetDevice: { run: forgetDevice, auth: false, limit: [30, 60 * 60], everyone: [1200, 60 * 60] },
   // Crashes the app caught. Sent before sign-in too, so limited by address.
-  reportClientError: { run: reportClientError, auth: false, limit: [30, 60 * 60] },
+  reportClientError: { run: reportClientError, auth: false, limit: [30, 60 * 60], everyone: [2400, 60 * 60] },
 }
+
+const EVERYONE_SHARDS = 10
 
 // GET /api/teams/health, for an uptime monitor: the function runs and can
 // reach Firestore. Not rate limited, since the limiter itself needs Firestore.
@@ -108,10 +110,33 @@ export default async function handler(req, res) {
     return sendError(res, err, 'Sign in to continue.')
   }
 
+  const caller = token?.uid || clientIp(req)
+  if (!token && process.env.LOG_CLIENT_IP_HEADERS === '1') {
+    // Staging only: shows which header the identity came from, so header
+    // handling can be checked against the real platform.
+    console.log('client-ip', JSON.stringify({
+      action: name, chosen: caller,
+      xff: req.headers['x-forwarded-for'] || null,
+      xRealIp: req.headers['x-real-ip'] || null,
+      xVercelForwardedFor: req.headers['x-vercel-forwarded-for'] || null,
+      socket: req.socket?.remoteAddress || null,
+    }))
+  }
   const [max, windowSeconds] = action.limit
-  const limit = await consumeRateLimit(`teams-${name}`, token?.uid || clientIp(req), max, windowSeconds)
+  const limit = await consumeRateLimit(`teams-${name}`, caller, max, windowSeconds, { failClosed: action.failClosed === true })
   if (!limit.allowed) {
     return sendRateLimited(res, limit.retryAfterSeconds, 'Too many attempts. Try again in a little while.')
+  }
+  // Signed-out actions also share one ceiling across every caller, so
+  // rotating addresses cannot multiply the per-address limit without bound.
+  // Spread over shards so the counter is not one hot document.
+  if (action.everyone) {
+    const [total, everyoneWindow] = action.everyone
+    const shard = Math.floor(Math.random() * EVERYONE_SHARDS)
+    const all = await consumeRateLimit(`teams-${name}-everyone`, `s${shard}`, Math.ceil(total / EVERYONE_SHARDS), everyoneWindow, { failClosed: action.failClosed === true })
+    if (!all.allowed) {
+      return sendRateLimited(res, all.retryAfterSeconds, 'This is busy right now. Try again in a little while.')
+    }
   }
 
   try {

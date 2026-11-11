@@ -1,0 +1,51 @@
+{
+  "_comment": "Derived from baseline run baseline-2026-11-11T01-58-20. Regenerate when the environment changes; thresholds from a laptop are meaningless on staging and vice versa.",
+  "security_violations": [
+    "count==0"
+  ],
+  "unexpected_responses": [
+    "rate<0.01"
+  ],
+  "auth_failures": [
+    "count==0"
+  ],
+  "timeouts": [
+    "count==0"
+  ],
+  "http_req_duration{action:saveShift}": [
+    "p(95)<89",
+    "p(99)<2119"
+  ],
+  "http_req_duration{action:firestore.myShifts}": [
+    "p(95)<65",
+    "p(99)<122"
+  ],
+  "http_req_duration{action:health}": [
+    "p(95)<58",
+    "p(99)<112"
+  ],
+  "http_req_duration{action:saveAvailability}": [
+    "p(95)<88",
+    "p(99)<149"
+  ],
+  "http_req_duration{action:firestore.crossTenant}": [
+    "p(95)<63",
+    "p(99)<124"
+  ],
+  "http_req_duration{action:signIn}": [
+    "p(95)<55",
+    "p(99)<111"
+  ],
+  "http_req_duration{action:firestore.managerWeek}": [
+    "p(95)<62",
+    "p(99)<116"
+  ],
+  "http_req_duration{action:publishSchedule}": [
+    "p(95)<106",
+    "p(99)<165"
+  ],
+  "http_req_duration{action:deleteShift}": [
+    "p(95)<191",
+    "p(99)<1591"
+  ]
+}

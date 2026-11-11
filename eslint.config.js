@@ -5,7 +5,7 @@ import reactRefresh from 'eslint-plugin-react-refresh'
 import { defineConfig, globalIgnores } from 'eslint/config'
 
 export default defineConfig([
-  globalIgnores(['dist', 'teams']),
+  globalIgnores(['dist', 'teams', 'loadtest/results', 'loadtest/.data']),
   {
     files: ['**/*.{js,jsx}'],
     extends: [
@@ -27,9 +27,16 @@ export default defineConfig([
     },
   },
   {
-    files: ['api/**/*.js', 'scripts/**/*.js', 'tests/**/*.js'],
+    files: ['api/**/*.js', 'scripts/**/*.js', 'tests/**/*.js', 'loadtest/**/*.{js,mjs}'],
     languageOptions: {
       globals: globals.node,
+    },
+  },
+  {
+    // k6 scripts run in k6's own runtime, which provides these.
+    files: ['loadtest/k6/**/*.js'],
+    languageOptions: {
+      globals: { __ENV: 'readonly', __VU: 'readonly', __ITER: 'readonly', open: 'readonly' },
     },
   },
 ])

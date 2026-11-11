@@ -14973,6 +14973,28 @@ input[type="time"]::-webkit-calendar-picker-indicator:hover {
   text-align: left;
 }
 
+.rule-failure .setup-blocked-message {
+  display: block;
+  margin: 8px 0 0;
+}
+
+.rule-failure-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.rule-failure-actions button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.rules-skipped-banner {
+  margin: 0 0 14px;
+}
+
 .setup-blocked-head {
   display: flex;
   align-items: center;

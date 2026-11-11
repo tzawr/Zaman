@@ -1,0 +1,10 @@
+{
+  "_comment": "Sanity bounds used until a baseline exists. They are not acceptance criteria: run the baseline profile, then `node loadtest/scripts/run.mjs --profile baseline --save-baseline` writes thresholds.baseline.json from measured latency, and later profiles are judged against that.",
+  "security_violations": ["count==0"],
+  "unexpected_responses": ["rate<0.01"],
+  "auth_failures": ["count==0"],
+  "timeouts": ["count==0"],
+  "http_req_duration{action:saveShift}": ["p(95)<3000"],
+  "http_req_duration{action:firestore.myShifts}": ["p(95)<2000"],
+  "http_req_duration{action:health}": ["p(95)<1500"]
+}

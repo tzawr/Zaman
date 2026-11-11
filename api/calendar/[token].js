@@ -12,7 +12,10 @@ export default async function handler(req, res) {
   try {
     initAdmin()
     const limit = await consumeRateLimit('calendar-feed', token.slice(0, 48) || 'none', 120, 60 * 60)
-    if (!limit.allowed) return res.status(429).end()
+    if (!limit.allowed) {
+      res.setHeader('Retry-After', String(limit.retryAfterSeconds))
+      return res.status(429).end()
+    }
     const ics = await renderFeed(getFirestore(), token)
     if (!ics) return res.status(404).send('Not found')
     res.setHeader('Content-Type', 'text/calendar; charset=utf-8')

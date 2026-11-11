@@ -33,7 +33,7 @@ export default async function handler(req, res) {
     // A promo code is a bearer secret and a wrong guess is cheap, so without a
     // limit the endpoint is a namespace to walk. Ten an hour leaves room for
     // fat fingers and none for a dictionary.
-    const limit = await consumeRateLimit('promo', userId, 10, 60 * 60)
+    const limit = await consumeRateLimit('promo', userId, 10, 60 * 60, { failClosed: true })
     if (!limit.allowed) {
       return sendRateLimited(
         res,

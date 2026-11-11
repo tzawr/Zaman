@@ -1,6 +1,7 @@
 import Anthropic from '@anthropic-ai/sdk'
 import { FieldValue } from 'firebase-admin/firestore'
 import { TeamsError } from './_teams-http.js'
+import { reserveAiBudget } from './_ai-budget.js'
 
 // Reading a schedule from a PDF or a photo with Claude. Claude returns
 // structured rows and says which parts it could not read clearly; nothing it
@@ -71,28 +72,39 @@ Leave out days off, holidays and blank cells. A schedule may show several weeks;
 const monthKey = (now) => now.toISOString().slice(0, 7)
 const dayKey = (now) => now.toISOString().slice(0, 10)
 
-async function checkBudget(db, bizId, now) {
-  const [month, day] = await Promise.all([
-    db.doc(`aiUsage/teams-${bizId}_${monthKey(now)}`).get(),
-    db.doc(`aiUsage/teams-${bizId}_${dayKey(now)}`).get(),
-  ])
-  if ((Number(month.data()?.spendUsd) || 0) >= MONTHLY_IMPORT_BUDGET_USD) {
-    throw new TeamsError(429, 'budget', 'This workspace has used this month’s photo and PDF imports. Word, Excel and CSV imports still work.')
-  }
-  if ((Number(day.data()?.calls) || 0) >= MAX_AI_IMPORTS_PER_DAY) {
-    throw new TeamsError(429, 'budget', 'That is today’s limit for photo and PDF imports. Try again tomorrow, or import a Word, Excel or CSV file.')
-  }
+const BUDGET_MESSAGES = {
+  month: 'This workspace has used this month’s photo and PDF imports. Word, Excel and CSV imports still work.',
+  day: 'That is today’s limit for photo and PDF imports. Try again tomorrow, or import a Word, Excel or CSV file.',
 }
 
-async function recordUsage(db, bizId, usage, now) {
+// Worst case for one read: the full output ceiling, plus input bounded by the
+// file size (a token is at least ~3 bytes of base64) up to the 100K tier.
+const MAX_OUTPUT_TOKENS = 64000
+const holdFor = (base64) => Math.min(100000, Math.ceil(String(base64 || '').length / 3)) * INPUT_PER_TOKEN + MAX_OUTPUT_TOKENS * OUTPUT_PER_TOKEN
+
+// The check and a hold on the call's worst-case cost happen in one
+// transaction, so a burst of imports cannot all pass the same check.
+async function reserveBudget(db, bizId, base64, now) {
+  const budget = await reserveAiBudget(db, {
+    monthRef: db.doc(`aiUsage/teams-${bizId}_${monthKey(now)}`),
+    dayRef: db.doc(`aiUsage/teams-${bizId}_${dayKey(now)}`),
+    monthlyUsd: MONTHLY_IMPORT_BUDGET_USD,
+    maxCallsPerDay: MAX_AI_IMPORTS_PER_DAY,
+    holdUsd: holdFor(base64),
+    monthFields: { bizId },
+    dayFields: { bizId },
+    stamp: now,
+  })
+  if (budget.blocked === 'busy') throw new TeamsError(503, 'busy', 'Reading files is busy right now. Try again in a minute.')
+  if (budget.blocked) throw new TeamsError(429, 'budget', BUDGET_MESSAGES[budget.blocked])
+  return budget
+}
+
+function costOf(usage) {
   const input = (usage?.input_tokens || 0) + (usage?.cache_creation_input_tokens || 0) + (usage?.cache_read_input_tokens || 0)
   const output = usage?.output_tokens || 0
-  const spendUsd = input * INPUT_PER_TOKEN + output * OUTPUT_PER_TOKEN
-  const fields = { bizId, inputTokens: FieldValue.increment(input), outputTokens: FieldValue.increment(output), calls: FieldValue.increment(1), updatedAt: now }
-  await Promise.all([
-    db.doc(`aiUsage/teams-${bizId}_${monthKey(now)}`).set({ ...fields, spendUsd: FieldValue.increment(spendUsd) }, { merge: true }),
-    db.doc(`aiUsage/teams-${bizId}_${dayKey(now)}`).set(fields, { merge: true }),
-  ])
+  const tokens = { inputTokens: FieldValue.increment(input), outputTokens: FieldValue.increment(output) }
+  return { costUsd: input * INPUT_PER_TOKEN + output * OUTPUT_PER_TOKEN, inputTokens: input, outputTokens: output, dayExtra: tokens }
 }
 
 // Returns { rows, notes } in the shape shared/teams/imports.js prepares for
@@ -100,7 +112,7 @@ async function recordUsage(db, bizId, usage, now) {
 export async function extractWithClaude({ db, bizId, mediaType, base64, weekStart, roster, now, client }) {
   const kind = AI_MEDIA_TYPES[mediaType]
   if (!kind) throw new TeamsError(400, 'invalid', 'Upload a PDF or a photo (JPEG, PNG, WebP or GIF).')
-  await checkBudget(db, bizId, now)
+  const budget = await reserveBudget(db, bizId, base64, now)
 
   const anthropic = client || new Anthropic()
   const source = { type: 'base64', media_type: mediaType, data: base64 }
@@ -110,7 +122,7 @@ export async function extractWithClaude({ db, bizId, mediaType, base64, weekStar
     message = await anthropic.messages.stream({
       model: MODEL,
       // A month for a large team runs to some 50K tokens of rows.
-      max_tokens: 64000,
+      max_tokens: MAX_OUTPUT_TOKENS,
       thinking: { type: 'adaptive' },
       // Copying a table out needs little reasoning; low effort keeps the
       // thinking, and so the output bill, small.
@@ -130,6 +142,8 @@ export async function extractWithClaude({ db, bizId, mediaType, base64, weekStar
       }],
     }).finalMessage()
   } catch (err) {
+    // Nothing was billed; give the hold and the day's call back.
+    await budget.release().catch(e => console.error('import budget release failed:', e))
     if (err instanceof Anthropic.BadRequestError) {
       throw new TeamsError(422, 'unreadable', 'This file could not be read. Try a clearer photo, or a PDF under 3 MB.')
     }
@@ -138,7 +152,7 @@ export async function extractWithClaude({ db, bizId, mediaType, base64, weekStar
     }
     throw err
   }
-  await recordUsage(db, bizId, message.usage, now)
+  await budget.settle(costOf(message.usage))
 
   if (message.stop_reason === 'refusal') {
     throw new TeamsError(422, 'unreadable', 'This file could not be read as a schedule. Try the Word or Excel file instead.')

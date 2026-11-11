@@ -1,0 +1,20 @@
+{
+  "_comment": "Unit prices for the cost estimate in run reports. These are planning estimates: check https://cloud.google.com/firestore/pricing and https://vercel.com/pricing before relying on them, and replace the per-action op counts with figures from the staging project's usage dashboard after a staging run.",
+  "asOf": "2026-11-10",
+  "firestore": { "readUsd": 0.0000006, "writeUsd": 0.0000018, "deleteUsd": 0.0000002 },
+  "vercel": { "invocationUsd": 0.0000006, "activeCpuHourUsd": 0.128, "memoryGbHourUsd": 0.0106, "memoryGb": 1, "avgActiveCpuMs": 40 },
+  "_opsComment": "Estimated Firestore operations per request, read off the handlers. Each Teams action also reads and writes its rate-limit counter (1 read + 1 write, or 1 read when refused).",
+  "opsPerRequest": {
+    "saveShift": { "reads": 7, "writes": 3, "function": true },
+    "deleteShift": { "reads": 5, "writes": 3, "function": true },
+    "publishSchedule": { "reads": 30, "writes": 15, "function": true },
+    "saveAvailability": { "reads": 4, "writes": 3, "function": true },
+    "createBusiness": { "reads": 1, "writes": 0, "function": true },
+    "health": { "reads": 1, "writes": 0, "function": true },
+    "signIn": { "reads": 0, "writes": 0, "function": false },
+    "firestore.myShifts": { "reads": 5, "writes": 0, "function": false },
+    "firestore.managerWeek": { "reads": 8, "writes": 0, "function": false },
+    "firestore.crossTenant": { "reads": 1, "writes": 0, "function": false },
+    "firestore.runQuery": { "reads": 2, "writes": 0, "function": false }
+  }
+}

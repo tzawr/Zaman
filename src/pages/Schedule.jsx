@@ -55,6 +55,7 @@ import {
   getUserTier,
 } from '../utils/tier'
 import { getSetupStatus, describeMissingSetup, DAY_KEYS } from '../utils/setupChecklist'
+import { RuleParseError, errorForResponse, extractRulesJson, hasWrittenRules, rulesOutcome, rulesStep } from '../utils/ruleParsing'
 
 function Schedule() {
   const navigate = useNavigate()
@@ -63,12 +64,18 @@ function Schedule() {
   const generationSeedRef = useRef(0)
   
   const [employees, setEmployees] = useState([])
+  // Until the first snapshot arrives the team looks empty, and generating
+  // would wrongly report "no team members". Generate waits for it.
+  const [employeesLoaded, setEmployeesLoaded] = useState(false)
   const [userSettings, setUserSettings] = useState(null)
   const [prompt, setPrompt] = useState('')
   const [weekStart, setWeekStart] = useState(getNextMonday())
   const [generating, setGenerating] = useState(false)
   const [error, setError] = useState('')
   const [setupProblems, setSetupProblems] = useState([])
+  // Set when the written rules could not be read: generation stops and the
+  // manager chooses to retry or to continue without them.
+  const [ruleFailure, setRuleFailure] = useState(null)
   const [loading, setLoading] = useState(true)
   const [saved, setSaved] = useState(false)
   const [copied, setCopied] = useState(false)
@@ -136,6 +143,7 @@ function Schedule() {
     const unsubscribe = onSnapshot(q, async (snapshot) => {
       const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))
       setEmployees(await mergeEmployeePortalAvailability(data))
+      setEmployeesLoaded(true)
     })
 
     return () => unsubscribe()
@@ -160,8 +168,22 @@ function Schedule() {
     getUserTier(currentUser.uid).then(setTier).catch(() => setTier('free'))
   }, [currentUser, userSettings])
 
-  async function generateSchedule() {
+  // Every failure on the way to a schedule ends up on screen. Steps before
+  // the main try (team availability, plan checks) used to throw past it, and
+  // the button then simply did nothing; a missing index did exactly that.
+  async function generateSchedule(options) {
+    try {
+      await runGenerateSchedule(options)
+    } catch (err) {
+      console.error(err)
+      setGenerating(false)
+      setError(t('scheduleFailedGenerate'))
+    }
+  }
+
+  async function runGenerateSchedule({ skipRules = false } = {}) {
     setError('')
+    setRuleFailure(null)
     setSetupProblems([])
     setScheduleData(null)
     setSaved(false)
@@ -194,17 +216,31 @@ function Schedule() {
     }
     const plainLanguageGate = await canUsePlainLanguageRules(currentUser.uid)
 
+    const step = rulesStep({
+      hasRules: hasWrittenRules(userSettings.coverageRules, prompt),
+      planAllows: !plainLanguageGate.blocked,
+      skipRules,
+    })
+
     try {
       setGenerating(true)
 
-      // Step 1: Parse both coverage rules and special instructions into structured constraints (AI, cached)
-      const parsedRules = plainLanguageGate.blocked
-        ? null
-        : enhanceParsedRules(
-            await parseSchedulingInstructionsCached(userSettings.coverageRules, prompt),
-            prompt,
-            schedulingEmployees
-          )
+      // Step 1: Parse both coverage rules and special instructions into
+      // structured constraints (AI, cached). A failure stops here: the week
+      // is never built from rules the manager wrote but we could not read.
+      let aiRules = null
+      if (step === 'parse') {
+        try {
+          aiRules = await parseSchedulingInstructionsCached(userSettings.coverageRules, prompt)
+        } catch (err) {
+          if (!(err instanceof RuleParseError)) throw err
+          setRuleFailure({ kind: err.kind, message: err.serverMessage })
+          return
+        }
+      }
+      // Local name-based hints only come from this week's instructions, so
+      // they are dropped too when the manager chose to go without them.
+      const parsedRules = step === 'skipped' ? null : enhanceParsedRules(aiRules, prompt, schedulingEmployees)
 
       // Step 2: Build deterministic constraints from structured rules
       const constraints = buildConstraintsFromParsedRules(
@@ -244,6 +280,8 @@ function Schedule() {
           : []
       }
 
+      Object.assign(result, rulesOutcome(step))
+
       // Step 5: Save and display
       const finalText = JSON.stringify(result, null, 2)
       setScheduleData(result)
@@ -279,7 +317,9 @@ function Schedule() {
         data: parsedData || null,
         instructions: prompt || null,
         employeeCount: employees.length,
-        createdAt: serverTimestamp()
+        createdAt: serverTimestamp(),
+        rulesApplied: parsedData?.rulesApplied ?? null,
+        rulesSkippedReason: parsedData?.rulesSkippedReason ?? null,
       })
       await enforceScheduleHistoryLimit(currentUser.uid)
       setSaved(true)
@@ -494,8 +534,8 @@ function Schedule() {
   <div className="gen-cta-glow" aria-hidden />
   <button 
     className="generate-button gen-cta"
-    onClick={generateSchedule}
-    disabled={generating}
+    onClick={() => generateSchedule()}
+    disabled={generating || !employeesLoaded}
   >
     {generating ? (
       <>
@@ -509,7 +549,7 @@ function Schedule() {
       </>
     )}
   </button>
-  {employees.length === 0 && setupProblems.length === 0 && (
+  {employeesLoaded && employees.length === 0 && setupProblems.length === 0 && (
     <p className="hint-text">
       <a onClick={() => navigate('/employees')}>{t('addTeamMembers')}</a> {t('addTeamFirstSuffix')}
     </p>
@@ -537,11 +577,48 @@ function Schedule() {
       </ul>
     </div>
   )}
+  {ruleFailure && (
+    <div className="setup-blocked rule-failure" role="alert">
+      <div className="setup-blocked-head">
+        <AlertTriangle size={15} aria-hidden />
+        <span>{t('rulesFailedTitle')}</span>
+      </div>
+      <p className="setup-blocked-message">
+        {t({
+          unavailable: 'rulesFailedUnavailable',
+          limit: 'rulesFailedLimit',
+          unreadable: 'rulesFailedUnreadable',
+          signin: 'rulesFailedSignin',
+        }[ruleFailure.kind] || 'rulesFailedUnavailable')}
+        {ruleFailure.kind === 'limit' && ruleFailure.message ? ` ${ruleFailure.message}` : ''}
+      </p>
+      <p className="setup-blocked-message">{t('rulesFailedNothingSaved')}</p>
+      <div className="rule-failure-actions">
+        {ruleFailure.kind !== 'limit' && (
+          <button type="button" className="landing-cta-primary" onClick={() => generateSchedule()} disabled={generating}>
+            <RotateCw size={14} />
+            <span>{t('rulesRetry')}</span>
+          </button>
+        )}
+        <button type="button" className="settings-button" onClick={() => generateSchedule({ skipRules: true })} disabled={generating}>
+          <span>{t('rulesContinueWithout')}</span>
+        </button>
+      </div>
+    </div>
+  )}
   {error && <p className="hint-text">{error}</p>}
 </div>
 
 {activeScheduleData && (
   <div className="schedule-output-section">
+    {activeScheduleData.rulesApplied === false && (
+      <div className="setup-blocked rules-skipped-banner" role="status">
+        <div className="setup-blocked-head">
+          <AlertTriangle size={15} aria-hidden />
+          <span>{t(activeScheduleData.rulesSkippedReason === 'plan' ? 'rulesSkippedPlan' : 'rulesSkippedChoice')}</span>
+        </div>
+      </div>
+    )}
     <div className="schedule-result-bar">
       <div className="schedule-result-bar-left">
         <span className="schedule-result-ready">
@@ -790,9 +867,11 @@ function findShiftDay(schedule, targetShift) {
 async function callGenerateAPI(prompt, task) {
   // The endpoint spends money per call, so it only answers signed-in callers.
   const token = await auth.currentUser?.getIdToken()
-  if (!token) throw new Error('Sign in to generate a schedule.')
+  if (!token) throw new RuleParseError('signin')
 
-  const resp = await fetch('/api/generate-schedule', {
+  let resp
+  try {
+    resp = await fetch('/api/generate-schedule', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -800,10 +879,13 @@ async function callGenerateAPI(prompt, task) {
     },
     // The task picks the output ceiling on the server.
     body: JSON.stringify({ prompt, task }),
-  })
+    })
+  } catch {
+    // Offline, or the request never got an answer.
+    throw new RuleParseError('unavailable')
+  }
   if (!resp.ok) {
-    const err = await resp.json().catch(() => ({}))
-    throw new Error(err.message || err.error || 'Schedule generation failed')
+    throw errorForResponse(resp.status, await resp.json().catch(() => ({})))
   }
   const data = await resp.json()
   return data.scheduleText || ''
@@ -1021,18 +1103,10 @@ Field meanings:
 - employeeRules.preferredEmployeesByDay: employees to prioritize on specific days {"dayname": ["Name"]}
 - All times in 24-hour HH:MM format`
 
-  try {
-    const text = await callGenerateAPI(aiPrompt, 'rules')
-    let clean = text.trim()
-    if (clean.startsWith('```json')) clean = clean.replace(/^```json\n?/, '').replace(/\n?```$/, '')
-    else if (clean.startsWith('```')) clean = clean.replace(/^```\n?/, '').replace(/\n?```$/, '')
-    const first = clean.indexOf('{')
-    const last = clean.lastIndexOf('}')
-    if (first === -1 || last === -1) return null
-    return JSON.parse(clean.slice(first, last + 1))
-  } catch {
-    return null
-  }
+  // Errors propagate as RuleParseError: the caller must not treat a failure
+  // as "the manager wrote nothing".
+  const text = await callGenerateAPI(aiPrompt, 'rules')
+  return extractRulesJson(text)
 }
 
 // JS validator — checks hard rules and structured scheduling rules.

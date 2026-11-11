@@ -13,12 +13,19 @@
     "seo": "node scripts/generate-seo-pages.js",
     "test": "node --test \"src/utils/*.test.js\" \"shared/**/*.test.js\"",
     "test:emulator": "firebase emulators:exec --only firestore --project demo-hengam 'node --test --test-concurrency=1 \"tests/rules/*.test.js\" \"tests/server/*.test.js\"'",
+    "test:integration": "firebase emulators:exec --only auth,firestore --project demo-hengam 'node --test --test-concurrency=1 \"tests/integration/*.test.js\"'",
     "dev:emulators": "firebase emulators:start --only auth,firestore --project demo-hengam",
     "dev:api": "node scripts/dev-api.js",
     "dev:emulators:device": "firebase emulators:start --only auth,firestore --project demo-hengam --config firebase.device.json",
     "dev:api:device": "DEV_API_HOST=0.0.0.0 node scripts/dev-api.js",
     "dev:seed": "node scripts/seed-teams-dev.js",
-    "dev:emulated": "vite --mode emulators --port 5175 --strictPort --host 127.0.0.1"
+    "dev:emulated": "vite --mode emulators --port 5175 --strictPort --host 127.0.0.1",
+    "loadtest:smoke": "firebase emulators:exec --only auth,firestore --project demo-hengam 'node loadtest/scripts/run.mjs --profile smoke'",
+    "loadtest:baseline": "firebase emulators:exec --only auth,firestore --project demo-hengam 'node loadtest/scripts/run.mjs --profile baseline --save-baseline'",
+    "loadtest:ratelimit": "firebase emulators:exec --only auth,firestore --project demo-hengam 'node loadtest/scripts/run.mjs --profile ratelimit --script ratelimit'",
+    "loadtest:races": "firebase emulators:exec --only auth,firestore --project demo-hengam 'node loadtest/scripts/run.mjs --profile race --script races'",
+    "loadtest:guard-test": "node --test loadtest/lib/guard.test.mjs",
+    "test:e2e": "firebase emulators:exec --only auth,firestore --project demo-hengam 'npx playwright test -c loadtest/playwright/playwright.config.js'"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.137.0",
@@ -35,6 +42,7 @@
   "devDependencies": {
     "@eslint/js": "^9.39.4",
     "@firebase/rules-unit-testing": "^5.0.2",
+    "@playwright/test": "^1.65.0",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
     "@vercel/node": "^5.7.13",

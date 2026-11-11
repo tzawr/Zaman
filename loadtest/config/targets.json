@@ -1,0 +1,7 @@
+{
+  "_comment": "Template. The real staging allowlist lives in loadtest/.data/targets.json (git-ignored) and is written by loadtest/staging/deploy.mjs. Loopback is always allowed; production (hengam.app, the zaman Vercel project, the zaman-ba689 Firebase project) is refused by loadtest/lib/guard.js whatever is listed.",
+  "staging": {
+    "hosts": [],
+    "firebaseProjects": []
+  }
+}

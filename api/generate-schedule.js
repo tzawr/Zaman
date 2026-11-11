@@ -1,4 +1,5 @@
-import { FieldValue, getFirestore } from 'firebase-admin/firestore'
+import { getFirestore } from 'firebase-admin/firestore'
+import { reserveAiBudget } from './_ai-budget.js'
 import { initAdmin, requireSignedIn, sendError } from './_firebase-admin.js'
 
 // A prompt is a workspace's rules, roles and team — generous, but bounded.
@@ -36,48 +37,34 @@ function dayKey() {
   return new Date().toISOString().slice(0, 10)
 }
 
-// Checked before the call, since the cost is not known until after it returns.
-// One call may overshoot the budget by its own cost, which is capped by
-// TASK_LIMITS at a few cents.
-async function checkBudget(uid) {
-  const db = getFirestore()
-  const [monthSnap, daySnap] = await Promise.all([
-    db.collection('aiUsage').doc(`${uid}_${monthKey()}`).get(),
-    db.collection('aiUsage').doc(`${uid}_${dayKey()}`).get(),
-  ])
-
-  const spent = monthSnap.exists ? Number(monthSnap.data().spendUsd) || 0 : 0
-  const callsToday = daySnap.exists ? Number(daySnap.data().calls) || 0 : 0
-
-  if (spent >= MONTHLY_BUDGET_USD) return { blocked: true, reason: 'month' }
-  if (callsToday >= MAX_CALLS_PER_DAY) return { blocked: true, reason: 'day' }
-  return { blocked: false }
+// Worst-case cost of one call, held against the budget while it is in flight.
+// A token is never shorter than about two characters of English, so half the
+// prompt length bounds its input tokens.
+function holdFor(prompt, task) {
+  const maxOut = TASK_LIMITS[task] || DEFAULT_MAX_TOKENS
+  return Math.ceil(prompt.length / 2) * INPUT_PER_TOKEN + maxOut * OUTPUT_PER_TOKEN
 }
 
-// Records what the call actually cost, from the usage the API reports.
-async function recordUsage(uid, usage) {
+// Checks the caps and reserves this call in one transaction, so concurrent
+// requests cannot all pass the same check. See api/_ai-budget.js.
+function reserveBudget(uid, prompt, task) {
   const db = getFirestore()
+  return reserveAiBudget(db, {
+    monthRef: db.collection('aiUsage').doc(`${uid}_${monthKey()}`),
+    dayRef: db.collection('aiUsage').doc(`${uid}_${dayKey()}`),
+    monthlyUsd: MONTHLY_BUDGET_USD,
+    maxCallsPerDay: MAX_CALLS_PER_DAY,
+    holdUsd: holdFor(prompt, task),
+    monthFields: { uid, period: monthKey() },
+    dayFields: { uid, period: dayKey() },
+  })
+}
+
+// What the call actually cost, from the usage the API reports.
+function costOf(usage) {
   const input = Number(usage?.input_tokens) || 0
   const output = Number(usage?.output_tokens) || 0
-  const cost = input * INPUT_PER_TOKEN + output * OUTPUT_PER_TOKEN
-
-  await Promise.all([
-    db.collection('aiUsage').doc(`${uid}_${monthKey()}`).set({
-      uid,
-      period: monthKey(),
-      spendUsd: FieldValue.increment(cost),
-      inputTokens: FieldValue.increment(input),
-      outputTokens: FieldValue.increment(output),
-      calls: FieldValue.increment(1),
-      updatedAt: FieldValue.serverTimestamp(),
-    }, { merge: true }),
-    db.collection('aiUsage').doc(`${uid}_${dayKey()}`).set({
-      uid,
-      period: dayKey(),
-      calls: FieldValue.increment(1),
-      updatedAt: FieldValue.serverTimestamp(),
-    }, { merge: true }),
-  ])
+  return { costUsd: input * INPUT_PER_TOKEN + output * OUTPUT_PER_TOKEN, inputTokens: input, outputTokens: output }
 }
 
 // The Pro gate lived only in the browser, so a free account calling this
@@ -144,7 +131,14 @@ export default async function handler(req, res) {
       })
     }
 
-    const budget = await checkBudget(uid)
+    const budget = await reserveBudget(uid, prompt, task)
+    if (budget.blocked === 'busy') {
+      res.setHeader('Retry-After', '5')
+      return res.status(503).json({
+        error: 'Busy',
+        message: 'The scheduling service is busy right now. Try again in a moment.',
+      })
+    }
     if (budget.blocked) {
       return res.status(429).json({
         error: 'Limit reached',
@@ -154,7 +148,13 @@ export default async function handler(req, res) {
       })
     }
 
-    const response = await fetch('https://api.anthropic.com/v1/messages', {
+    // ANTHROPIC_BASE_URL is the same override the Anthropic SDK honours; the
+    // test and load-test environments point it at a local mock so they never
+    // reach the paid API.
+    const baseUrl = (process.env.ANTHROPIC_BASE_URL || 'https://api.anthropic.com').replace(/\/$/, '')
+    let response
+    try {
+      response = await fetch(`${baseUrl}/v1/messages`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -171,9 +171,14 @@ export default async function handler(req, res) {
         output_config: { effort: 'low' },
         messages: [{ role: 'user', content: prompt }],
       }),
-    })
+      })
+    } catch (err) {
+      await budget.release().catch(e => console.error('budget release failed:', e))
+      throw err
+    }
 
     if (!response.ok) {
+      await budget.release().catch(e => console.error('budget release failed:', e))
       const err = await response.text()
       // The upstream body names the model, the account and sometimes the key
       // prefix. It belongs in the log, not in a browser.
@@ -190,7 +195,7 @@ export default async function handler(req, res) {
     const data = await response.json()
     // Charge what the call actually cost. Failures above never reach here, so a
     // failed call is not billed to the user's budget.
-    await recordUsage(uid, data.usage).catch(err => console.error('usage record failed:', err))
+    await budget.settle(costOf(data.usage)).catch(err => console.error('usage record failed:', err))
 
     // With thinking on, the response carries thinking blocks before the text.
     const scheduleText = (data.content || []).find(block => block.type === 'text')?.text || ''

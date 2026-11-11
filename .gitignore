@@ -28,3 +28,10 @@ npm-debug.log*
 # Emulator logs
 firestore-debug.log
 firebase-debug.log
+
+# Load-test output and synthetic identities
+loadtest/results/
+loadtest/.data/
+playwright-report/
+test-results/
+loadtest/private/

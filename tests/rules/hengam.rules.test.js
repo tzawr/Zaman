@@ -121,3 +121,18 @@ describe('schedules', () => {
     await assertFails(setDoc(doc(db, 'users', 'mgr'), { tier: 'pro' }, { merge: true }))
   })
 })
+
+describe('owners cannot hand documents to another workspace', () => {
+  test('employee, schedule and invite owner fields are fixed on update', async () => {
+    await seed(env, {
+      'schedules/s1': { userId: 'mgr', weekStart: '2026-11-16' },
+    })
+    const mgr = env.authenticatedContext('mgr').firestore()
+    await assertFails(updateDoc(doc(mgr, 'employees/emp1'), { userId: 'victim' }))
+    await assertFails(updateDoc(doc(mgr, 'schedules/s1'), { userId: 'victim' }))
+    await assertFails(updateDoc(doc(mgr, 'invites/tok1'), { managerId: 'victim' }))
+    // Ordinary edits still work.
+    await assertSucceeds(updateDoc(doc(mgr, 'employees/emp1'), { name: 'Ana L' }))
+    await assertSucceeds(updateDoc(doc(mgr, 'schedules/s1'), { content: 'x' }))
+  })
+})

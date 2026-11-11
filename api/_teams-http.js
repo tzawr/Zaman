@@ -1,3 +1,5 @@
+import { isIP } from 'node:net'
+
 // Plumbing shared by the Teams endpoints: errors a caller can act on, CORS for
 // the Teams web app, and reading the request.
 
@@ -61,8 +63,47 @@ export function readBody(req) {
   return {}
 }
 
-// For limits on calls made before sign-in. Vercel puts the caller first.
-export function clientIp(req) {
-  const forwarded = String(req.headers['x-forwarded-for'] || '')
-  return forwarded.split(',')[0].trim() || req.socket?.remoteAddress || 'unknown'
+// For limits on calls made before sign-in: who is calling, as far as we can
+// tell without trusting anything the caller can write.
+//
+// X-Forwarded-For is client-supplied unless a proxy we trust replaces it.
+// Vercel documents that it overwrites X-Forwarded-For and sets x-real-ip and
+// x-vercel-forwarded-for itself; x-vercel-forwarded-for also survives another
+// proxy in front of Vercel. So:
+//   - on Vercel: x-vercel-forwarded-for, then x-real-ip, then the LAST
+//     X-Forwarded-For entry (the one the nearest proxy appended, never one
+//     the caller wrote first);
+//   - anywhere else: the socket address, ignoring headers entirely, unless
+//     TRUST_PROXY_HEADERS=1 says a trusted proxy sits in front.
+// IPv6 addresses are cut to their /64, which one subscriber usually holds
+// whole, so rotating within it does not mint new identities. An identity
+// that is not an IP address at all falls into one shared 'unknown' bucket.
+// Even a truthful address can be rotated across many hosts, which is why the
+// signed-out actions also have a ceiling shared by every caller.
+export function clientIp(req, env = process.env) {
+  const trusted = env.VERCEL === '1' || env.TRUST_PROXY_HEADERS === '1'
+  const header = (name) => String(req.headers?.[name] || '')
+  const first = (v) => v.split(',')[0].trim()
+  const last = (v) => v.split(',').map(x => x.trim()).filter(Boolean).pop() || ''
+  const raw = trusted
+    ? first(header('x-vercel-forwarded-for')) || first(header('x-real-ip')) || last(header('x-forwarded-for'))
+    : String(req.socket?.remoteAddress || '')
+  return normalizeIp(raw)
+}
+
+export function normalizeIp(raw) {
+  let ip = String(raw || '').trim().replace(/^\[|\]$/g, '')
+  if (ip.startsWith('::ffff:') && isIP(ip.slice(7)) === 4) ip = ip.slice(7)
+  const kind = isIP(ip)
+  if (kind === 4) return ip
+  if (kind === 6) return `${expandIpv6(ip).slice(0, 4).join(':')}::/64`
+  return 'unknown'
+}
+
+function expandIpv6(ip) {
+  const [head, tail = ''] = ip.split('::')
+  const a = head ? head.split(':') : []
+  const b = tail ? tail.split(':') : []
+  const groups = ip.includes('::') ? [...a, ...Array(8 - a.length - b.length).fill('0'), ...b] : a
+  return groups.map(g => g.toLowerCase().replace(/^0+(?=.)/, ''))
 }

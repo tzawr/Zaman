@@ -6,7 +6,8 @@ import { Timestamp } from 'firebase-admin/firestore'
 // are sent in batches: right after the change that caused them where
 // possible, and by the daily job for anything left over.
 
-const EXPO_PUSH_URL = 'https://exp.host/--/api/v2/push/send'
+// Overridable so test and load-test environments can point it at a local sink.
+const EXPO_PUSH_URL = process.env.EXPO_PUSH_URL || 'https://exp.host/--/api/v2/push/send'
 const MAX_ATTEMPTS = 3
 const CHUNK = 100
 
