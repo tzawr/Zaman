@@ -1,5 +1,6 @@
 import { getFirestore } from 'firebase-admin/firestore'
 import { initAdmin, requireSignedIn, sendError } from './_firebase-admin.js'
+import { recordError } from './_monitoring.js'
 import { consumeRateLimit, sendRateLimited } from './_rate-limit.js'
 import { employeeScheduleView } from '../src/utils/employeeScheduleView.js'
 
@@ -63,6 +64,7 @@ export default async function handler(req, res) {
         employeeScheduleView({ id: d.id, ...d.data() }, { employeeName, fullView })),
     })
   } catch (err) {
+    if (!(err.status < 500)) await recordError(getFirestore(), { source: 'server', where: 'my-schedule', error: err, uid: decoded?.uid })
     return sendError(res, err)
   }
 }

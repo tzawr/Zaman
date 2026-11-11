@@ -6,6 +6,7 @@ import { doc, getDoc } from 'firebase/firestore'
 import { db } from '../firebase'
 import { useAuth } from '../AuthContext'
 import { useI18n } from '../i18n'
+import { EXPECTED_AUTH_ERRORS, reportError } from '../utils/reportError'
 
 async function getRedirectPath(uid) {
   const snap = await getDoc(doc(db, 'users', uid))
@@ -35,6 +36,7 @@ function SignIn() {
       }
       navigate(await getRedirectPath(cred.user.uid))
     } catch (err) {
+      if (!EXPECTED_AUTH_ERRORS.has(err?.code)) reportError('auth.signin', err)
       setError(prettyError(err.code, t))
       setLoading(false)
     }
@@ -47,6 +49,7 @@ function SignIn() {
       const cred = await signInWithGoogle()
       navigate(await getRedirectPath(cred.user.uid))
     } catch (err) {
+      if (!EXPECTED_AUTH_ERRORS.has(err?.code)) reportError('auth.signin', err)
       setError(prettyError(err.code, t))
       setLoading(false)
     }

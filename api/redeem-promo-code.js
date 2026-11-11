@@ -1,6 +1,7 @@
 import { FieldValue, Timestamp, getFirestore } from 'firebase-admin/firestore'
 import { initAdmin, requireSignedIn, sendError } from './_firebase-admin.js'
 import { consumeRateLimit, sendRateLimited } from './_rate-limit.js'
+import { recordError } from './_monitoring.js'
 
 function block(res, status, reason, message) {
   return res.status(status).json({ blocked: true, reason, message })
@@ -80,6 +81,7 @@ export default async function handler(req, res) {
     return res.status(200).json(result)
   } catch (err) {
     console.error('Promo redemption failed:', err)
+    await recordError(getFirestore(), { source: 'server', where: 'redeem-promo-code', error: err, uid: userId })
     return res.status(500).json({ blocked: true, reason: 'server_error', message: 'Something went wrong on our end. Try again in a moment.' })
   }
 }

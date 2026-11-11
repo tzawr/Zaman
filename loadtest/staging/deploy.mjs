@@ -69,10 +69,12 @@ const env = {
   ADMIN_UIDS: '',
   TEAMS_ALLOWED_ORIGINS: '',
   CRON_SECRET: cfg.cronSecret || (cfg.cronSecret = randomBytes(24).toString('hex')),
+  // Staging's own token for /api/ops/status (never production's).
+  OPS_STATUS_TOKEN: cfg.opsStatusToken || (cfg.opsStatusToken = randomBytes(24).toString('hex')),
   // Logs which IP headers reached the code (xff-probe.mjs reads them).
   LOG_CLIENT_IP_HEADERS: '1',
 }
-const secret = new Set(['FIREBASE_SERVICE_ACCOUNT_KEY_BASE64', 'CRON_SECRET'])
+const secret = new Set(['FIREBASE_SERVICE_ACCOUNT_KEY_BASE64', 'CRON_SECRET', 'OPS_STATUS_TOKEN'])
 const work = mkdtempSync(join(tmpdir(), 'hengam-staging-'))
 // One variable per call: `vercel api --input` takes an object, not an array.
 // Values travel in a temp file, never on a command line.

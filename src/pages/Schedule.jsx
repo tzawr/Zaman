@@ -55,6 +55,7 @@ import {
   getUserTier,
 } from '../utils/tier'
 import { getSetupStatus, describeMissingSetup, DAY_KEYS } from '../utils/setupChecklist'
+import { reportError } from '../utils/reportError'
 import { RuleParseError, errorForResponse, extractRulesJson, hasWrittenRules, rulesOutcome, rulesStep } from '../utils/ruleParsing'
 
 function Schedule() {
@@ -176,6 +177,7 @@ function Schedule() {
       await runGenerateSchedule(options)
     } catch (err) {
       console.error(err)
+      reportError('schedule.generate', err)
       setGenerating(false)
       setError(t('scheduleFailedGenerate'))
     }
@@ -234,6 +236,8 @@ function Schedule() {
           aiRules = await parseSchedulingInstructionsCached(userSettings.coverageRules, prompt)
         } catch (err) {
           if (!(err instanceof RuleParseError)) throw err
+          // A limit or an expired session is the account's state, not a fault.
+          if (err.kind === 'unavailable' || err.kind === 'unreadable') reportError(`schedule.rules.${err.kind}`, err.kind)
           setRuleFailure({ kind: err.kind, message: err.serverMessage })
           return
         }
@@ -289,6 +293,7 @@ function Schedule() {
 
     } catch (err) {
       console.error(err)
+      reportError('schedule.generate', err)
       setError(err.message || t('scheduleFailedGenerate'))
     } finally {
       setGenerating(false)

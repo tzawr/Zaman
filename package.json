@@ -25,7 +25,8 @@
     "loadtest:ratelimit": "firebase emulators:exec --only auth,firestore --project demo-hengam 'node loadtest/scripts/run.mjs --profile ratelimit --script ratelimit'",
     "loadtest:races": "firebase emulators:exec --only auth,firestore --project demo-hengam 'node loadtest/scripts/run.mjs --profile race --script races'",
     "loadtest:guard-test": "node --test loadtest/lib/guard.test.mjs",
-    "test:e2e": "firebase emulators:exec --only auth,firestore --project demo-hengam 'npx playwright test -c loadtest/playwright/playwright.config.js'"
+    "test:e2e": "firebase emulators:exec --only auth,firestore --project demo-hengam 'npx playwright test -c loadtest/playwright/playwright.config.js'",
+    "test:backup": "firebase emulators:exec --only auth,firestore --project demo-hengam 'node --test ops/backup/roundtrip.test.mjs'"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.137.0",

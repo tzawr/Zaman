@@ -1,4 +1,5 @@
 import { FieldValue } from 'firebase-admin/firestore'
+import { recordError } from './_monitoring.js'
 
 // Spend caps for the two paths that call Claude (Hengam's rule parsing and
 // Teams' photo/PDF import).
@@ -57,6 +58,7 @@ export async function reserveAiBudget(db, { monthRef, dayRef, monthlyUsd, maxCal
     // lock or exhaust its retries. That is a reason to refuse, never to spend
     // without a reservation: the caller answers "busy, try again".
     console.error('AI budget reservation failed:', err.message)
+    await recordError(db, { source: 'server', where: 'ai-budget:busy', error: err })
     blocked = 'busy'
   }
   if (blocked) return { blocked }

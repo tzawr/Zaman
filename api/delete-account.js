@@ -1,6 +1,7 @@
 import { getFirestore } from 'firebase-admin/firestore'
 import { deleteAccount } from './_account-deletion.js'
 import { initAdmin, requireSignedIn, sendError } from './_firebase-admin.js'
+import { recordError } from './_monitoring.js'
 import { consumeRateLimit, sendRateLimited } from './_rate-limit.js'
 import { TeamsError } from './_teams-http.js'
 
@@ -30,6 +31,7 @@ export default async function handler(req, res) {
     if (err instanceof TeamsError) {
       return res.status(err.status).json({ blocked: true, reason: err.reason, message: err.message })
     }
+    if (!(err.status < 500)) await recordError(getFirestore(), { source: 'server', where: 'delete-account', error: err, uid: decoded?.uid })
     return sendError(res, err)
   }
 }

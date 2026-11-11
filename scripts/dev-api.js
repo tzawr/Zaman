@@ -26,8 +26,8 @@ function route(pathname) {
   if (teams) return { file: resolve(root, 'api/teams/[action].js'), query: { action: teams[1] } }
   const calendar = pathname.match(/^\/api\/calendar\/([^/]+)$/)
   if (calendar) return { file: resolve(root, 'api/calendar/[token].js'), query: { token: calendar[1] } }
-  const cron = pathname.match(/^\/api\/cron\/([a-z]+)$/)
-  if (cron && existsSync(resolve(root, `api/cron/${cron[1]}.js`))) return { file: resolve(root, `api/cron/${cron[1]}.js`), query: {} }
+  const nested = pathname.match(/^\/api\/(cron|ops)\/([a-z]+)$/)
+  if (nested && existsSync(resolve(root, `api/${nested[1]}/${nested[2]}.js`))) return { file: resolve(root, `api/${nested[1]}/${nested[2]}.js`), query: {} }
   const plain = pathname.match(/^\/api\/([a-z-]+)$/)
   if (plain && existsSync(resolve(root, `api/${plain[1]}.js`))) return { file: resolve(root, `api/${plain[1]}.js`), query: {} }
   return null

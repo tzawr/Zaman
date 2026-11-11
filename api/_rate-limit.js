@@ -1,4 +1,5 @@
 import { FieldValue, getFirestore } from 'firebase-admin/firestore'
+import { recordError } from './_monitoring.js'
 
 // The AI endpoint bounds itself with a spend cap, but the other endpoints had
 // nothing: a signed-in caller could mail-bomb their own inbox on our Resend
@@ -64,6 +65,7 @@ export async function consumeRateLimit(bucket, key, limit, windowSeconds, { fail
     return { allowed: true, retryAfterSeconds: 0, remaining: limit - count }
   } catch (err) {
     console.error(`rate limit check failed (${bucket}, ${failClosed ? 'closed' : 'open'}):`, err.message)
+    await recordError(db, { source: 'server', where: `rate-limit:${bucket}`, error: err, context: { failClosed } })
     if (failClosed) return { allowed: false, retryAfterSeconds: Math.min(60, windowSeconds), remaining: 0 }
     return { allowed: true, retryAfterSeconds: 0, remaining: 0 }
   }

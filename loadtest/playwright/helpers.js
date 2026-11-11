@@ -94,6 +94,7 @@ export const fs = {
   query: (token, parent, structuredQuery) => fetch(`${DOCS}${parent ? `/${parent}` : ''}:runQuery`, { method: 'POST', headers: { 'Content-Type': 'application/json', ...auth(token) }, body: JSON.stringify({ structuredQuery }) }),
   // Admin view (rules bypassed) for checking what was really stored.
   adminGet: async (path) => fetch(`${DOCS}/${path}`, { headers: await adminAuth() }),
+  adminQuery: async (structuredQuery) => fetch(`${DOCS}:runQuery`, { method: 'POST', headers: { 'Content-Type': 'application/json', ...(await adminAuth()) }, body: JSON.stringify({ structuredQuery }) }),
   // Merges: only the given fields are written (a PATCH without a mask replaces the doc).
   adminSet: async (path, data) => fetch(`${DOCS}/${path}?${mask(data)}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json', ...(await adminAuth()) }, body: JSON.stringify({ fields: fields(data) }) }),
 }

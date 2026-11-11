@@ -229,4 +229,17 @@ test.describe.serial('manager journey', () => {
     expect((await schedules()).length).toBe(before)
     await page.unroute('**/api/generate-schedule')
   })
+
+  test('13. failures people hit are reported to monitoring, with no personal data', async () => {
+    const r = await fs.adminQuery({ from: [{ collectionId: 'errorEvents' }] })
+    const events = (await r.json()).filter(x => x.document).map(x => x.document.fields)
+    const where = events.map(e => e.where?.stringValue)
+    expect(where).toContain('schedule.rules.unavailable')
+    expect(where).toContain('schedule.rules.unreadable')
+    // Limit and expired-session refusals are the account's state, not faults.
+    expect(where.filter(w => /limit|signin/.test(w))).toHaveLength(0)
+    const text = JSON.stringify(events)
+    expect(text).not.toContain(manager.email)
+    expect(text).not.toContain('Ana never works')
+  })
 })

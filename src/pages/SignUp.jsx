@@ -5,6 +5,7 @@ import { ArrowRight, Sparkles, Check } from 'lucide-react'
 import { sendEmailVerification } from 'firebase/auth'
 import { useAuth } from '../AuthContext'
 import { useI18n } from '../i18n'
+import { EXPECTED_AUTH_ERRORS, reportError } from '../utils/reportError'
 
 function SignUp() {
   const navigate = useNavigate()
@@ -29,6 +30,7 @@ function SignUp() {
       await sendEmailVerification(cred.user)
       navigate('/verify-email')
     } catch (err) {
+      if (!EXPECTED_AUTH_ERRORS.has(err?.code)) reportError('auth.signup', err)
       setError(prettyError(err.code, t) || err.message || t('authGeneric'))
       setLoading(false)
     }
@@ -41,6 +43,7 @@ function SignUp() {
       await signInWithGoogle()
       navigate('/dashboard')
     } catch (err) {
+      if (!EXPECTED_AUTH_ERRORS.has(err?.code)) reportError('auth.signup', err)
       setError(prettyError(err.code, t))
       setLoading(false)
     }

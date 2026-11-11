@@ -35,3 +35,6 @@ loadtest/.data/
 playwright-report/
 test-results/
 loadtest/private/
+
+# Backups contain customer data: never commit them
+backups/

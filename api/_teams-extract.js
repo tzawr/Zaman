@@ -91,8 +91,8 @@ async function reserveBudget(db, bizId, base64, now) {
     monthlyUsd: MONTHLY_IMPORT_BUDGET_USD,
     maxCallsPerDay: MAX_AI_IMPORTS_PER_DAY,
     holdUsd: holdFor(base64),
-    monthFields: { bizId },
-    dayFields: { bizId },
+    monthFields: { bizId, period: monthKey(now) },
+    dayFields: { bizId, period: dayKey(now) },
     stamp: now,
   })
   if (budget.blocked === 'busy') throw new TeamsError(503, 'busy', 'Reading files is busy right now. Try again in a minute.')

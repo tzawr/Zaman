@@ -1,5 +1,6 @@
 import { getFirestore } from 'firebase-admin/firestore'
 import { reserveAiBudget } from './_ai-budget.js'
+import { recordError } from './_monitoring.js'
 import { initAdmin, requireSignedIn, sendError } from './_firebase-admin.js'
 
 // A prompt is a workspace's rules, roles and team — generous, but bounded.
@@ -183,6 +184,7 @@ export default async function handler(req, res) {
       // The upstream body names the model, the account and sometimes the key
       // prefix. It belongs in the log, not in a browser.
       console.error('Anthropic error:', response.status, err)
+      await recordError(getFirestore(), { source: 'server', where: 'generate-schedule:provider', error: new Error(`AI provider answered ${response.status}`), uid })
       const status = response.status === 429 || response.status === 529 ? 503 : 502
       return res.status(status).json({
         error: 'Schedule generation is unavailable',
@@ -203,6 +205,7 @@ export default async function handler(req, res) {
 
   } catch (error) {
     console.error('Server error:', error)
+    await recordError(getFirestore(), { source: 'server', where: 'generate-schedule', error, uid })
     return res.status(500).json({
       error: 'Server error',
       message: 'Something went wrong on our end. Try again in a moment.',
