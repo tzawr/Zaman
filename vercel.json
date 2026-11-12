@@ -16,11 +16,11 @@
     },
     {
       "source": "/(onboarding|dashboard|employees|settings|schedule|schedules|invite|my-schedule|my-availability|profile|admin|verify-email|forgot-password)",
-      "destination": "/index.html"
+      "destination": "/"
     },
     {
       "source": "/(onboarding|dashboard|employees|settings|schedule|schedules|invite|my-schedule|my-availability|profile|admin|verify-email|forgot-password)/:path*",
-      "destination": "/index.html"
+      "destination": "/"
     }
   ],
   "headers": [
@@ -109,6 +109,15 @@
         {
           "key": "Content-Security-Policy",
           "value": "frame-ancestors 'self'"
+        }
+      ]
+    },
+    {
+      "source": "/(onboarding|dashboard|employees|settings|schedule|schedules|invite|my-schedule|my-availability|profile|admin|verify-email|forgot-password|auth)(/.*)?",
+      "headers": [
+        {
+          "key": "X-Robots-Tag",
+          "value": "noindex"
         }
       ]
     }
