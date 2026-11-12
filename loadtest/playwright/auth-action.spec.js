@@ -55,6 +55,8 @@ test('verification link verifies the account and continues into HENGAM', async (
 
 test('broken and unknown links explain themselves, never crash', async ({ page }) => {
   await page.goto('/auth/action?mode=verifyEmail&oobCode=not-a-real-code')
+  await expect(page).toHaveTitle(/Your account/)
+  await expect(page.locator('meta[name=robots]')).toHaveAttribute('content', /noindex/)
   await expect(page.getByRole('heading', { name: /expired|could not finish/ })).toBeVisible({ timeout: 15_000 })
   await page.goto('/auth/action?mode=somethingElse&oobCode=x')
   await expect(page.getByText('This link is not complete')).toBeVisible()

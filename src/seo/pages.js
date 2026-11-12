@@ -95,6 +95,7 @@ export const PRIVATE_PAGES = {
   '/admin/users': 'Admin — users',
   '/verify-email': 'Verify your email',
   '/forgot-password': 'Reset your password',
+  '/auth/action': 'Your account',
   '/preview/cinematic': 'Landing preview',
 }
 
