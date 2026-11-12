@@ -114,8 +114,23 @@ function PricingPage() {
       navigate('/dashboard')
       return
     }
-    navigate(currentUser ? '/dashboard' : '/signin')
+    if (planId === 'pro') {
+      if (!currentUser) { navigate('/signup?plan=pro'); return }
+      focusProAccess()
+      return
+    }
+    navigate(currentUser ? '/dashboard' : '/signup')
   }
+
+  function focusProAccess() {
+    const field = document.getElementById('pro-access')
+    field?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    field?.focus({ preventScroll: true })
+  }
+
+  useEffect(() => {
+    if (window.location.hash === '#pro-access') focusProAccess()
+  }, [])
 
   return (
     <main className="app-page pricing-page">
@@ -189,6 +204,7 @@ function PricingPage() {
       >
         <div className="promo-redeem-row">
           <input
+            id="pro-access"
             type="text"
             className="input"
             placeholder="FOUNDER50"

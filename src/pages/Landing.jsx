@@ -31,8 +31,15 @@ function Landing() {
     else navigate('/signup')
   }
 
+  // Pro is unlocked with an access code today. The choice of Pro travels to
+  // signup, or to the code field on Pricing for someone signed in (HQA-01).
+  function handlePro() {
+    if (currentUser) navigate('/pricing#pro-access')
+    else navigate('/signup?plan=pro')
+  }
+
   return (
-    <div className="landing landing-v2">
+    <main className="landing landing-v2">
       <Hero onCTA={handleCTA} isSignedIn={!!currentUser} />
       <MarqueeStrip />
       <PremiumPanels />
@@ -41,9 +48,9 @@ function Landing() {
       <ReviewsSection />
       <PlaygroundDemo />
       <Features />
-      <Pricing onCTA={handleCTA} />
+      <Pricing onCTA={handleCTA} onPro={handlePro} />
       <FinalCTA onCTA={handleCTA} />
-    </div>
+    </main>
   )
 }
 
@@ -101,7 +108,13 @@ function Hero({ onCTA, isSignedIn }) {
           </button>
           <button 
             className="landing-cta-ghost cta-watch"
-            onClick={() => document.getElementById('how-it-works')?.scrollIntoView({ behavior: 'smooth' })}
+            onClick={() => {
+              // HQA-04: move focus with the scroll, to the section heading.
+              const section = document.getElementById('how-it-works')
+              section?.scrollIntoView({ behavior: 'smooth' })
+              const heading = section?.querySelector('h2')
+              if (heading) { heading.setAttribute('tabindex', '-1'); heading.focus({ preventScroll: true }) }
+            }}
           >
             <Play size={14} fill="currentColor" />
             <span>{t('heroWatch')}</span>
@@ -595,9 +608,9 @@ function PremiumPanels() {
               </div>
             </div>
             <div className="premium-export-row" aria-hidden="true">
-              <button type="button">CSV</button>
-              <button type="button">PNG</button>
-              <button type="button">PDF</button>
+              <button type="button" tabIndex={-1}>CSV</button>
+              <button type="button" tabIndex={-1}>PNG</button>
+              <button type="button" tabIndex={-1}>PDF</button>
             </div>
           </div>
         </motion.div>
@@ -803,13 +816,17 @@ function PlaygroundDemo() {
               type="button"
               className={`landing-qa-item ${isOpen ? 'active' : ''}`}
               onClick={() => setOpenQuestion(isOpen ? -1 : index)}
+              // HQA-03: a stable name (the question) and an announced state.
+              aria-expanded={isOpen}
+              aria-controls={`faq-answer-${index}`}
+              aria-labelledby={`faq-question-${index}`}
             >
-              <span className="landing-qa-number">{String(index + 1).padStart(2, '0')}</span>
+              <span className="landing-qa-number" aria-hidden="true">{String(index + 1).padStart(2, '0')}</span>
               <span className="landing-qa-copy">
-                <strong>{item.question}</strong>
-                {isOpen && <span>{item.answer}</span>}
+                <strong id={`faq-question-${index}`}>{item.question}</strong>
+                <span id={`faq-answer-${index}`} hidden={!isOpen}>{item.answer}</span>
               </span>
-              <ArrowRight size={16} className="landing-qa-arrow" />
+              <ArrowRight size={16} className="landing-qa-arrow" aria-hidden="true" />
             </button>
           )})}
         </div>
@@ -921,7 +938,7 @@ function FeatureCard({ feature, index }) {
 }
 
 // ========== PRICING ==========
-function Pricing({ onCTA }) {
+function Pricing({ onCTA, onPro }) {
   const { t } = useI18n()
   const tiers = [
     {
@@ -1001,7 +1018,7 @@ function Pricing({ onCTA }) {
             </ul>
             <button
               className={tier.highlighted ? 'landing-cta-primary' : 'landing-cta-ghost'}
-              onClick={onCTA}
+              onClick={tier.id === 'pro' ? onPro : onCTA}
             >
               {tier.cta}
             </button>

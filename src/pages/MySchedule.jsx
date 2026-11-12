@@ -10,6 +10,7 @@ import Section from '../components/Section'
 import ScheduleTable from '../components/ScheduleTable'
 import { useI18n } from '../i18n'
 import { formatShiftTime } from '../utils/shiftTime'
+import { formatDayDate, formatWeekRange, scheduleDateProblem } from '../utils/weekDates'
 
 const DAYS = [
   { key: 'monday', labelKey: 'dayMonShort' },
@@ -23,22 +24,6 @@ const DAYS = [
 
 // An overnight shift ends at 26:00, meaning 2am the next morning.
 const formatTime = (time24, language = 'en') => formatShiftTime(time24, language)
-
-function formatWeekRange(weekStart, language) {
-  if (!weekStart) return ''
-  const start = new Date(weekStart + 'T12:00:00')
-  const end = new Date(start)
-  end.setDate(end.getDate() + 6)
-  const opts = { month: 'short', day: 'numeric' }
-  const locale = language === 'fa' ? 'fa-IR-u-nu-latn' : 'en-US'
-  return `${start.toLocaleDateString(locale, opts)} – ${end.toLocaleDateString(locale, { ...opts, year: 'numeric' })}`
-}
-
-function formatDayDate(dateStr, language) {
-  if (!dateStr) return ''
-  const d = new Date(dateStr + 'T12:00:00')
-  return d.toLocaleDateString(language === 'fa' ? 'fa-IR-u-nu-latn' : 'en-US', { month: 'short', day: 'numeric' })
-}
 
 function MySchedule() {
   const navigate = useNavigate()
@@ -120,6 +105,8 @@ function MySchedule() {
   const canSeeFullSchedule = view?.canSeeFullSchedule === true
   const totalWeeks = schedules.length
   const currentSchedule = schedules[weekIndex] || null
+  // A schedule saved before the HQA-08 fix may carry shifted dates.
+  const datesOff = Boolean(currentSchedule?.data && scheduleDateProblem(currentSchedule.weekStart, currentSchedule.data))
 
   // My shifts for the current week
   const myDays = DAYS.map(day => {
@@ -131,6 +118,10 @@ function MySchedule() {
   const workingDays = myDays.filter(d => d.shifts.length > 0).length
 
   const weekNav = (
+    <>
+    {datesOff && (
+      <p className="setup-blocked schedule-date-problem" role="alert">{t('dateProblemEmployee')}</p>
+    )}
     <div className="my-schedule-week-nav">
       <button
         className="my-schedule-week-btn"
@@ -152,6 +143,7 @@ function MySchedule() {
         <ChevronRight size={16} />
       </button>
     </div>
+    </>
   )
 
   return (

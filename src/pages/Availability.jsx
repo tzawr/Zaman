@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { ArrowLeft, Check, X, ArrowRight, Palmtree, Plus, Clock, Lock } from 'lucide-react'
 import { collection, doc, onSnapshot, query, updateDoc, where, serverTimestamp } from 'firebase/firestore'
@@ -10,6 +10,7 @@ import Section from '../components/Section'
 import TimeSelect from '../components/TimeSelect'
 import { useI18n } from '../i18n'
 import { freshestRecord } from '../utils/freshestRecord'
+import { useUnsavedChangesWarning } from '../utils/useUnsavedChangesWarning'
 
 const DAYS = [
   { key: 'monday', labelKey: 'dayMonday' },
@@ -47,6 +48,10 @@ function Availability() {
   const [loading, setLoading] = useState(true)
   const [availabilityDirty, setAvailabilityDirty] = useState(false)
   const [timeOffDirty, setTimeOffDirty] = useState(false)
+  const dirtyRef = useRef({ availability: false, timeOff: false })
+  useEffect(() => {
+    dirtyRef.current = { availability: availabilityDirty, timeOff: timeOffDirty }
+  }, [availabilityDirty, timeOffDirty])
   const [availabilitySaved, setAvailabilitySaved] = useState(false)
   const [timeOffSaved, setTimeOffSaved] = useState(false)
 
@@ -85,8 +90,10 @@ function Availability() {
         'timeOff',
         'timeOffUpdatedAt'
       )
-      setAvailability({ ...DEFAULT_AVAIL, ...(availabilityRecord?.availability || {}) })
-      setTimeOff(timeOffRecord?.timeOff || [])
+      // A section with edits not yet saved keeps them when a snapshot
+      // arrives (saving the other section triggers one).
+      if (!dirtyRef.current.availability) setAvailability({ ...DEFAULT_AVAIL, ...(availabilityRecord?.availability || {}) })
+      if (!dirtyRef.current.timeOff) setTimeOff(timeOffRecord?.timeOff || [])
       setLoading(false)
     }
 
@@ -140,8 +147,10 @@ function Availability() {
         'timeOffUpdatedAt'
       )
       setEmployee(employeeRecord)
-      setAvailability({ ...DEFAULT_AVAIL, ...(availabilityRecord?.availability || {}) })
-      setTimeOff(timeOffRecord?.timeOff || [])
+      // A section with edits not yet saved keeps them when a snapshot
+      // arrives (saving the other section triggers one).
+      if (!dirtyRef.current.availability) setAvailability({ ...DEFAULT_AVAIL, ...(availabilityRecord?.availability || {}) })
+      if (!dirtyRef.current.timeOff) setTimeOff(timeOffRecord?.timeOff || [])
       setLoading(false)
     }
 
@@ -188,6 +197,10 @@ function Availability() {
   }, [currentUser, activeEmployeeId, portalMode, navigate, toast, t])
 
   const canEdit = portalMode === 'manager' || employeeCanEdit
+  // Availability and time off are kept only when Save is pressed. Leaving
+  // with edits pending asks first instead of dropping them (HQA-11).
+  const unsaved = availabilityDirty || timeOffDirty
+  useUnsavedChangesWarning(unsaved, t('unsavedChangesConfirm'))
   const isEmployeePortal = portalMode === 'employee'
   const backPath = isEmployeePortal ? '/my-schedule' : '/employees'
 
@@ -223,8 +236,10 @@ function Availability() {
           }
         }
       }
+      return true
     } catch {
       toast.error(t('failedToSave'))
+      return false
     } finally {
       setSaving(false)
     }
@@ -262,8 +277,10 @@ function Availability() {
           }
         }
       }
+      return true
     } catch {
       toast.error(t('failedToSave'))
+      return false
     } finally {
       setSaving(false)
     }
@@ -290,7 +307,8 @@ function Availability() {
   }
 
   async function handleSaveAvailability() {
-    await saveAvailability(availability)
+    // A failed save keeps the edits and the unsaved state (HQA-11).
+    if (!(await saveAvailability(availability))) return
     setAvailabilityDirty(false)
     setAvailabilitySaved(true)
     setTimeout(() => setAvailabilitySaved(false), 2000)
@@ -322,7 +340,7 @@ function Availability() {
   }
 
   async function handleSaveTimeOff() {
-    await saveTimeOff(timeOff)
+    if (!(await saveTimeOff(timeOff))) return
     setTimeOffDirty(false)
     setTimeOffSaved(true)
     setTimeout(() => setTimeOffSaved(false), 2000)
@@ -340,7 +358,10 @@ function Availability() {
     <main className="app-page">
       <button 
         className="app-back-link"
-        onClick={() => navigate(backPath)}
+        onClick={() => {
+          if (unsaved && !window.confirm(t('unsavedChangesConfirm'))) return
+          navigate(backPath)
+        }}
       >
         <ArrowLeft size={14} />
         <span>{isEmployeePortal ? t('backToMySchedule') : t('backToTeam')}</span>
@@ -417,6 +438,7 @@ function Availability() {
         </div>
         {canEdit && (
           <div className="avail-save-row">
+            {availabilityDirty && <span className="avail-unsaved" role="status">{t('unsavedChangesHint')}</span>}
             <button
               className={`avail-save-btn${availabilitySaved ? ' confirmed' : ''}`}
               onClick={handleSaveAvailability}
@@ -499,6 +521,7 @@ function Availability() {
         </div>
         {canEdit && (
           <div className="avail-save-row">
+            {timeOffDirty && <span className="avail-unsaved" role="status">{t('unsavedChangesHint')}</span>}
             <button
               className={`avail-save-btn${timeOffSaved ? ' confirmed' : ''}`}
               onClick={handleSaveTimeOff}

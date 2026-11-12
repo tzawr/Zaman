@@ -7,6 +7,7 @@ import { db } from '../firebase'
 import { sendEmailVerification } from 'firebase/auth'
 import { useAuth } from '../AuthContext'
 import { useI18n } from '../i18n'
+import { authErrorMessage } from '../utils/authErrors'
 
 function InviteAccept() {
   const { token } = useParams()
@@ -132,7 +133,8 @@ function InviteAccept() {
         setMode('signin')
         setError(t('accountAlreadyCreatedJoin'))
       } else {
-        setError(prettyError(err.code, t) || err.message || t('authGeneric'))
+        // Auth failures get the shared messages; invite problems keep their own text.
+        setError(String(err?.code || '').startsWith('auth/') ? authErrorMessage(err.code, t) : (err?.message || t('authGeneric')))
       }
       setLoading(false)
     }
@@ -210,7 +212,7 @@ function InviteAccept() {
             />
           </div>
 
-          {error && <div className="auth-error">{error}</div>}
+          {error && <div className="auth-error" role="alert">{error}</div>}
 
           <button
             type="submit"
@@ -248,19 +250,6 @@ function InviteAccept() {
       </Motion.div>
     </main>
   )
-}
-
-function prettyError(code, t) {
-  const map = {
-    'auth/email-already-in-use': t('authEmailInUse'),
-    'auth/invalid-email': t('authInvalidEmail'),
-    'auth/weak-password': t('authWeakPassword'),
-    'auth/too-many-requests': t('authTooMany'),
-    'auth/wrong-password': t('wrongEmailPassword'),
-    'auth/user-not-found': t('authUserNotFound'),
-    'auth/invalid-credential': t('wrongEmailPassword'),
-  }
-  return map[code]
 }
 
 export default InviteAccept

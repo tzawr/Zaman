@@ -1,6 +1,6 @@
-import { lazy, Suspense, useEffect, useState } from 'react'
-import { Crown, Mail, Moon, ShieldCheck, Sun } from 'lucide-react'
-import { BrowserRouter, Routes, Route, Link, Navigate } from 'react-router-dom'
+import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react'
+import { Crown, Mail, Menu, Moon, ShieldCheck, Sun, X } from 'lucide-react'
+import { BrowserRouter, Routes, Route, Link, Navigate, useLocation } from 'react-router-dom'
 import { useAuth } from './AuthContext'
 import Landing from './pages/Landing'
 import ProfileMenu from './components/ProfileMenu'
@@ -59,6 +59,21 @@ function AdminRoute({ children }) {
   return children
 }
 
+// HQA-04: after moving to another page, focus starts at its content rather
+// than staying on the link that was used (or falling to the document body).
+// Also closes the phone menu on navigation.
+function RouteFocus({ onNavigate }) {
+  const { pathname } = useLocation()
+  const previous = useRef(pathname)
+  useEffect(() => {
+    if (previous.current === pathname) return
+    previous.current = pathname
+    onNavigate?.()
+    document.getElementById('main-content')?.focus({ preventScroll: true })
+  }, [pathname, onNavigate])
+  return null
+}
+
 function App() {
   return (
     <I18nProvider>
@@ -99,21 +114,41 @@ function AppShell() {
   const displayTier = currentUser ? resolvedTier : 'free'
   const isPro = currentUser && displayTier === 'pro'
   const isAdmin = isAdminUid(currentUser?.uid)
+  // HQA-05: on narrow screens the site links sit behind a Menu button.
+  const [siteMenuOpen, setSiteMenuOpen] = useState(false)
+  const closeSiteMenu = useCallback(() => setSiteMenuOpen(false), [])
 
   return (
     <BrowserRouter>
       <div className={`${darkMode ? 'app dark' : 'app light'} ${isRtl ? 'rtl' : 'ltr'}`} dir="ltr">
-        <nav className={`navbar ${isPro ? 'navbar-pro' : ''}`}>
+        <a className="skip-link" href="#main-content">{t('skipToContent')}</a>
+        <RouteFocus onNavigate={closeSiteMenu} />
+        <nav className={`navbar ${isPro ? 'navbar-pro' : ''}`} aria-label={t('siteNavigation')}>
           <Link to="/" className="logo-link" aria-label="Hengam home">
             <Logo size={36} />
           </Link>
-          <div className="navbar-center" aria-label="Main navigation">
+          <div
+            id="site-links"
+            className={`navbar-center${siteMenuOpen ? ' open' : ''}`}
+            onKeyDown={(e) => { if (e.key === 'Escape') { setSiteMenuOpen(false); document.getElementById('site-menu-button')?.focus() } }}
+          >
             <Link to="/about">{t('navAbout')}</Link>
             <Link to="/pricing">{t('navPricing')}</Link>
             <Link to="/security">{t('navSecurity')}</Link>
           </div>
           <div className="navbar-right-group">
             <div className="navbar-actions">
+              <button
+                type="button"
+                id="site-menu-button"
+                className="navbar-icon-button navbar-menu-button"
+                aria-expanded={siteMenuOpen}
+                aria-controls="site-links"
+                aria-label={t('siteMenu')}
+                onClick={() => setSiteMenuOpen(o => !o)}
+              >
+                {siteMenuOpen ? <X size={18} aria-hidden /> : <Menu size={18} aria-hidden />}
+              </button>
               {currentUser && (
                 <Link
                   to="/pricing"
@@ -174,6 +209,7 @@ function AppShell() {
 
         <SeoManager />
 
+        <div id="main-content" tabIndex={-1} className="main-content-anchor">
         <Suspense fallback={<div className="route-fallback" role="status" aria-live="polite" />}>
         <Routes>
   <Route path="/" element={<Landing />} />
@@ -205,6 +241,7 @@ function AppShell() {
   <Route path="*" element={<NotFound />} />
 </Routes>
         </Suspense>
+        </div>
 
 <Footer />
       </div>

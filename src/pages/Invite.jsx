@@ -8,6 +8,7 @@ import { useAuth } from '../AuthContext'
 import PageHero from '../components/PageHero'
 import Section from '../components/Section'
 import { useI18n } from '../i18n'
+import InviteEmailForm from '../components/InviteEmailForm'
 import { canInviteEmployees } from '../utils/tier'
 
 function Invite() {
@@ -134,6 +135,7 @@ function Invite() {
                 <span>{inviteModal.copied ? t('copied') : t('copy')}</span>
               </button>
             </div>
+            <InviteEmailForm link={inviteModal.link} />
             <p className="invite-link-note">{t('inviteLinkNote')}</p>
           </div>
         </div>

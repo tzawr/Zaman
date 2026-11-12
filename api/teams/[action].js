@@ -13,6 +13,7 @@ import { drainPushQueue, forgetDevice } from '../_teams-push.js'
 import * as marketplace from '../_teams-marketplace.js'
 import * as schedules from '../_teams-schedules.js'
 import * as workspaces from '../_teams-workspaces.js'
+import { emailInvite, sendWelcome } from '../_teams-email.js'
 
 // Every Teams workflow behind one function. Vercel's Hobby plan caps a project
 // at twelve functions, and Teams will need dozens of actions.
@@ -70,6 +71,10 @@ export const ACTIONS = {
   // A phone that signed out offline, removing its push entry afterwards.
   // Called signed out, so limited by address.
   forgetDevice: { run: forgetDevice, auth: false, limit: [30, 60 * 60], everyone: [1200, 60 * 60] },
+  // HENGAM email (off until RESEND_API_KEY is set). Low limits: each one
+  // sends real mail, and emailInvite reaches an address the caller types.
+  emailInvite: { run: emailInvite, limit: [20, 60 * 60] },
+  sendWelcome: { run: sendWelcome, limit: [3, 60 * 60] },
   // Crashes the app caught. Sent before sign-in too, so limited by address.
   reportClientError: { run: reportClientError, auth: false, limit: [30, 60 * 60], everyone: [2400, 60 * 60] },
 }

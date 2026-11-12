@@ -8,7 +8,7 @@ function Footer() {
   const year = new Date().getFullYear()
   const { currentUser } = useAuth()
   const { t } = useI18n()
-  const startPath = currentUser ? '/dashboard' : '/signin'
+  const startPath = currentUser ? '/dashboard' : '/signup'
 
   return (
     <footer className="site-footer">

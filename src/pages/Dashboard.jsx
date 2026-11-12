@@ -27,6 +27,7 @@ import { useAuth } from '../AuthContext'
 import PageHero from '../components/PageHero'
 import { useI18n } from '../i18n'
 import TeamsTimeOffPanel from '../components/teams/TeamsTimeOffPanel'
+import { formatWeekRange as formatWeek } from '../utils/weekDates'
 
 function Dashboard() {
   const navigate = useNavigate()
@@ -112,14 +113,7 @@ function Dashboard() {
     ? Object.values(userData.operatingHours).filter(d => d.open).length 
     : 0
 
-  function formatWeekRange(mondayStr) {
-    if (!mondayStr) return ''
-    const monday = new Date(mondayStr + 'T12:00:00')
-    const sunday = new Date(monday)
-    sunday.setDate(monday.getDate() + 6)
-    const fmt = (d) => d.toLocaleDateString(language === 'fa' ? 'fa-IR-u-nu-latn' : 'en-US', { month: 'short', day: 'numeric' })
-    return `${fmt(monday)} — ${fmt(sunday)}`
-  }
+  const formatWeekRange = (weekStart) => formatWeek(weekStart, language)
 
   function formatTime(timestamp) {
     if (!timestamp) return ''
@@ -195,6 +189,12 @@ function Dashboard() {
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5, delay: 0.15 }}
         onClick={() => navigate('/schedule')}
+        role="link"
+        tabIndex={0}
+        aria-label={`${t('generateSchedule')}. ${t('dashboardGenerateDesc')}`}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); navigate('/schedule') }
+        }}
       >
         <div className="dashboard-generate-orb" aria-hidden />
         <div className="dashboard-generate-orb dashboard-generate-orb-2" aria-hidden />

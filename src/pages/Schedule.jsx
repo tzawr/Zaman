@@ -28,8 +28,6 @@ import {
   query, 
   where, 
   onSnapshot, 
-  getDocs,
-  getDoc,
   doc, 
   addDoc, 
   serverTimestamp,
@@ -39,9 +37,10 @@ import { useAuth } from '../AuthContext'
 import ScheduleTable from '../components/ScheduleTable'
 import { exportToCSV, exportToPNG, exportToPDF } from '../utils/exportSchedule'
 import { runScheduler } from '../utils/scheduler'
-import { freshestRecord } from '../utils/freshestRecord'
+import { calculateScheduleSummary, revalidateSchedule, validateSchedule } from '../utils/scheduleValidation'
+import { mergeEmployeePortalAvailability as mergePortal } from '../utils/schedulingTeam'
 import { withTeamsAvailability } from '../utils/teamsAvailability'
-import { shiftLengthHours, toMinutes } from '../utils/shiftTime'
+import { toMinutes } from '../utils/shiftTime'
 import { useSpeechInput } from '../utils/useSpeechInput'
 import PageHero from '../components/PageHero'
 import Section from '../components/Section'
@@ -56,6 +55,7 @@ import {
 } from '../utils/tier'
 import { getSetupStatus, describeMissingSetup, DAY_KEYS } from '../utils/setupChecklist'
 import { reportError } from '../utils/reportError'
+import { defaultWeekStart, formatDayDate, formatWeekRange, normalizeWeekStart } from '../utils/weekDates'
 import { RuleParseError, errorForResponse, extractRulesJson, hasWrittenRules, rulesOutcome, rulesStep } from '../utils/ruleParsing'
 
 function Schedule() {
@@ -63,6 +63,9 @@ function Schedule() {
   const { currentUser } = useAuth()
   const { t, tf, language } = useI18n()
   const generationSeedRef = useRef(0)
+  // The team as it was checked at generation (with Teams availability and
+  // time off merged in), reused to check manual edits to that week.
+  const checkTeamRef = useRef(null)
   
   const [employees, setEmployees] = useState([])
   // Until the first snapshot arrives the team looks empty, and generating
@@ -70,7 +73,14 @@ function Schedule() {
   const [employeesLoaded, setEmployeesLoaded] = useState(false)
   const [userSettings, setUserSettings] = useState(null)
   const [prompt, setPrompt] = useState('')
-  const [weekStart, setWeekStart] = useState(getNextMonday())
+  // Always a Monday: next week's, in the manager's own calendar (HQA-08).
+  const [weekStart, setWeekStart] = useState(() => {
+    // "Build this week again" from a history warning links here with ?week=.
+    const asked = typeof window === 'undefined' ? null : new URLSearchParams(window.location.search).get('week')
+    return normalizeWeekStart(asked) || defaultWeekStart()
+  })
+  // The day the manager actually picked, when it was not a Monday.
+  const [pickedDay, setPickedDay] = useState(null)
   const [generating, setGenerating] = useState(false)
   const [error, setError] = useState('')
   const [setupProblems, setSetupProblems] = useState([])
@@ -92,45 +102,10 @@ function Schedule() {
     if (!currentUser) navigate('/signin')
   }, [currentUser, navigate])
 
-  const mergeEmployeePortalAvailability = useCallback(async (team) => {
-    if (!currentUser || team.length === 0) return team
-    try {
-      const portalQuery = query(
-        collection(db, 'users'),
-        where('managerId', '==', currentUser.uid),
-        where('accountType', '==', 'employee')
-      )
-      const [portalSnap, managerSnap] = await Promise.all([
-        getDocs(portalQuery),
-        getDoc(doc(db, 'users', currentUser.uid)),
-      ])
-      // The setting lives on the manager's own record. Each employee's portal
-      // record carries a copy, but the employee can write that copy.
-      if (managerSnap.data()?.allowEmployeeAvailabilityUpdates === false) return team
-      const portalByEmployeeId = new Map()
-      portalSnap.docs.forEach(portalDoc => {
-        const data = portalDoc.data()
-        if (data.linkedEmployeeId) portalByEmployeeId.set(data.linkedEmployeeId, data)
-      })
-      return team.map(emp => {
-        const portal = portalByEmployeeId.get(emp.id)
-        if (!portal) return emp
-        // A manager's later edit to the employee record must beat an older
-        // portal submission, and the other way round.
-        const availability = freshestRecord([emp, portal], 'availability', 'availabilityUpdatedAt')
-        const timeOff = freshestRecord([emp, portal], 'timeOff', 'timeOffUpdatedAt')
-        return {
-          ...emp,
-          availability: availability?.availability || emp.availability,
-          timeOff: timeOff?.timeOff || emp.timeOff,
-          availabilityUpdatedAt: availability?.availabilityUpdatedAt || emp.availabilityUpdatedAt,
-          availabilityUpdatedByType: availability?.availabilityUpdatedByType || emp.availabilityUpdatedByType,
-        }
-      })
-    } catch {
-      return team
-    }
-  }, [currentUser])
+  const mergeEmployeePortalAvailability = useCallback(
+    (team) => mergePortal(currentUser?.uid, team),
+    [currentUser]
+  )
 
   // Load employees
   useEffect(() => {
@@ -218,6 +193,14 @@ function Schedule() {
     }
     const plainLanguageGate = await canUsePlainLanguageRules(currentUser.uid)
 
+    // Defensive: generation and saving only ever see a real Monday.
+    const monday = normalizeWeekStart(weekStart)
+    if (!monday) {
+      setError(t('scheduleFailedGenerate'))
+      return
+    }
+    if (monday !== weekStart) setWeekStart(monday)
+
     const step = rulesStep({
       hasRules: hasWrittenRules(userSettings.coverageRules, prompt),
       planAllows: !plainLanguageGate.blocked,
@@ -256,9 +239,9 @@ function Schedule() {
       // Step 3: Try several deterministic variants and keep the cleanest one.
       let best = null
       generationSeedRef.current += 1
-      const baseSeed = hashScheduleSeed(weekStart, prompt, generationSeedRef.current)
+      const baseSeed = hashScheduleSeed(monday, prompt, generationSeedRef.current)
       for (let attempt = 0; attempt < 20; attempt++) {
-        const candidate = runScheduler(schedulingEmployees, userSettings, weekStart, {
+        const candidate = runScheduler(schedulingEmployees, userSettings, monday, {
           ...constraints,
           seed: baseSeed + attempt,
         })
@@ -276,6 +259,11 @@ function Schedule() {
       // Step 4: Validate and surface any unsatisfied constraints as issues
       const result = best.result
       result.summary = calculateScheduleSummary(result, schedulingEmployees)
+      // The rules this week was checked against travel with it, so a manual
+      // edit later is checked against the same rules (HQA-09).
+      result.checkedRules = parsedRules || null
+      checkTeamRef.current = schedulingEmployees
+      result.issues = best.violations
       if (best.violations.length > 0) {
         console.warn('[scheduler] violations:', best.violations)
         result.issues = best.violations
@@ -301,23 +289,23 @@ function Schedule() {
   }
 
   async function handleScheduleUpdate(newData) {
-    setScheduleData(newData)
-    
-    // Save updated data back to Firestore (update most recent schedule)
-    try {
-      const updatedText = JSON.stringify(newData, null, 2)
-      // We'll save a new version — simpler than tracking doc ID
-      await saveSchedule(updatedText, newData)
-    } catch (err) {
-      console.error('Failed to save edits:', err)
-    }
+    // Every edit is checked again before it is shown or saved, so the saved
+    // version and its review items always describe the same shifts (HQA-09).
+    const checked = revalidateSchedule(newData, checkTeamRef.current || employees, {
+      coverage: userSettings?.coverage,
+      operatingHours: userSettings?.operatingHours,
+    })
+    setScheduleData(checked)
+    // Each edit is saved as a new version in Schedule history.
+    await saveSchedule(JSON.stringify(checked, null, 2), checked)
   }
 
   async function saveSchedule(scheduleText, parsedData) {
     try {
       await addDoc(collection(db, 'schedules'), {
         userId: currentUser.uid,
-        weekStart: weekStart,
+        // The week the result was built for, not whatever the picker shows now.
+        weekStart: parsedData?.weekStart || normalizeWeekStart(weekStart),
         content: scheduleText,
         data: parsedData || null,
         instructions: prompt || null,
@@ -438,12 +426,25 @@ function Schedule() {
       className="input gen-week-input"
       aria-label={t('a11yWeekStarting')}
       value={weekStart}
-      onChange={(e) => setWeekStart(e.target.value)}
+      onChange={(e) => {
+        // Any day picks its Monday-to-Sunday week; the board, the saved
+        // schedule and every export then share the same real dates.
+        const picked = e.target.value
+        const monday = normalizeWeekStart(picked)
+        if (!monday) return
+        setWeekStart(monday)
+        setPickedDay(picked !== monday ? picked : null)
+      }}
     />
     <div className="gen-week-preview">
       {formatWeekRange(weekStart, language)}
     </div>
   </div>
+  {pickedDay && (
+    <p className="hint-text gen-week-note" role="status">
+      {tf('weekMovedToMonday', { picked: formatDayDate(pickedDay, language), monday: formatDayDate(weekStart, language) })}
+    </p>
+  )}
 </Section>
 
 {/* AI-powered special instructions */}
@@ -714,69 +715,6 @@ function withFreshSummary(schedule, employees) {
     ...schedule,
     summary: calculateScheduleSummary(schedule, employees),
   }
-}
-
-function calculateScheduleSummary(schedule, employees) {
-  const totals = {}
-
-  Object.values(schedule?.days || {}).forEach(day => {
-    ;(day.shifts || []).forEach(shift => {
-      const hours = Number(shift.hours) || shiftHours(shift.start, shift.end)
-      totals[shift.employee] = (totals[shift.employee] || 0) + hours
-    })
-  })
-
-  const employeeRows = employees.map(emp => {
-    const scheduled = Math.round((totals[emp.name] || 0) * 10) / 10
-    const target = Number(emp.targetHours) || 0
-    delete totals[emp.name]
-    return {
-      employee: emp.name,
-      role: emp.role || '',
-      scheduledHours: scheduled,
-      targetHours: target,
-      difference: Math.round((scheduled - target) * 10) / 10,
-    }
-  })
-
-  const unknownRows = Object.entries(totals).map(([employee, total]) => {
-    const scheduled = Math.round(total * 10) / 10
-    return {
-      employee,
-      role: '',
-      scheduledHours: scheduled,
-      targetHours: 0,
-      difference: scheduled,
-    }
-  })
-
-  return [...employeeRows, ...unknownRows]
-}
-
-// Helper: Get next Monday in YYYY-MM-DD format
-function getNextMonday() {
-  const today = new Date()
-  const day = today.getDay()
-  const daysUntilMonday = day === 0 ? 1 : (8 - day) % 7 || 7
-  const nextMonday = new Date(today)
-  nextMonday.setDate(today.getDate() + daysUntilMonday)
-  return nextMonday.toISOString().split('T')[0]
-}
-
-// Helper: format week range for display
-function formatWeekRange(mondayStr, language = 'en') {
-  if (!mondayStr) return ''
-  const monday = new Date(mondayStr + 'T12:00:00')
-  const sunday = new Date(monday)
-  sunday.setDate(monday.getDate() + 6)
-  
-  const locale = language === 'fa' ? 'fa-IR-u-nu-latn' : 'en-US'
-  const format = (d) => d.toLocaleDateString(locale, {
-    month: 'short', 
-    day: 'numeric' 
-  })
-  
-  return `${format(monday)} — ${format(sunday)}, ${monday.getFullYear()}`
 }
 
 function hashScheduleSeed(weekStart, prompt, counter) {
@@ -1114,229 +1052,6 @@ Field meanings:
   return extractRulesJson(text)
 }
 
-// JS validator — checks hard rules and structured scheduling rules.
-// Never makes scheduling decisions. Returns violation strings for the AI to fix.
-function validateSchedule(data, employees, parsedRules = null, workspace = {}) {
-  const violations = []
-  const DAYS = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday']
-  const empMap = Object.fromEntries(employees.map(e => [e.name, e]))
-  const weekTotals = {}
-  const toM = t => { const [h, m] = (t || '0:0').split(':').map(Number); return h * 60 + (m || 0) }
-  const coverageRules = parsedRules?.coverage || null
-  const employeeRules = parsedRules?.employeeRules || null
-
-  // --- Workspace per-day minimums. Checked before the per-day shift loop so a
-  // day that ended up with no shifts at all is still reported. ---
-  if (workspace.coverage && workspace.operatingHours) {
-    DAYS.forEach(day => {
-      const opDay = workspace.operatingHours[day]
-      const minPeople = Number(workspace.coverage[day]?.minPeople) || 0
-      if (!opDay?.open || minPeople < 1) return
-      const scheduled = (data.days?.[day]?.shifts || []).length
-      if (scheduled < minPeople) {
-        violations.push(`${capitalize(day)}: needs at least ${minPeople} ${minPeople === 1 ? 'person' : 'people'} on shift — only ${scheduled} scheduled`)
-      }
-    })
-  }
-
-  DAYS.forEach(day => {
-    const dayData = data.days?.[day]
-    if (!dayData?.shifts?.length) return
-
-    const shifts = dayData.shifts
-    const seenToday = new Set()
-
-    // --- Per-shift hard rules ---
-    shifts.forEach(shift => {
-      const emp = empMap[shift.employee]
-
-      if (!emp) {
-        violations.push(`${capitalize(day)}: "${shift.employee}" is not a known employee`)
-        return
-      }
-
-      if (seenToday.has(shift.employee)) {
-        violations.push(`${capitalize(day)}: ${shift.employee} is scheduled twice on the same day`)
-      }
-      seenToday.add(shift.employee)
-
-      if (emp.role && shift.role !== emp.role) {
-        violations.push(`${capitalize(day)}: ${shift.employee}'s role is "${emp.role}" — do not change it to "${shift.role}"`)
-      }
-
-      const av = emp.availability?.[day]
-      if (!av || av.available === false) {
-        violations.push(`${capitalize(day)}: ${shift.employee} is not available`)
-      } else if (av.start && av.end) {
-        const ss = toM(shift.start), se = toM(shift.end)
-        // On a day that trades past midnight both the shift and the
-        // availability sit on a timeline that runs beyond 24:00.
-        const opDay = workspace.operatingHours?.[day]
-        const opStart = opDay ? toM(opDay.start) : 0
-        let opEnd = opDay ? (toM(opDay.end) || 24 * 60) : 24 * 60
-        if (opEnd <= opStart) opEnd += 24 * 60
-        let as = toM(av.start)
-        let ae = toM(av.end) || 24 * 60
-        if (ae <= as) ae += 24 * 60
-        if (opEnd > 24 * 60 && ae <= opStart) { as += 24 * 60; ae += 24 * 60 }
-        if (ss < as || se > ae) {
-          violations.push(`${capitalize(day)}: ${shift.employee} shift ${shift.start}–${shift.end} is outside availability ${av.start}–${av.end}`)
-        }
-      }
-
-      const hours = Number(shift.hours) || shiftHours(shift.start, shift.end)
-      if (hours < 4) violations.push(`${capitalize(day)}: ${shift.employee} shift is ${hours}h — minimum is 4h`)
-      if (hours > 8.5) violations.push(`${capitalize(day)}: ${shift.employee} shift is ${hours}h — maximum is 8.5h`)
-
-      weekTotals[shift.employee] = (weekTotals[shift.employee] || 0) + hours
-    })
-
-    // --- Coverage rules (structural, from AI-parsed workspace rules) ---
-    if (coverageRules) {
-      const { openers, closers, preCloser, alwaysPresent, minimumStaff } = coverageRules
-
-      if (openers) {
-        const byMins = toM(openers.by)
-        const openerShifts = shifts.filter(s => toM(s.start) <= byMins)
-        if (openers.composition?.length) {
-          openers.composition.forEach(({ role, count }) => {
-            const found = openerShifts.filter(s => s.role === role).length
-            if (found < count) {
-              violations.push(`${capitalize(day)}: opening (by ${openers.by}) needs at least ${count} ${role}(s) — only ${found} found`)
-            }
-          })
-        } else if (openers.count != null) {
-          const found = openerShifts.filter(s => !openers.roles?.length || openers.roles.includes(s.role)).length
-          if (found < openers.count) violations.push(`${capitalize(day)}: needs at least ${openers.count} opener(s) by ${openers.by} — only ${found} found`)
-        }
-      }
-
-      if (closers) {
-        const endMins = toM(closers.shiftEnd)
-        const closerShifts = shifts.filter(s => toM(s.end) >= endMins)
-        if (closers.composition?.length) {
-          closers.composition.forEach(({ role, count }) => {
-            const found = closerShifts.filter(s => s.role === role).length
-            if (found < count) {
-              violations.push(`${capitalize(day)}: closing (at ${closers.shiftEnd}) needs at least ${count} ${role}(s) — only ${found} found`)
-            }
-          })
-        } else if (closers.count != null) {
-          const found = closerShifts.filter(s => !closers.roles?.length || closers.roles.includes(s.role)).length
-          if (found < closers.count) violations.push(`${capitalize(day)}: needs ${closers.count} closer(s) ending at or after ${closers.shiftEnd} — only ${found} found`)
-        }
-      }
-
-      if (preCloser) {
-        const targetMins = toM(preCloser.shiftEnd)
-        const found = shifts.filter(s =>
-          Math.abs(toM(s.end) - targetMins) <= 30 &&
-          (!preCloser.roles?.length || preCloser.roles.includes(s.role))
-        ).length
-        if (found < preCloser.count) {
-          violations.push(`${capitalize(day)}: needs ${preCloser.count} pre-closer(s) ending around ${preCloser.shiftEnd}${preCloser.roles?.length ? ` (${preCloser.roles.join(' or ')})` : ''} — only ${found} found`)
-        }
-      }
-
-      if (alwaysPresent?.length) {
-        alwaysPresent.forEach(role => {
-          if (!shifts.some(s => s.role === role)) {
-            violations.push(`${capitalize(day)}: ${role} must always be present — none scheduled`)
-          }
-        })
-      }
-
-      if (minimumStaff?.length) {
-        minimumStaff.forEach(({ from, to, count }) => {
-          const fromMins = toM(from), toMins = toM(to)
-          const active = shifts.filter(s => toM(s.start) < toMins && toM(s.end) > fromMins).length
-          if (active < count) {
-            violations.push(`${capitalize(day)}: needs ${count} staff from ${from}–${to} — only ${active} on shift`)
-          }
-        })
-      }
-    }
-
-    if (employeeRules) {
-      ;(employeeRules.pairTogether || []).forEach(([a, b]) => {
-        const aShifts = shifts.filter(s => s.employee === a)
-        const bShifts = shifts.filter(s => s.employee === b)
-        if (aShifts.length !== bShifts.length || (aShifts.length > 0 && bShifts.length === 0)) {
-          violations.push(`${capitalize(day)}: ${a} and ${b} must be scheduled together`)
-        } else if (aShifts.length && !aShifts.some(aShift => bShifts.some(bShift => shiftsOverlap(aShift, bShift)))) {
-          violations.push(`${capitalize(day)}: ${a} and ${b} are both scheduled but their shifts do not overlap`)
-        }
-      })
-
-      ;(employeeRules.avoidTogether || []).forEach(([a, b]) => {
-        const aShifts = shifts.filter(s => s.employee === a)
-        const bShifts = shifts.filter(s => s.employee === b)
-        if (aShifts.some(aShift => bShifts.some(bShift => shiftsOverlap(aShift, bShift)))) {
-          violations.push(`${capitalize(day)}: ${a} and ${b} must not work the same shift`)
-        }
-      })
-
-      Object.entries(employeeRules.shiftHoursByEmployee || {}).forEach(([employee, expectedHours]) => {
-        shifts
-          .filter(s => s.employee === employee)
-          .forEach(shift => {
-            const actualHours = Number(shift.hours) || shiftHours(shift.start, shift.end)
-            if (Math.abs(actualHours - Number(expectedHours)) > 0.05) {
-              violations.push(`${capitalize(day)}: ${employee} should have ${expectedHours}h shifts — scheduled ${actualHours}h`)
-            }
-          })
-      })
-    }
-  })
-
-  if (employeeRules) {
-    Object.entries(employeeRules.maxDays || {}).forEach(([employee, max]) => {
-      const days = DAYS.filter(day =>
-        (data.days?.[day]?.shifts || []).some(shift => shift.employee === employee)
-      ).length
-      if (days > Number(max)) {
-        violations.push(`${employee}: scheduled ${days} days but maximum is ${max}`)
-      }
-    })
-
-    Object.entries(employeeRules.maxCloses || {}).forEach(([employee, max]) => {
-      const closes = DAYS.filter(day => {
-        const shifts = data.days?.[day]?.shifts || []
-        const latestEnd = shifts.reduce((latest, shift) => Math.max(latest, toM(shift.end)), 0)
-        return shifts.some(shift => shift.employee === employee && toM(shift.end) >= latestEnd - 30)
-      }).length
-      if (closes > Number(max)) {
-        violations.push(`${employee}: scheduled ${closes} closing shifts but maximum is ${max}`)
-      }
-    })
-  }
-
-  // --- Weekly target check (over AND under) ---
-  employees.forEach(emp => {
-    if (emp.targetHours == null) return
-    const total = Math.round((weekTotals[emp.name] || 0) * 10) / 10
-    const diff = Math.round((total - emp.targetHours) * 10) / 10
-
-    if (diff > 0.05) {
-      violations.push(`${emp.name}: scheduled ${total}h but target is ${emp.targetHours}h — ${diff}h over`)
-    } else if (diff < -1) {
-      // Find days they're available but not yet scheduled
-      const openDays = DAYS.filter(d => {
-        const av = emp.availability?.[d]
-        if (!av || av.available === false) return false
-        return !(data.days?.[d]?.shifts || []).some(s => s.employee === emp.name)
-      })
-      if (openDays.length > 0) {
-        violations.push(`${emp.name}: only ${total}h scheduled but target is ${emp.targetHours}h — add shifts on: ${openDays.map(capitalize).join(', ')}`)
-      } else {
-        violations.push(`${emp.name}: only ${total}h scheduled but target is ${emp.targetHours}h — no unused available days remain`)
-      }
-    }
-  })
-
-  return violations
-}
-
 function buildConstraintsFromParsedRules(parsedRules, operatingHours, dayCoverage = null) {
   const slots = []
   const pairs = []
@@ -1424,8 +1139,6 @@ function buildConstraintsFromParsedRules(parsedRules, operatingHours, dayCoverag
   return { slots, pairs, avoid, maxDays, maxCloses, preferWindows, shiftHoursByEmployee, trainingPairs, prioritize, minimumStaff }
 }
 
-const shiftHours = (start, end) => shiftLengthHours(start, end)
-
 function shiftStartMins(shift) {
   return toMinutes(shift.start)
 }
@@ -1443,10 +1156,6 @@ function pairedShiftsOverlap(shifts, a, b) {
   const aShifts = shifts.filter(shift => shift.employee === a)
   const bShifts = shifts.filter(shift => shift.employee === b)
   return aShifts.some(aShift => bShifts.some(bShift => shiftsOverlap(aShift, bShift)))
-}
-
-function capitalize(s) {
-  return s.charAt(0).toUpperCase() + s.slice(1)
 }
 
 export default Schedule

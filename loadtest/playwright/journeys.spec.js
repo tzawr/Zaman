@@ -15,6 +15,7 @@ const str = (doc, f) => doc.fields?.[f]?.stringValue
 
 test.describe.serial('manager journey', () => {
   const email = uniqueEmail('mgr')
+  const journeyStart = new Date()
   let manager
   let page
 
@@ -237,7 +238,10 @@ test.describe.serial('manager journey', () => {
     expect(where).toContain('schedule.rules.unavailable')
     expect(where).toContain('schedule.rules.unreadable')
     // Limit and expired-session refusals are the account's state, not faults.
-    expect(where.filter(w => /limit|signin/.test(w))).toHaveLength(0)
+    // Staging keeps events from earlier runs (monitoring.spec simulates an
+    // Auth outage on purpose), so only this run's events count here.
+    const mine = events.filter(e => !STAGING || new Date(e.lastSeen?.timestampValue) >= journeyStart)
+    expect(mine.map(e => e.where?.stringValue).filter(w => /limit|signin/.test(w))).toHaveLength(0)
     const text = JSON.stringify(events)
     expect(text).not.toContain(manager.email)
     expect(text).not.toContain('Ana never works')

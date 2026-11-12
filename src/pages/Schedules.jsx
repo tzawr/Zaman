@@ -14,6 +14,7 @@ import {
   FileText,
   Image,
   Filter,
+  AlertTriangle,
 } from 'lucide-react'
 import {
   collection,
@@ -23,7 +24,7 @@ import {
   orderBy,
   deleteDoc,
   doc,
-  updateDoc
+  runTransaction,
 } from 'firebase/firestore'
 import { db } from '../firebase'
 import { useAuth } from '../AuthContext'
@@ -33,12 +34,15 @@ import { exportToCSV, exportToPNG, exportToPDF } from '../utils/exportSchedule'
 import { useI18n } from '../i18n'
 import TeamsPublishButton from '../components/teams/TeamsPublishButton'
 import { canExport, canViewRecommendationsForTier, getUserTier } from '../utils/tier'
+import { formatWeekRange as formatWeek, scheduleDateProblem } from '../utils/weekDates'
+import { revalidateSchedule } from '../utils/scheduleValidation'
+import { loadSchedulingTeam } from '../utils/schedulingTeam'
 
 function Schedules() {
   const navigate = useNavigate()
   const { currentUser, userData } = useAuth()
   const toast = useToast()
-  const { t, language } = useI18n()
+  const { t, tf, language } = useI18n()
   
   const [schedules, setSchedules] = useState([])
   const [selectedSchedule, setSelectedSchedule] = useState(null)
@@ -49,6 +53,10 @@ function Schedules() {
   const [exportMenuOpen, setExportMenuOpen] = useState(false)
   const [employees, setEmployees] = useState([])
   const [roles, setRoles] = useState([])
+  // Workspace settings and the team as the scheduler sees it for the open
+  // week, used to check every manual edit (HQA-09).
+  const [workspace, setWorkspace] = useState(null)
+  const [checkTeam, setCheckTeam] = useState(null)
   const [filterType, setFilterType] = useState('role')
   const [filterValue, setFilterValue] = useState('')
   const [tier, setTier] = useState('free')
@@ -95,36 +103,61 @@ function Schedules() {
   useEffect(() => {
     if (!currentUser) return
     return onSnapshot(doc(db, 'users', currentUser.uid), snap => {
-      if (snap.exists()) setRoles(snap.data().roles || [])
+      if (snap.exists()) {
+        setRoles(snap.data().roles || [])
+        setWorkspace(snap.data())
+      }
     })
   }, [currentUser])
 
+  const openWeek = selectedSchedule?.weekStart
+  const teamsBizId = workspace?.teamsBizId
+  useEffect(() => {
+    if (!currentUser || !openWeek) return
+    let cancelled = false
+    loadSchedulingTeam(currentUser.uid, employees, { teamsBizId, weekStart: openWeek })
+      .then(r => { if (!cancelled) setCheckTeam(r.employees) })
+      .catch(() => { if (!cancelled) setCheckTeam(null) })
+    return () => { cancelled = true }
+  }, [currentUser, employees, openWeek, teamsBizId])
+
+  // A manual edit is checked again and saved together with its review items,
+  // so history never shows Ready for a week an edit left short (HQA-09). The
+  // save is a transaction on the week's revision: an edit made from a copy
+  // another tab or person has since changed is refused, not written over it.
   async function handleScheduleUpdate(updatedData) {
     if (!selectedSchedule) return
-    setSelectedSchedule(prev => ({ ...prev, data: updatedData }))
+    const base = selectedSchedule
+    const checked = revalidateSchedule(updatedData, checkTeam || employees, {
+      coverage: workspace?.coverage,
+      operatingHours: workspace?.operatingHours,
+    })
+    setSelectedSchedule(prev => ({ ...prev, data: checked }))
+    const ref = doc(db, 'schedules', base.id)
     try {
-      await updateDoc(doc(db, 'schedules', selectedSchedule.id), { data: updatedData })
+      await runTransaction(db, async (tx) => {
+        const snap = await tx.get(ref)
+        if (!snap.exists()) throw Object.assign(new Error('gone'), { code: 'schedule/gone' })
+        const current = snap.data().revision || 0
+        if (current !== (base.revision || 0)) {
+          throw Object.assign(new Error('changed'), { code: 'schedule/conflict', latest: { id: snap.id, ...snap.data() } })
+        }
+        tx.update(ref, { data: checked, revision: current + 1 })
+      })
+      setSelectedSchedule(prev => (prev?.id === base.id ? { ...prev, data: checked, revision: (base.revision || 0) + 1 } : prev))
     } catch (err) {
+      if (err.code === 'schedule/conflict') {
+        setSelectedSchedule(err.latest)
+        toast.error(t('scheduleEditConflict'))
+        return
+      }
       console.error('Failed to save:', err)
+      setSelectedSchedule(prev => (prev?.id === base.id ? base : prev))
       toast.error(t('failedSaveChanges'))
     }
   }
 
-  function formatWeekRange(mondayStr) {
-    if (!mondayStr) return t('unknownWeek')
-    const monday = new Date(mondayStr + 'T12:00:00')
-    const sunday = new Date(monday)
-    sunday.setDate(monday.getDate() + 6)
-    
-    const locale = language === 'fa' ? 'fa-IR-u-nu-latn' : 'en-US'
-    const format = (d, withYear = false) => d.toLocaleDateString(locale, {
-      month: 'short', 
-      day: 'numeric',
-      ...(withYear ? { year: 'numeric' } : {})
-    })
-
-    return `${format(monday)} — ${format(sunday, true)}`
-  }
+  const formatWeekRange = (weekStart) => formatWeek(weekStart, language) || t('unknownWeek')
 
   function formatCreatedAt(timestamp) {
     if (!timestamp) return ''
@@ -145,8 +178,19 @@ function Schedules() {
     return t('ready')
   }
 
+  // Records saved before the HQA-08 fix can carry dates that are not their
+  // weekdays. They are shown as saved, with a warning; exports and
+  // publishing stay off so wrong dates do not reach staff.
+  const dateProblem = selectedSchedule ? scheduleDateProblem(selectedSchedule.weekStart, selectedSchedule.data) : null
+  const dayName = (key) => t(`day${key.charAt(0).toUpperCase()}${key.slice(1)}`)
+
   async function handleExport(type) {
     if (!selectedSchedule?.data) return
+    if (dateProblem) {
+      toast.error(t('exportBlockedDates'))
+      setExportMenuOpen(false)
+      return
+    }
     const gate = await canExport(currentUser.uid, type)
     if (gate.blocked) {
       toast.info(gate.message)
@@ -271,10 +315,19 @@ function Schedules() {
                   onClick={() => setSelectedSchedule(sched)}
                 >
                   <div className="schedule-card-header">
-                    <p className="schedule-week">
-                      <Calendar size={14} className="schedule-week-icon" />
+                    <button
+                      type="button"
+                      className="schedule-week schedule-open"
+                      onClick={(e) => { e.stopPropagation(); setSelectedSchedule(sched) }}
+                      aria-pressed={selectedSchedule?.id === sched.id}
+                      aria-label={`${t('openSchedule')}: ${formatWeekRange(sched.weekStart)}, ${scheduleHealth(sched)}`}
+                    >
+                      <Calendar size={14} className="schedule-week-icon" aria-hidden />
                       {formatWeekRange(sched.weekStart)}
-                    </p>
+                      {scheduleDateProblem(sched.weekStart, sched.data) && (
+                        <span className="schedule-date-badge">{t('dateProblemBadge')}</span>
+                      )}
+                    </button>
                     <button 
                       className="schedule-delete-btn"
                       onClick={(e) => {
@@ -312,13 +365,14 @@ function Schedules() {
                     </p>
                   </div>
                   <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                    {selectedSchedule.data && userData?.teamsBizId && <TeamsPublishButton schedule={selectedSchedule} />}
+                    {selectedSchedule.data && userData?.teamsBizId && !dateProblem && <TeamsPublishButton schedule={selectedSchedule} />}
                     {selectedSchedule.data && (
                       <div className="export-dropdown-wrap">
                         <button 
                           className="settings-button"
                           onClick={() => setExportMenuOpen(!exportMenuOpen)}
-                          disabled={exporting !== null}
+                          disabled={exporting !== null || Boolean(dateProblem)}
+                          title={dateProblem ? t('exportBlockedDates') : undefined}
                         >
                           {exporting ? <Loader2 size={16} className="spin" /> : <Download size={16} />}
                           <span>{exporting ? `${t('exporting')} ${exporting}...` : t('export')}</span>
@@ -427,6 +481,26 @@ function Schedules() {
                         )}
                       </div>
                     </div>
+                    {dateProblem && (
+                      <div className="setup-blocked schedule-date-problem" role="alert">
+                        <div className="setup-blocked-head">
+                          <AlertTriangle size={15} aria-hidden />
+                          <span>{t('dateProblemTitle')}</span>
+                        </div>
+                        <p className="setup-blocked-message">
+                          {dateProblem.kind === 'invalid'
+                            ? t('exportBlockedDates')
+                            : dateProblem.kind === 'dates_mismatch'
+                            ? tf('dateProblemMismatch', { day: dayName(dateProblem.day), date: dateProblem.date })
+                            : tf('dateProblemNotMonday', { weekday: dayName(String(dateProblem.savedWeekday || '').toLowerCase() || 'monday'), date: dateProblem.savedWeekStart, monday: dateProblem.monday || '' })}
+                        </p>
+                        {dateProblem.monday && (
+                          <button type="button" className="settings-button" onClick={() => navigate(`/schedule?week=${dateProblem.monday}`)}>
+                            {t('dateProblemRebuild')}
+                          </button>
+                        )}
+                      </div>
+                    )}
                     <ScheduleTable
                       data={selectedSchedule.data}
                       employees={employees}

@@ -33,6 +33,8 @@ import { db } from '../firebase'
 import { useAuth } from '../AuthContext'
 import { useToast } from '../components/Toast'
 import { useI18n } from '../i18n'
+import InviteEmailForm from '../components/InviteEmailForm'
+import { callTeams } from '../utils/teamsApi'
 import TimeSelect from '../components/TimeSelect'
 import { canAddEmployee, canInviteEmployees } from '../utils/tier'
 import { getSetupStatus, employeeHasAvailability } from '../utils/setupChecklist'
@@ -104,7 +106,7 @@ function Onboarding() {
   const navigate = useNavigate()
   const { currentUser } = useAuth()
   const toast = useToast()
-  const { t, tf } = useI18n()
+  const { t, tf, language } = useI18n()
 
   const [step, setStep] = useState(1)
   const [loading, setLoading] = useState(true)
@@ -421,6 +423,9 @@ function Onboarding() {
         onboarded: true,
         createdAt: serverTimestamp(),
       })
+      // One welcome email, sent by the server only if email is set up and the
+      // address is verified. Never blocks finishing setup.
+      callTeams('sendWelcome', { language }).catch(() => {})
       navigate('/dashboard')
     } catch (err) {
       console.error(err)
@@ -488,7 +493,7 @@ function Onboarding() {
             </button>
           ))}
         </div>
-        <p className="setup-step-count">
+        <p className="setup-step-count" aria-live="polite">
           {tf('setupStepOf', { current: step, total: LAST_STEP })}
         </p>
 
@@ -498,7 +503,7 @@ function Onboarding() {
             <Motion.div key="step1" {...stepMotion}>
               <div className="auth-eyebrow">
                 <Sparkles size={14} />
-                <span>{t('onboardingStep1')}</span>
+                <span>{t('setupNavProfile')}</span>
               </div>
               <h1 className="auth-title">{t('onboardingTitle1')}</h1>
               <p className="auth-subtitle">{t('onboardingSubtitle1')}</p>
@@ -967,6 +972,7 @@ function Onboarding() {
                 <span>{inviteModal.copied ? t('copied') : t('copy')}</span>
               </button>
             </div>
+            <InviteEmailForm link={inviteModal.link} />
             <p className="invite-link-note">{t('inviteLinkNote')}</p>
           </div>
         </div>

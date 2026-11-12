@@ -1,16 +1,19 @@
 import { useState } from 'react'
-import { useNavigate, Link } from 'react-router-dom'
+import { useNavigate, Link, useSearchParams } from 'react-router-dom'
 import { motion as Motion } from 'framer-motion'
 import { ArrowRight, Sparkles, Check } from 'lucide-react'
 import { sendEmailVerification } from 'firebase/auth'
 import { useAuth } from '../AuthContext'
 import { useI18n } from '../i18n'
-import { EXPECTED_AUTH_ERRORS, reportError } from '../utils/reportError'
+import { reportError } from '../utils/reportError'
+import { EXPECTED_AUTH_ERRORS, authErrorMessage } from '../utils/authErrors'
 
 function SignUp() {
   const navigate = useNavigate()
   const { signUp, signInWithGoogle } = useAuth()
   const { t } = useI18n()
+  const [params] = useSearchParams()
+  const wantsPro = params.get('plan') === 'pro'
   
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -31,7 +34,7 @@ function SignUp() {
       navigate('/verify-email')
     } catch (err) {
       if (!EXPECTED_AUTH_ERRORS.has(err?.code)) reportError('auth.signup', err)
-      setError(prettyError(err.code, t) || err.message || t('authGeneric'))
+      setError(authErrorMessage(err?.code, t))
       setLoading(false)
     }
   }
@@ -44,7 +47,7 @@ function SignUp() {
       navigate('/dashboard')
     } catch (err) {
       if (!EXPECTED_AUTH_ERRORS.has(err?.code)) reportError('auth.signup', err)
-      setError(prettyError(err.code, t))
+      setError(authErrorMessage(err?.code, t))
       setLoading(false)
     }
   }
@@ -102,6 +105,9 @@ function SignUp() {
           <span>{t('or')}</span>
         </div>
 
+        {wantsPro && (
+          <p className="auth-plan-note" role="note">{t('signupProNote')}</p>
+        )}
         <form onSubmit={handleSubmit} className="auth-form">
           <div className="auth-field">
             <label htmlFor="signup-email" className="form-label">{t('email')}</label>
@@ -128,10 +134,12 @@ function SignUp() {
               required
               autoComplete="new-password"
               minLength={6}
+              aria-describedby="signup-password-hint"
             />
+            <p id="signup-password-hint" className="auth-field-hint">{t('passwordMinHint')}</p>
           </div>
 
-          {error && <div className="auth-error">{error}</div>}
+          {error && <div className="auth-error" role="alert">{error}</div>}
 
           {/* The form collects a name and an email and creates a binding
               account, with nothing on screen saying what the user is agreeing
@@ -171,16 +179,6 @@ function GoogleIcon() {
       <path fill="#EA4335" d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 00.957 4.958L3.964 7.29C4.672 5.163 6.656 3.58 9 3.58z"/>
     </svg>
   )
-}
-
-function prettyError(code, t) {
-  const map = {
-    'auth/email-already-in-use': t('authEmailInUse'),
-    'auth/invalid-email': t('authInvalidEmail'),
-    'auth/weak-password': t('authWeakPassword'),
-    'auth/too-many-requests': t('authTooMany'),
-  }
-  return map[code] || t('authGeneric')
 }
 
 export default SignUp

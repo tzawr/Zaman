@@ -52,7 +52,13 @@ export function desiredShiftsFromHengam({ scheduleId, weekStart, data, employees
   const shifts = []
   DAY_KEYS.forEach((dayKey, i) => {
     const day = data?.days?.[dayKey]
-    const date = day?.date || addDays(weekStart, i)
+    const date = addDays(weekStart, i)
+    // A saved week whose dates do not match its own Monday (HQA-08) would put
+    // every shift on the wrong day in Teams. Refuse rather than guess.
+    if (day?.date && day.date !== date) {
+      errors.push(`The ${dayKey} of this week is dated ${day.date}, not ${date}. Rebuild the week before publishing.`)
+      return
+    }
     ;(day?.shifts || []).forEach((s, index) => {
       const key = String(s?.employee || '').trim().toLowerCase()
       const match = byName.get(key)

@@ -6,7 +6,8 @@ import { doc, getDoc } from 'firebase/firestore'
 import { db } from '../firebase'
 import { useAuth } from '../AuthContext'
 import { useI18n } from '../i18n'
-import { EXPECTED_AUTH_ERRORS, reportError } from '../utils/reportError'
+import { reportError } from '../utils/reportError'
+import { EXPECTED_AUTH_ERRORS, authErrorMessage } from '../utils/authErrors'
 
 async function getRedirectPath(uid) {
   const snap = await getDoc(doc(db, 'users', uid))
@@ -37,7 +38,7 @@ function SignIn() {
       navigate(await getRedirectPath(cred.user.uid))
     } catch (err) {
       if (!EXPECTED_AUTH_ERRORS.has(err?.code)) reportError('auth.signin', err)
-      setError(prettyError(err.code, t))
+      setError(authErrorMessage(err?.code, t))
       setLoading(false)
     }
   }
@@ -50,7 +51,7 @@ function SignIn() {
       navigate(await getRedirectPath(cred.user.uid))
     } catch (err) {
       if (!EXPECTED_AUTH_ERRORS.has(err?.code)) reportError('auth.signin', err)
-      setError(prettyError(err.code, t))
+      setError(authErrorMessage(err?.code, t))
       setLoading(false)
     }
   }
@@ -133,7 +134,7 @@ function SignIn() {
             />
           </div>
 
-          {error && <div className="auth-error">{error}</div>}
+          {error && <div className="auth-error" role="alert">{error}</div>}
 
           <button 
             type="submit"
@@ -162,17 +163,6 @@ function GoogleIcon() {
       <path fill="#EA4335" d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 00.957 4.958L3.964 7.29C4.672 5.163 6.656 3.58 9 3.58z"/>
     </svg>
   )
-}
-
-function prettyError(code, t) {
-  const map = {
-    'auth/invalid-email': t('authInvalidEmail') || 'That email looks wrong.',
-    'auth/user-not-found': t('authUserNotFound') || 'No account with that email.',
-    'auth/wrong-password': t('authWrongPassword') || 'Incorrect password.',
-    'auth/invalid-credential': t('authInvalidCredential') || 'Email or password is incorrect.',
-    'auth/too-many-requests': t('authTooMany') || 'Too many attempts. Try again in a few minutes.',
-  }
-  return map[code] || (t('authGeneric') || 'Something went wrong. Try again.')
 }
 
 export default SignIn

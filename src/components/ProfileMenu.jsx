@@ -19,6 +19,7 @@ function ProfileMenu() {
   const navigate = useNavigate()
   const [open, setOpen] = useState(false)
   const menuRef = useRef(null)
+  const triggerRef = useRef(null)
 
   useEffect(() => {
     function handleClickOutside(e) {
@@ -27,6 +28,19 @@ function ProfileMenu() {
     document.addEventListener('mousedown', handleClickOutside)
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [])
+
+  // HQA-14: Escape closes the menu and gives focus back to its button;
+  // tabbing out of the menu closes it rather than leaving it over the page.
+  function handleMenuKeyDown(e) {
+    if (e.key === 'Escape' && open) {
+      e.stopPropagation()
+      setOpen(false)
+      triggerRef.current?.focus()
+    }
+  }
+  function handleMenuBlur(e) {
+    if (open && menuRef.current && !menuRef.current.contains(e.relatedTarget)) setOpen(false)
+  }
 
   function go(path, state) {
     setOpen(false)
@@ -59,17 +73,20 @@ function ProfileMenu() {
   const initial = displayName[0]?.toUpperCase() || '?'
 
   return (
-    <div className="profile-menu" ref={menuRef}>
+    <div className="profile-menu" ref={menuRef} onKeyDown={handleMenuKeyDown} onBlur={handleMenuBlur}>
       <button
+        ref={triggerRef}
         className="profile-avatar"
         onClick={() => setOpen(!open)}
-        aria-label="Open profile menu"
+        aria-label={t('openProfileMenu')}
+        aria-expanded={open}
+        aria-controls="profile-dropdown"
       >
         {initial}
       </button>
 
       {open && (
-        <div className="profile-dropdown">
+        <div className="profile-dropdown" id="profile-dropdown">
           {/* Header */}
           <div className="dropdown-header">
             <div className="dropdown-avatar">{initial}</div>

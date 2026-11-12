@@ -1,7 +1,10 @@
 import { useRef, useState } from 'react'
 import { Clock, AlertTriangle, TrendingUp, TrendingDown, Minus, Sparkles, X, Plus, Trash2 } from 'lucide-react'
 import { useI18n } from '../i18n'
+import { parseIssue } from '../utils/issueText'
+import { useModalFocus } from '../utils/useModalFocus'
 import { formatShiftTime, normalizeShiftTimes, shiftLengthHours, toWallClock } from '../utils/shiftTime'
+import { formatDayDate } from '../utils/weekDates'
 
 const DAYS = [
   { key: 'monday', labelKey: 'dayMonShort', fullLabelKey: 'dayMonday' },
@@ -33,7 +36,22 @@ function colorForEmployee(name) {
   return colors[Math.abs(hash) % colors.length]
 }
 
-function formatIssue(issue, t) {
+// Unicode isolates keep a Latin name or a time from reordering the sentence
+// around it in Persian, and the other way round.
+const isolate = (v) => `\u2068${v}\u2069`
+
+function formatIssue(issue, t, tf) {
+  const formatted = formatIssueText(issue, t)
+  const parsed = parseIssue(issue)
+  if (!parsed) return formatted
+  const p = parsed.params
+  const dayName = (d) => (DAY_KEY_BY_NAME[d] ? t(DAY_KEY_BY_NAME[d].fullLabelKey) : d)
+  const values = Object.fromEntries(Object.entries(p).map(([k, v]) => [k, Array.isArray(v) ? v.map(dayName).join(t('listSeparator')) : isolate(v)]))
+  const title = /^target/.test(parsed.kind) ? `${isolate(p.name)} ${t('targetHours')}` : formatted.title
+  return { ...formatted, title, body: tf(`issue_${parsed.kind}`, values) }
+}
+
+function formatIssueText(issue, t) {
   const text = String(issue || '')
   const dayMatch = text.match(/^(Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday):\s*(.*)$/i)
   const scopeKey = dayMatch ? dayMatch[1].toLowerCase() : null
@@ -106,12 +124,6 @@ function formatIssue(issue, t) {
 // following morning.
 const formatTime = (time24, language = 'en') => formatShiftTime(time24, language)
 
-function formatDayDate(dateStr, language = 'en') {
-  if (!dateStr) return ''
-  const d = new Date(dateStr + 'T12:00:00')
-  return d.toLocaleDateString(language === 'fa' ? 'fa-IR-u-nu-latn' : 'en-US', { month: 'short', day: 'numeric' })
-}
-
 function formatRole(role, t, language = 'en') {
   if (language !== 'fa') return role
   const normalized = role?.toLowerCase?.().trim()
@@ -128,7 +140,7 @@ function formatHours(hours, language = 'en') {
 const calcHours = (start, end) => shiftLengthHours(start, end)
 
 function ScheduleTable({ data, employees = [], roles = [], onUpdate, highlightFilter = null, showRecommendations = true }) {
-  const { t, language } = useI18n()
+  const { t, tf, language } = useI18n()
   const [editing, setEditing] = useState(null) // { dayKey, shift } or { dayKey, shift: null } for new
   const newShiftCounter = useRef(0)
   
@@ -234,7 +246,7 @@ function ScheduleTable({ data, employees = [], roles = [], onUpdate, highlightFi
                     const color = colorForEmployee(shift.employee)
                     return (
                       <div
-                        key={shift.id}
+                        key={shift.id || `${day.key}-${shift.employee}-${shift.start}`}
                         className={`schedule-shift ${hasHighlight && !matchesHighlight(shift) ? 'schedule-shift-muted' : ''}`}
                         style={{
                           '--shift-bg': color.bg,
@@ -244,6 +256,14 @@ function ScheduleTable({ data, employees = [], roles = [], onUpdate, highlightFi
                           '--shift-light-text': color.lightText,
                         }}
                         onClick={() => onUpdate && handleShiftClick(day.key, shift)}
+                        {...(onUpdate ? {
+                          role: 'button',
+                          tabIndex: 0,
+                          'aria-label': `${t('editShift')}: ${shift.employee}, ${t(day.labelKey)} ${formatTime(shift.start, language)}–${formatTime(shift.end, language)}`,
+                          onKeyDown: (e) => {
+                            if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleShiftClick(day.key, shift) }
+                          },
+                        } : {})}
                       >
                         <div className="schedule-shift-name">{shift.employee}</div>
                         <div className="schedule-shift-role">{formatRole(shift.role, t, language)}</div>
@@ -264,6 +284,14 @@ function ScheduleTable({ data, employees = [], roles = [], onUpdate, highlightFi
                     key={`empty-${i}`}
                     className="schedule-shift schedule-shift-empty-slot"
                     onClick={() => onUpdate && handleAddShift(day.key)}
+                    {...(onUpdate ? {
+                      role: 'button',
+                      tabIndex: 0,
+                      'aria-label': `${t('assign')} ${formatRole(slot.role, t, language) || t('openShift')}, ${t(day.labelKey)} ${formatTime(slot.start, language)}–${formatTime(slot.end, language)}`,
+                      onKeyDown: (e) => {
+                        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleAddShift(day.key) }
+                      },
+                    } : {})}
                   >
                     <div className="schedule-shift-empty-slot-role">
                       {formatRole(slot.role, t, language) || t('openShift')}
@@ -349,14 +377,14 @@ function ScheduleTable({ data, employees = [], roles = [], onUpdate, highlightFi
 
       {/* Issues */}
       {data.issues && data.issues.length > 0 && (
-        <div className="schedule-issues">
+        <div className="schedule-issues" dir={language === 'fa' ? 'rtl' : 'ltr'} lang={language === 'fa' ? 'fa' : 'en'}>
           <h4 className="schedule-issues-title">
             <AlertTriangle size={16} />
             <span>{t('scheduleReview')}</span>
           </h4>
           <div className="schedule-issues-list">
             {data.issues.map((issue, i) => {
-              const formatted = formatIssue(issue, t)
+              const formatted = formatIssue(issue, t, tf)
               return (
                 <div className="schedule-issue-card" key={i}>
                   <div className="schedule-issue-heading">{formatted.title}</div>
@@ -403,6 +431,7 @@ function ScheduleTable({ data, employees = [], roles = [], onUpdate, highlightFi
 // ===== EDIT MODAL =====
 function EditShiftModal({ editing, employees, roles, onSave, onDelete, onClose, t }) {
   const [shift, setShift] = useState({ ...editing.shift })
+  const dialogRef = useModalFocus(onClose)
 
   function handleSave() {
     if (!shift.employee || !shift.start || !shift.end) {
@@ -417,13 +446,13 @@ function EditShiftModal({ editing, employees, roles, onSave, onDelete, onClose, 
 
   return (
     <div className="modal-backdrop" onClick={onClose}>
-      <div className="modal-card shift-modal" onClick={(e) => e.stopPropagation()}>
+      <div className="modal-card shift-modal" ref={dialogRef} role="dialog" aria-modal="true" aria-labelledby="shift-modal-title" onClick={(e) => e.stopPropagation()}>
         <div className="shift-modal-header">
-          <h3 className="modal-title">
+          <h3 className="modal-title" id="shift-modal-title">
             {editing.isNew ? t('addShift') : t('editShift')}
           </h3>
-          <button className="modal-close-btn" onClick={onClose}>
-            <X size={18} />
+          <button type="button" className="modal-close-btn" onClick={onClose} aria-label={t('close')}>
+            <X size={18} aria-hidden />
           </button>
         </div>
         

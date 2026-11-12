@@ -29,11 +29,5 @@ export function reportError(where, error) {
   }
 }
 
-// Sign-in and sign-up errors that are the person's own input or a normal
-// outcome, not something operations should hear about.
-export const EXPECTED_AUTH_ERRORS = new Set([
-  'auth/invalid-email', 'auth/user-not-found', 'auth/wrong-password', 'auth/invalid-credential',
-  'auth/invalid-login-credentials', 'auth/email-already-in-use', 'auth/weak-password',
-  'auth/missing-password', 'auth/popup-closed-by-user', 'auth/cancelled-popup-request',
-  'auth/user-disabled',
-])
+// Kept here for existing imports; the list lives with the auth messages.
+export { EXPECTED_AUTH_ERRORS } from './authErrors.js'

@@ -27,6 +27,10 @@ export const APP = STAGING ? staging.appUrl : 'http://127.0.0.1:5175'
 // Vercel Deployment Protection stays on for staging; automated calls carry
 // the project's bypass secret.
 export const BYPASS = STAGING ? { 'x-vercel-protection-bypass': staging.bypassSecret } : {}
+/** On staging, one visit with the bypass sets a cookie for this browser context. */
+export async function allowStaging(page) {
+  if (STAGING) await page.goto(`/?x-vercel-protection-bypass=${BYPASS['x-vercel-protection-bypass']}&x-vercel-set-bypass-cookie=true`)
+}
 
 checkRun({ urls: STAGING ? [API] : [API, `http://${AUTH_HOST}`, `http://${FS_HOST}`], profile: 'smoke', projectId: PROJECT_ID, targets })
 

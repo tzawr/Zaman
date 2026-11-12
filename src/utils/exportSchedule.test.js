@@ -18,7 +18,7 @@ const { exportToCSV } = await import('./exportSchedule.js')
 
 const emptyWeek = () => Object.fromEntries(
   ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday']
-    .map((day, i) => [day, { date: `2026-05-0${4 + i}`, shifts: [] }]),
+    .map((day, i) => [day, { date: `2026-05-${String(4 + i).padStart(2, '0')}`, shifts: [] }]),
 )
 
 function csvFor(shifts, summary = [], extra = {}) {
@@ -75,4 +75,10 @@ test('an overnight shift exports as a clock time, not 26:00', () => {
   assert.ok(ava.includes('20:00-02:00 +1 (6h)'), `expected a next-day marker, got: ${ava}`)
   assert.ok(!ava.includes('26:00'), 'the raw past-midnight time should not reach the file')
   assert.ok(bo.includes('18:00-00:00 (6h)'), `midnight needs no marker, got: ${bo}`)
+})
+
+// HQA-08: the CSV must never carry a "Monday (2026-11-17)" header.
+test('CSV export refuses a week whose column weekday and date disagree', () => {
+  const shifted = { days: { monday: { date: '2026-11-17', shifts: [] } }, summary: [] }
+  assert.throws(() => exportToCSV(shifted, '2026-11-17'), /Monday column is dated 2026-11-17, which is a Tuesday/)
 })

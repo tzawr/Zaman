@@ -1,3 +1,4 @@
+import { dateForDay, normalizeWeekStart } from './weekDates.js'
 const DAYS = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday']
 const DAY_ABBR = ['mo', 'tu', 'we', 'th', 'fr', 'sa', 'su']
 
@@ -66,12 +67,12 @@ function floorHalf(mins) {
 }
 
 function getDateForDay(weekStart, idx) {
-  const d = new Date(weekStart + 'T12:00:00')
-  // A malformed weekStart should not take the whole generation down; callers
-  // treat an empty date as "no calendar date for this day".
-  if (Number.isNaN(d.getTime())) return ''
-  d.setDate(d.getDate() + idx)
-  return d.toISOString().split('T')[0]
+  // Pure calendar arithmetic. This used to set noon local time and write the
+  // result out in UTC, which in UTC+12 and later zones dated every day of
+  // the week one day early (HQA-08). A malformed weekStart should not take
+  // the whole generation down; callers treat '' as "no calendar date".
+  if (!normalizeWeekStart(weekStart)) return ''
+  return dateForDay(weekStart, idx)
 }
 
 function isTimeOffDate(emp, date) {
@@ -466,7 +467,11 @@ function normalizeConstraints(raw) {
   }
 }
 
-export function runScheduler(employees, settings, weekStart, rawConstraints = {}) {
+export function runScheduler(employees, settings, requestedWeekStart, rawConstraints = {}) {
+  // A schedule is always a Monday-to-Sunday week: any other date is the week
+  // that contains it, so the "monday" column can never carry another
+  // weekday's date (HQA-08).
+  const weekStart = normalizeWeekStart(requestedWeekStart) || requestedWeekStart
   const constraints = normalizeConstraints(rawConstraints)
   const { operatingHours, preventClopening, minHoursBetweenShifts } = settings || {}
   const {

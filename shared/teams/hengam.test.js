@@ -86,3 +86,11 @@ test('a transfer only writes back over the slot it was agreed on', () => {
   assert.equal(hengamSlotMatches(slot, { staffName: 'Ana Lima', startLocal: '19:00', endLocal: '02:00' }), false)
   assert.equal(hengamSlotMatches(undefined, { staffName: 'Ana Lima' }), false)
 })
+
+test('HQA-08: a saved week whose dates are off by a day is refused, never published to the wrong day', () => {
+  // UTC+13 records: Monday week start but every day dated one day early.
+  const early = { days: { monday: { date: '2026-10-25', shifts: [{ employee: 'Ana Lima', start: '07:00', end: '15:00' }] } } }
+  const r = desiredShiftsFromHengam({ scheduleId: 's', weekStart: '2026-10-26', data: early, employees })
+  assert.equal(r.shifts.length, 0)
+  assert.match(r.errors[0], /monday of this week is dated 2026-10-25, not 2026-10-26/)
+})

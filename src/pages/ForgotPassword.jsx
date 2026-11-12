@@ -3,6 +3,8 @@ import { Link } from 'react-router-dom'
 import { motion as Motion } from 'framer-motion'
 import { ArrowRight, Mail } from 'lucide-react'
 import { sendPasswordResetEmail } from 'firebase/auth'
+import { reportError } from '../utils/reportError'
+import { EXPECTED_AUTH_ERRORS, authErrorMessage } from '../utils/authErrors'
 import { auth } from '../firebase'
 import { useI18n } from '../i18n'
 
@@ -21,7 +23,8 @@ function ForgotPassword() {
       await sendPasswordResetEmail(auth, email)
       setSent(true)
     } catch (err) {
-      setError(prettyError(err.code, t))
+      if (!EXPECTED_AUTH_ERRORS.has(err?.code)) reportError('auth.reset', err)
+      setError(authErrorMessage(err?.code, t))
     } finally {
       setLoading(false)
     }
@@ -77,7 +80,7 @@ function ForgotPassword() {
                 />
               </div>
 
-              {error && <div className="auth-error">{error}</div>}
+              {error && <div className="auth-error" role="alert">{error}</div>}
 
               <button
                 type="submit"
@@ -116,15 +119,6 @@ function ForgotPassword() {
       </Motion.div>
     </main>
   )
-}
-
-function prettyError(code, t) {
-  const map = {
-    'auth/invalid-email': t('authInvalidEmail'),
-    'auth/user-not-found': t('authUserNotFound'),
-    'auth/too-many-requests': t('authTooMany'),
-  }
-  return map[code] || t('authGeneric')
 }
 
 export default ForgotPassword

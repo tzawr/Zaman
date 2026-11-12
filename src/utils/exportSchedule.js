@@ -1,4 +1,5 @@
 import { NEXT_DAY_MARK, isNextDay, toWallClock } from './shiftTime.js'
+import { weekdayName } from './weekDates.js'
 
 // html2canvas and jsPDF together are ~1MB. They are only needed the moment
 // someone exports, so they load on demand instead of shipping with the app.
@@ -40,6 +41,12 @@ export function exportToCSV(data, weekStart) {
     const headerRow = ['Employee', 'Role']
     DAYS.forEach((dayKey, i) => {
       const date = data.days[dayKey]?.date || ''
+      // Never write a column whose weekday and date disagree (HQA-08).
+      if (date && weekdayName(date) !== DAY_LABELS[i]) {
+        throw new Error(weekdayName(date)
+          ? `The ${DAY_LABELS[i]} column is dated ${date}, which is a ${weekdayName(date)}.`
+          : `The ${DAY_LABELS[i]} column has an unreadable date (${date}).`)
+      }
       headerRow.push(`${DAY_LABELS[i]}${date ? ` (${date})` : ''}`)
     })
     headerRow.push('Total Hours')
