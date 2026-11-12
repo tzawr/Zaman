@@ -170,3 +170,28 @@ export function welcomeEmail({ name, origin = appOrigin(), language = 'en' }) {
       paragraphs: ['Your workspace is ready.', 'Add your team, set your hours, and build your first week.', 'Questions? Just reply to this email.'],
       action: { url: link, label: 'Open your dashboard' } })
 }
+
+/** Verification and password-reset emails (HENGAM's own, links to /auth/action). */
+export function authActionEmail({ kind, link, language = 'en', origin = appOrigin() }) {
+  const fa = language === 'fa'
+  if (kind === 'verify') {
+    return fa
+      ? layout({ lang: 'fa', reason: 'security', origin, showPrefs: false,
+        subject: 'نشانی ایمیل خود را برای HENGAM تأیید کنید', heading: 'ایمیل خود را تأیید کنید',
+        paragraphs: ['برای فعال کردن حساب HENGAM، روی دکمه زیر بزنید.', 'این لینک فقط یک بار کار می‌کند و پس از مدتی منقضی می‌شود.', 'اگر شما در HENGAM ثبت‌نام نکرده‌اید، این ایمیل را نادیده بگیرید.'],
+        action: { url: link, label: 'تأیید ایمیل' } })
+      : layout({ lang: 'en', reason: 'security', origin, showPrefs: false,
+        subject: 'Verify your email for HENGAM', heading: 'Verify your email',
+        paragraphs: ['Confirm this address to finish setting up your HENGAM account.', 'The link works once and expires after a while.', "If you didn't sign up for HENGAM, you can ignore this email."],
+        action: { url: link, label: 'Verify email' } })
+  }
+  return fa
+    ? layout({ lang: 'fa', reason: 'security', origin, showPrefs: false,
+      subject: 'بازنشانی رمز عبور HENGAM', heading: 'رمز عبور خود را بازنشانی کنید',
+      paragraphs: ['درخواستی برای بازنشانی رمز عبور حساب HENGAM شما دریافت شد.', 'این لینک فقط یک بار کار می‌کند و پس از مدتی منقضی می‌شود.', 'اگر شما این درخواست را نداده‌اید، کاری لازم نیست؛ رمز عبور شما تغییر نمی‌کند.'],
+      action: { url: link, label: 'انتخاب رمز عبور جدید' } })
+    : layout({ lang: 'en', reason: 'security', origin, showPrefs: false,
+      subject: 'Reset your HENGAM password', heading: 'Reset your password',
+      paragraphs: ['We received a request to reset the password for your HENGAM account.', 'The link works once and expires after a while.', "If you didn't ask for this, there's nothing to do — your password stays the same."],
+      action: { url: link, label: 'Choose a new password' } })
+}

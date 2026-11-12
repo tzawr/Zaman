@@ -2,15 +2,15 @@ import { useCallback, useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion as Motion } from 'framer-motion'
 import { Mail, RefreshCw } from 'lucide-react'
-import { sendEmailVerification } from 'firebase/auth'
 import { doc, getDoc } from 'firebase/firestore'
 import { auth, db } from '../firebase'
 import { useAuth } from '../AuthContext'
 import { useI18n } from '../i18n'
+import { requestVerificationEmail } from '../utils/authEmails'
 
 function VerifyEmail() {
   const { currentUser, logOut } = useAuth()
-  const { t } = useI18n()
+  const { t, language } = useI18n()
   const navigate = useNavigate()
   const [resending, setResending] = useState(false)
   const [cooldown, setCooldown] = useState(0)
@@ -56,7 +56,7 @@ function VerifyEmail() {
     setResending(true)
     setError('')
     try {
-      await sendEmailVerification(currentUser)
+      await requestVerificationEmail(currentUser, language)
       setSent(true)
       setCooldown(60)
       const interval = setInterval(() => {

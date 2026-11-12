@@ -2,14 +2,13 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { motion as Motion } from 'framer-motion'
 import { ArrowRight, Mail } from 'lucide-react'
-import { sendPasswordResetEmail } from 'firebase/auth'
 import { reportError } from '../utils/reportError'
 import { EXPECTED_AUTH_ERRORS, authErrorMessage } from '../utils/authErrors'
-import { auth } from '../firebase'
 import { useI18n } from '../i18n'
+import { requestPasswordReset } from '../utils/authEmails'
 
 function ForgotPassword() {
-  const { t } = useI18n()
+  const { t, language } = useI18n()
   const [email, setEmail] = useState('')
   const [loading, setLoading] = useState(false)
   const [sent, setSent] = useState(false)
@@ -20,7 +19,7 @@ function ForgotPassword() {
     setError('')
     setLoading(true)
     try {
-      await sendPasswordResetEmail(auth, email)
+      await requestPasswordReset(email, language)
       setSent(true)
     } catch (err) {
       if (!EXPECTED_AUTH_ERRORS.has(err?.code)) reportError('auth.reset', err)

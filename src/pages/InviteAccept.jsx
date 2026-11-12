@@ -4,9 +4,10 @@ import { motion as Motion } from 'framer-motion'
 import { ArrowRight, UserCheck } from 'lucide-react'
 import { doc, getDoc, updateDoc, writeBatch, serverTimestamp } from 'firebase/firestore'
 import { db } from '../firebase'
-import { sendEmailVerification } from 'firebase/auth'
 import { useAuth } from '../AuthContext'
 import { useI18n } from '../i18n'
+import { reportError } from '../utils/reportError'
+import { requestVerificationEmail } from '../utils/authEmails'
 import { authErrorMessage } from '../utils/authErrors'
 import { callTeams } from '../utils/teamsApi'
 
@@ -14,7 +15,7 @@ function InviteAccept() {
   const { token } = useParams()
   const navigate = useNavigate()
   const { currentUser, signUp, signIn } = useAuth()
-  const { t } = useI18n()
+  const { t, language } = useI18n()
 
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -118,7 +119,7 @@ function InviteAccept() {
       let cred
       if (mode === 'signup') {
         cred = await signUp(email, password)
-        await sendEmailVerification(cred.user)
+        requestVerificationEmail(cred.user, language).catch(err => reportError('auth.verify.send', err))
         await acceptInvite(cred.user.uid, cred.user.email)
         navigate('/verify-email')
         return

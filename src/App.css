@@ -15533,3 +15533,11 @@ input[type="time"]::-webkit-calendar-picker-indicator:hover {
     padding-right: 10px;
   }
 }
+
+/* Email action handler (/auth/action) */
+.auth-action-card { max-width: 440px; }
+.auth-action-status { display: grid; justify-items: center; gap: 12px; text-align: center; }
+.auth-action-status .auth-title:focus { outline: none; }
+.auth-action-ok { color: #34d399; }
+.auth-action-warn { color: #fbbf24; }
+.auth-action-continue { display: inline-flex; align-items: center; justify-content: center; gap: 8px; text-decoration: none; width: 100%; margin-top: 6px; }

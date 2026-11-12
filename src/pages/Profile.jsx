@@ -12,7 +12,6 @@ import {
   PhoneAuthProvider,
   RecaptchaVerifier,
   linkWithCredential,
-  sendPasswordResetEmail,
 } from 'firebase/auth'
 import { db, auth } from '../firebase'
 import { useAuth } from '../AuthContext'
@@ -22,6 +21,7 @@ import Section from '../components/Section'
 import NotificationPreferences from '../components/NotificationPreferences'
 import { callTeams } from '../utils/teamsApi'
 import { useI18n } from '../i18n'
+import { requestPasswordReset } from '../utils/authEmails'
 
 const COUNTRY_CODES = [
   { code: '+1',   name: 'United States / Canada' },
@@ -318,7 +318,7 @@ function Profile() {
 
   async function handlePasswordResetEmail() {
     try {
-      await sendPasswordResetEmail(auth, currentUser.email)
+      await requestPasswordReset(currentUser.email, language)
       setPasswordResetSent(true)
       toast.success(t('resetEmailSent'))
     } catch {

@@ -4,7 +4,7 @@
 import { mkdirSync, writeFileSync } from 'node:fs'
 import { join, resolve } from 'node:path'
 import { chromium } from '@playwright/test'
-import { inviteEmail, notificationEmail, welcomeEmail } from '../api/_email.js'
+import { authActionEmail, inviteEmail, notificationEmail, welcomeEmail } from '../api/_email.js'
 import { categoryOf } from '../shared/notify/prefs.js'
 import { KNOWN_TYPES, notificationText } from '../shared/notify/text.js'
 
@@ -15,6 +15,8 @@ const facts = { biz: 'Blue Door Café', weekStart: '2026-11-16', count: 4, date:
 const emails = []
 for (const lang of ['en', 'fa']) {
   emails.push([`welcome-${lang}`, welcomeEmail({ name: 'Maya', origin, language: lang })])
+  emails.push([`auth-verify-${lang}`, authActionEmail({ kind: 'verify', link: `${origin}/auth/action?mode=verifyEmail&oobCode=DEMO&lang=${lang}`, language: lang, origin })])
+  emails.push([`auth-reset-${lang}`, authActionEmail({ kind: 'reset', link: `${origin}/auth/action?mode=resetPassword&oobCode=DEMO&lang=${lang}`, language: lang, origin })])
   emails.push([`invite-${lang}`, inviteEmail({ businessName: 'Blue Door Café', employeeName: 'Ana', link: `${origin}/invite/0b6c1a7e-demo`, language: lang, origin })])
   for (const type of KNOWN_TYPES) {
     const t = notificationText(type, facts, lang)
@@ -29,7 +31,7 @@ for (const [name, e] of emails) {
   writeFileSync(join(out, `${name}.html`), html)
   writeFileSync(join(out, `${name}.txt`), `Subject: ${e.subject}\n\n${e.text}`)
 }
-for (const [name] of emails.filter(([n]) => /^(welcome|invite|schedule_published|password_changed)-/.test(n))) {
+for (const [name] of emails.filter(([n]) => /^(welcome|invite|schedule_published|password_changed|auth-verify|auth-reset)-/.test(n))) {
   for (const [w, h] of [[375, 900], [800, 900]]) {
     const page = await browser.newPage({ viewport: { width: w, height: h } })
     await page.goto(`file://${join(out, `${name}.html`)}`)

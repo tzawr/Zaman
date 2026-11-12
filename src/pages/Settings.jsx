@@ -7,10 +7,9 @@ import {
   reauthenticateWithCredential,
   reauthenticateWithPopup,
   EmailAuthProvider,
-  sendPasswordResetEmail,
 } from 'firebase/auth'
 import { googleProvider } from '../firebase'
-import { db, auth } from '../firebase'
+import { db } from '../firebase'
 import { useAuth } from '../AuthContext'
 import { useToast } from '../components/Toast'
 import PageHero from '../components/PageHero'
@@ -18,6 +17,7 @@ import Section from '../components/Section'
 import TimeSelect from '../components/TimeSelect'
 import { useSpeechInput } from '../utils/useSpeechInput'
 import { useI18n } from '../i18n'
+import { requestPasswordReset } from '../utils/authEmails'
 import TeamsConnectSection from '../components/teams/TeamsConnectSection'
 
 const DAYS = [
@@ -53,7 +53,7 @@ function Settings() {
   const navigate = useNavigate()
   const { currentUser, logOut } = useAuth()
   const toast = useToast()
-  const { t, tf } = useI18n()
+  const { t, tf, language } = useI18n()
 
   const [operatingHours, setOperatingHours] = useState(DEFAULT_HOURS)
   const [coverage, setCoverage] = useState(DEFAULT_COVERAGE)
@@ -298,7 +298,7 @@ function Settings() {
 
   async function handlePasswordResetEmail() {
     try {
-      await sendPasswordResetEmail(auth, currentUser.email)
+      await requestPasswordReset(currentUser.email, language)
       setPasswordResetSent(true)
       toast.success(t('resetEmailSent'))
     } catch {

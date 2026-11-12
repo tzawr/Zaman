@@ -2,16 +2,16 @@ import { useState } from 'react'
 import { useNavigate, Link, useSearchParams } from 'react-router-dom'
 import { motion as Motion } from 'framer-motion'
 import { ArrowRight, Sparkles, Check } from 'lucide-react'
-import { sendEmailVerification } from 'firebase/auth'
 import { useAuth } from '../AuthContext'
 import { useI18n } from '../i18n'
+import { requestVerificationEmail } from '../utils/authEmails'
 import { reportError } from '../utils/reportError'
 import { EXPECTED_AUTH_ERRORS, authErrorMessage } from '../utils/authErrors'
 
 function SignUp() {
   const navigate = useNavigate()
   const { signUp, signInWithGoogle } = useAuth()
-  const { t } = useI18n()
+  const { t, language } = useI18n()
   const [params] = useSearchParams()
   const wantsPro = params.get('plan') === 'pro'
   
@@ -30,7 +30,9 @@ function SignUp() {
     setLoading(true)
     try {
       const cred = await signUp(email, password)
-      await sendEmailVerification(cred.user)
+      // The account exists; the email goes out in the background (the next
+      // page can send it again), so a slow send never strands anyone here.
+      requestVerificationEmail(cred.user, language).catch(err => reportError('auth.verify.send', err))
       navigate('/verify-email')
     } catch (err) {
       if (!EXPECTED_AUTH_ERRORS.has(err?.code)) reportError('auth.signup', err)
