@@ -19,6 +19,8 @@ import { useAuth } from '../AuthContext'
 import { useToast } from '../components/Toast'
 import PageHero from '../components/PageHero'
 import Section from '../components/Section'
+import NotificationPreferences from '../components/NotificationPreferences'
+import { callTeams } from '../utils/teamsApi'
 import { useI18n } from '../i18n'
 
 const COUNTRY_CODES = [
@@ -82,7 +84,7 @@ function Profile() {
   const navigate = useNavigate()
   const { currentUser } = useAuth()
   const toast = useToast()
-  const { t, direction } = useI18n()
+  const { t, direction, language } = useI18n()
 
   const [userData, setUserData] = useState(null)
   const [displayName, setDisplayName] = useState('')
@@ -298,6 +300,8 @@ function Profile() {
       const cred = EmailAuthProvider.credential(currentUser.email, currentPassword)
       await reauthenticateWithCredential(currentUser, cred)
       await updatePassword(currentUser, newPassword)
+      // A security email to the account's own address (checked on the server).
+      callTeams('reportEvent', { type: 'password_changed', language }).catch(() => {})
       setCurrentPassword(''); setNewPassword(''); setConfirmPassword('')
       setShowPasswordChange(false)
       toast.success(t('passwordChanged'))
@@ -641,6 +645,8 @@ function Profile() {
           </>
         )}
       </Section>
+
+      <NotificationPreferences />
     </main>
   )
 }

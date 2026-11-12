@@ -1,6 +1,7 @@
 import { Timestamp } from 'firebase-admin/firestore'
 import { paths } from '../shared/teams/schema.js'
 import { messages } from '../shared/teams/notifications.js'
+import { persistNotifications } from './_notify.js'
 
 // Notifications are side effects of a committed change, so they are written
 // after it, from what the successful transaction attempt returned. A
@@ -21,8 +22,28 @@ async function recipients(db, bizId, to, exclude) {
   return snap.docs.map(d => d.id).filter(uid => !exclude.includes(uid))
 }
 
+// The small, safe facts stored with each notification so the web app and
+// emails can say it in English or Persian (shared/notify/text.js).
+function factsFor(kind, p, biz) {
+  const s = p.shift || p.give || null
+  const shift = s ? { date: s.date, start: s.startLocal, end: s.endLocal, cancelled: s.status === 'cancelled' } : {}
+  switch (kind) {
+    case 'schedulePublished': return { biz, weekStart: p.weekStart, count: p.shiftCount }
+    case 'scheduleChanged': return { biz, weekStart: p.weekStart }
+    case 'shiftChanged': case 'shiftReminder': return { biz, ...shift }
+    case 'shiftOffered': return { biz, who: p.offeredByName, ...shift }
+    case 'pickupRequested': return { biz, who: p.claimantName, ...shift }
+    case 'pickupDecided': return { biz, approved: !!p.approved, ...shift }
+    case 'swapRequested': case 'swapNeedsApproval': return { biz, who: p.requesterName }
+    case 'swapDecided': return { biz, approved: p.status === 'completed' }
+    case 'timeOffRequested': return { biz, who: p.request?.staffName, date: p.request?.startDate }
+    case 'timeOffDecided': return { biz, approved: !!p.approved, date: p.request?.startDate }
+    default: return { biz }
+  }
+}
+
 export async function deliver(db, intents, now = new Date()) {
-  if (!intents?.length) return { written: 0, queued: [] }
+  if (!intents?.length) return { written: 0, queued: [], emails: [] }
   const names = new Map()
   const businessName = async (bizId) => {
     if (!names.has(bizId)) {
@@ -37,44 +58,15 @@ export async function deliver(db, intents, now = new Date()) {
   for (const intent of intents) {
     const build = messages[intent.kind]
     if (!build) continue
-    const message = build({ bizId: intent.bizId, businessName: await businessName(intent.bizId), ...intent.params })
+    const biz = await businessName(intent.bizId)
+    const message = build({ bizId: intent.bizId, businessName: biz, ...intent.params })
+    const facts = factsFor(intent.kind, intent.params || {}, biz)
     for (const uid of await recipients(db, intent.bizId, intent.to, intent.exclude || [])) {
-      out.set(`${uid}|${message.key}`, { uid, message, bizId: intent.bizId })
+      out.set(`${uid}|${message.key}`, { uid, key: message.key, type: message.type, title: message.title, body: message.body, link: message.link, app: 'teams', facts, bizId: intent.bizId })
     }
   }
-  if (!out.size) return { written: 0, queued: [] }
-
-  // A push already queued for this key is left alone, so a retry does not
-  // buzz anyone's phone twice.
-  const entries = [...out.values()]
-  const queueRefs = entries.map(e => db.doc(`pushQueue/${e.uid}_${e.message.key}`))
-  const existing = await db.getAll(...queueRefs)
-  const at = Timestamp.fromDate(now)
-  let batch = db.batch()
-  let ops = 0
-  for (const [i, e] of entries.entries()) {
-    const { key, ...content } = e.message
-    const first = !existing[i].exists
-    // readAt is set only when the notification is new, so a retry does not
-    // mark a read notification unread again.
-    batch.set(db.doc(paths.notification(e.uid, key)), {
-      ...content, bizId: e.bizId, createdAt: at, ...(first ? { readAt: null } : {}),
-    }, { merge: true })
-    if (first) {
-      batch.set(queueRefs[i], {
-        uid: e.uid, title: content.title, body: content.body, link: content.link,
-        status: 'pending', attempts: 0, createdAt: at,
-      })
-    }
-    ops += 2
-    if (ops >= 400) {
-      await batch.commit()
-      batch = db.batch()
-      ops = 0
-    }
-  }
-  if (ops) await batch.commit()
-  return { written: entries.length, queued: queueRefs.filter((_, i) => !existing[i].exists).map(r => r.id) }
+  // In-app, push and email, each by the person's preferences, each once.
+  return persistNotifications(db, [...out.values()], now)
 }
 
 // Marks every notification read for one person, from the server, so the app

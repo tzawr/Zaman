@@ -1,6 +1,7 @@
 import { FieldValue, Timestamp, getFirestore } from 'firebase-admin/firestore'
 import { initAdmin, requireSignedIn, sendError } from './_firebase-admin.js'
 import { consumeRateLimit, sendRateLimited } from './_rate-limit.js'
+import { drainEmailOutbox, persistNotifications } from './_notify.js'
 import { recordError } from './_monitoring.js'
 
 function block(res, status, reason, message) {
@@ -74,11 +75,22 @@ export default async function handler(req, res) {
         code: cleanCode,
       })
       tx.update(promoRef, { usedCount: FieldValue.increment(1) })
-      return { blocked: false, message: 'Promo code applied. Pro access is active.' }
+      return { blocked: false, message: 'Promo code applied. Pro access is active.', until: overrideExpiresAt ? overrideExpiresAt.toDate().toISOString().slice(0, 10) : null }
     })
 
     if (result.blocked) return block(res, 400, result.reason, result.message)
-    return res.status(200).json(result)
+    // Tell them (in the app and by email). The plan is already active, so a
+    // failure here is logged and nothing else.
+    try {
+      const day = new Date().toISOString().slice(0, 10)
+      const r = await persistNotifications(db, [{ uid: userId, key: `web_plan_${cleanCode}_${day}`.replace(/[^A-Za-z0-9_-]/g, '-'), type: 'plan_activated', app: 'web', link: '/dashboard',
+        title: 'HENGAM Pro is active', body: result.until ? `Your Pro access runs until ${result.until}.` : 'Your Pro features are ready to use.', facts: { until: result.until } }])
+      if (r.emails.length) await drainEmailOutbox(db, { ids: r.emails })
+    } catch (err) {
+      await recordError(db, { source: 'server', where: 'redeem-promo-code:notify', error: err, uid: userId })
+    }
+    const { until: _until, ...publicResult } = result
+    return res.status(200).json(publicResult)
   } catch (err) {
     console.error('Promo redemption failed:', err)
     await recordError(getFirestore(), { source: 'server', where: 'redeem-promo-code', error: err, uid: userId })

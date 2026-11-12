@@ -9,6 +9,7 @@ import PageHero from '../components/PageHero'
 import Section from '../components/Section'
 import TimeSelect from '../components/TimeSelect'
 import { useI18n } from '../i18n'
+import { callTeams } from '../utils/teamsApi'
 import { freshestRecord } from '../utils/freshestRecord'
 import { useUnsavedChangesWarning } from '../utils/useUnsavedChangesWarning'
 
@@ -219,6 +220,8 @@ function Availability() {
       }
       if (isEmployeePortal) {
         await updateDoc(doc(db, 'users', currentUser.uid), payload)
+        // Let the manager know (grouped hourly on the server; never blocks the save).
+        callTeams('reportEvent', { type: 'availability_changed' }).catch(() => {})
         try {
           await updateDoc(doc(db, 'employees', activeEmployeeId), payload)
         } catch {
@@ -260,6 +263,7 @@ function Availability() {
       }
       if (isEmployeePortal) {
         await updateDoc(doc(db, 'users', currentUser.uid), payload)
+        callTeams('reportEvent', { type: 'availability_changed' }).catch(() => {})
         try {
           await updateDoc(doc(db, 'employees', activeEmployeeId), payload)
         } catch {

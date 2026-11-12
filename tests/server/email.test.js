@@ -90,7 +90,7 @@ test('sendEmail posts one message from HENGAM with reply-to hello@hengam.app, an
   assert.deepEqual(await sendEmail({ to: 'a@example.com', subject: 's', html: 'h', text: 't', tag: 'invite' }, { env: ON, fetchImpl }), { sent: true, id: 'e1' })
   assert.equal(calls.length, 1)
   assert.equal(calls[0].url, 'https://api.resend.com/emails')
-  assert.equal(calls[0].body.from, 'HENGAM <notifications@hengam.app>')
+  assert.equal(calls[0].body.from, 'HENGAM <notifications@mail.hengam.app>')
   assert.equal(calls[0].body.reply_to, 'hello@hengam.app')
   assert.deepEqual(calls[0].body.to, ['a@example.com'])
   const fail = async () => ({ ok: false, status: 422, json: async () => ({}) })
@@ -101,5 +101,15 @@ test('helpers: escaping and address checks', () => {
   assert.equal(escapeHtml('<a href="x">\'&'), '&lt;a href=&quot;x&quot;&gt;&#39;&amp;')
   assert.equal(validEmail(' x@y.co '), 'x@y.co')
   assert.equal(validEmail('x@y'), null)
-  assert.match(inviteEmail({ businessName: '', link: 'L' }).subject, /your manager/)
+  assert.match(inviteEmail({ businessName: "", link: "L" }).subject, /your manager/i)
+})
+
+test('an allowlist (staging) keeps mail away from everyone else', async () => {
+  const calls = []
+  const fetchImpl = async (url, init) => { calls.push(JSON.parse(init.body)); return { ok: true, json: async () => ({ id: 'x' }) } }
+  const env = { ...ON, EMAIL_ALLOWED_RECIPIENTS: 'hello@hengam.app, @example.test' }
+  assert.deepEqual(await sendEmail({ to: 'customer@gmail.com', subject: 's', html: 'h', text: 't' }, { env, fetchImpl }), { sent: false, reason: 'not_allowed' })
+  assert.equal((await sendEmail({ to: 'Hello@Hengam.app', subject: 's', html: 'h', text: 't' }, { env, fetchImpl })).sent, true)
+  assert.equal((await sendEmail({ to: 'qa1@example.test', subject: 's', html: 'h', text: 't' }, { env, fetchImpl })).sent, true)
+  assert.equal(calls.length, 2)
 })

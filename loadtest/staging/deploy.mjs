@@ -74,7 +74,18 @@ const env = {
   // Logs which IP headers reached the code (xff-probe.mjs reads them).
   LOG_CLIENT_IP_HEADERS: '1',
 }
-const secret = new Set(['FIREBASE_SERVICE_ACCOUNT_KEY_BASE64', 'CRON_SECRET', 'OPS_STATUS_TOKEN'])
+// Email on staging only with a staging Resend key saved (by the owner) in
+// loadtest/.data/staging-secrets/RESEND_API_KEY, and only to the allowlist
+// in staging.json (default: the HENGAM mailbox and synthetic test domains).
+const stagingKeyFile = join(root, 'loadtest/.data/staging-secrets/RESEND_API_KEY')
+if (existsSync(stagingKeyFile)) {
+  env.RESEND_API_KEY = readFileSync(stagingKeyFile, 'utf8').trim()
+  env.VITE_EMAIL_ENABLED = '1'
+  env.EMAIL_ALLOWED_RECIPIENTS = cfg.emailAllowlist || 'hello@hengam.app,@example.test'
+  env.APP_ORIGIN = 'https://hengam.app'
+  console.log(`staging email: on, allowlist of ${env.EMAIL_ALLOWED_RECIPIENTS.split(',').length} entries`)
+}
+const secret = new Set(['FIREBASE_SERVICE_ACCOUNT_KEY_BASE64', 'CRON_SECRET', 'OPS_STATUS_TOKEN', 'RESEND_API_KEY'])
 const work = mkdtempSync(join(tmpdir(), 'hengam-staging-'))
 // One variable per call: `vercel api --input` takes an object, not an array.
 // Values travel in a temp file, never on a command line.

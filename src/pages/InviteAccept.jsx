@@ -8,6 +8,7 @@ import { sendEmailVerification } from 'firebase/auth'
 import { useAuth } from '../AuthContext'
 import { useI18n } from '../i18n'
 import { authErrorMessage } from '../utils/authErrors'
+import { callTeams } from '../utils/teamsApi'
 
 function InviteAccept() {
   const { token } = useParams()
@@ -64,6 +65,8 @@ function InviteAccept() {
       usedAt: serverTimestamp()
     })
     await batch.commit()
+    // Tell the manager their employee joined (checked on the server).
+    callTeams('reportEvent', { type: 'invite_accepted', inviteId: token }).catch(() => {})
 
     try {
       await updateDoc(doc(db, 'employees', invite.employeeId), {

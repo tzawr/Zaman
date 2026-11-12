@@ -2,6 +2,7 @@ import { Timestamp } from 'firebase-admin/firestore'
 import { paths } from '../shared/teams/schema.js'
 import { todayIn } from '../shared/teams/time.js'
 import { deliver } from './_teams-notify.js'
+import { drainEmailOutbox, pruneExpired } from './_notify.js'
 import { drainPushQueue } from './_teams-push.js'
 import { recordError, summariseAndPruneErrors } from './_monitoring.js'
 
@@ -71,6 +72,8 @@ export async function runDailyJob(db, now = new Date(), options = {}) {
     reminders: () => sendReminders(db, now),
     expiry: () => expireRequests(db, now),
     push: () => drainPushQueue(db, { now, ...options }),
+    email: async () => ({ email: await drainEmailOutbox(db, { now, limit: 200, ...options }) }),
+    retention: async () => ({ pruned: await pruneExpired(db, now) }),
     errors: () => summariseAndPruneErrors(db, now),
   }
   const result = {}

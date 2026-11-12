@@ -4,6 +4,7 @@ import { BrowserRouter, Routes, Route, Link, Navigate, useLocation } from 'react
 import { useAuth } from './AuthContext'
 import Landing from './pages/Landing'
 import ProfileMenu from './components/ProfileMenu'
+import NotificationBell from './components/NotificationBell'
 import Logo from './components/Logo'
 import Footer from './components/Footer'
 import SeoManager from './components/Seo'
@@ -203,6 +204,7 @@ function AppShell() {
                 </svg>
               </a>
             </div>
+            {currentUser && <NotificationBell />}
             <ProfileMenu />
           </div>
         </nav>

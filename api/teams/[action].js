@@ -10,10 +10,11 @@ import * as imports from '../_teams-imports.js'
 import { calendarFeed } from '../_teams-calendar.js'
 import { deliver, markAllRead } from '../_teams-notify.js'
 import { drainPushQueue, forgetDevice } from '../_teams-push.js'
+import { drainEmailOutbox } from '../_notify.js'
 import * as marketplace from '../_teams-marketplace.js'
 import * as schedules from '../_teams-schedules.js'
 import * as workspaces from '../_teams-workspaces.js'
-import { emailInvite, sendWelcome } from '../_teams-email.js'
+import { emailInvite, reportEvent, sendWelcome } from '../_teams-email.js'
 
 // Every Teams workflow behind one function. Vercel's Hobby plan caps a project
 // at twelve functions, and Teams will need dozens of actions.
@@ -75,6 +76,9 @@ export const ACTIONS = {
   // sends real mail, and emailInvite reaches an address the caller types.
   emailInvite: { run: emailInvite, limit: [20, 60 * 60] },
   sendWelcome: { run: sendWelcome, limit: [3, 60 * 60] },
+  // Web events (invite accepted, availability changed, password changed),
+  // each checked against stored records before anyone is told.
+  reportEvent: { run: reportEvent, limit: [30, 60 * 60] },
   // Crashes the app caught. Sent before sign-in too, so limited by address.
   reportClientError: { run: reportClientError, auth: false, limit: [30, 60 * 60], everyone: [2400, 60 * 60] },
 }
@@ -160,7 +164,12 @@ export default async function handler(req, res) {
       await deliver(db, notify)
         // Send the pushes this change queued now, rather than at the next
         // daily run. Anything that fails waits in the queue for that run.
-        .then(({ queued }) => drainPushQueue(db, { ids: queued }))
+        // Emails likewise, then a few earlier ones whose retry time has come
+        // (the daily job does the rest).
+        .then(({ queued, emails }) => Promise.all([
+          drainPushQueue(db, { ids: queued }),
+          drainEmailOutbox(db, { ids: emails }).then(() => drainEmailOutbox(db, { limit: 5 })),
+        ]))
         .catch(err => {
           console.error('notification delivery failed:', err)
           return recordError(db, { source: 'server', where: `${name}:notify`, error: err, uid: token?.uid })

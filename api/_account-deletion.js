@@ -1,4 +1,5 @@
 import { adminAuth } from './_firebase-admin.js'
+import { sendEssentialEmail } from './_notify.js'
 import { recordError } from './_monitoring.js'
 import { TeamsError } from './_teams-http.js'
 import { leaveAllForDeletion } from './_teams-workspaces.js'
@@ -47,7 +48,8 @@ async function deleteQueryInBatches(db, query) {
 // this checks that it actually happened. auth_time is when the user last
 // proved who they are; a token minted from a session that has been sitting
 // open for a week is not consent to erase it.
-export async function deleteAccount({ db, uid, token, now, auth = adminAuth() }) {
+export async function deleteAccount({ db, uid, token, input = {}, now, auth = adminAuth() }) {
+  const language = input?.language
   const authAgeSeconds = Math.floor(now.getTime() / 1000) - Number(token?.auth_time || 0)
   if (!Number.isFinite(authAgeSeconds) || authAgeSeconds > REAUTH_WINDOW_SECONDS) {
     throw new TeamsError(401, 'reauth_required', 'Confirm it is you to delete your account.')
@@ -88,6 +90,12 @@ export async function deleteAccount({ db, uid, token, now, auth = adminAuth() })
     await auth.deleteUser(uid)
 
     console.log('account deleted', uid, JSON.stringify(removed))
+    // A security notice to the address the account had. Sent after the
+    // deletion succeeded; a failure to send never undoes or fails it.
+    if (token?.email_verified === true && token?.email) {
+      await sendEssentialEmail(db, { to: token.email, type: 'account_deleted', lang: language === 'fa' ? 'fa' : 'en', now })
+        .catch(err => recordError(db, { source: 'server', where: 'deleteAccount:email', error: err, now }))
+    }
     return { ok: true }
   } catch (err) {
     console.error('Account deletion failed:', uid, err)
