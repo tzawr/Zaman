@@ -90,3 +90,48 @@ export async function sendPasswordReset({ db, input = {}, now, env = process.env
   const r = await deliver(db, { to: email, kind: 'reset', link, language: input.language, env, send, now })
   return r.sent ? { ok: true } : { ok: true, fallback: true }
 }
+
+/** How recently the person must have signed in (or confirmed their password) to change their email. */
+export const EMAIL_CHANGE_FRESH_SECONDS = 5 * 60
+
+/**
+ * Signed in: start changing the account's sign-in email. A one-time link goes
+ * to the NEW address only; the change happens when it is opened. Firebase
+ * then sends its own "your sign-in email was changed" message to the old
+ * address with a link to undo it, which we leave to Firebase on purpose.
+ *
+ * Like Firebase's own email change, it needs a recent sign-in. With
+ * email-enumeration protection, an address that already has an account gets
+ * the same answer and no email, so this cannot be used to find out who has
+ * one.
+ */
+export async function requestEmailChange({ db, token, input = {}, now, env = process.env, send = sendEmail, auth = adminAuth(), limit = consumeRateLimit }) {
+  const newEmail = validEmail(input.newEmail)
+  if (!newEmail) return { sent: false, reason: 'invalid_email' }
+  const authTime = Number(token?.auth_time) || 0
+  if (Math.floor(+now / 1000) - authTime > EMAIL_CHANGE_FRESH_SECONDS) return { sent: false, reason: 'requires_recent_login' }
+  let current
+  try {
+    current = validEmail((await auth.getUser(token.uid)).email)
+  } catch (err) {
+    await recordError(db, { source: 'server', where: 'auth.changeEmail.user', error: err, now }).catch(() => {})
+    return { sent: false, fallback: true }
+  }
+  if (!current) return { sent: false, fallback: true }
+  if (current.toLowerCase() === newEmail.toLowerCase()) return { sent: false, reason: 'same_email' }
+  // Nobody's inbox can be flooded through this, whoever asks.
+  const perAddress = await limit('auth-change-email-address', sha(newEmail), 3, 60 * 60, { failClosed: true })
+  if (!perAddress.allowed) return { sent: false, reason: 'rate_limited' }
+  if (!emailEnabled(env)) return { sent: false, fallback: true }
+  let firebaseLink
+  try {
+    firebaseLink = await auth.generateVerifyAndChangeEmailLink(current, newEmail)
+  } catch (err) {
+    if (err?.code === 'auth/email-already-exists') return { sent: true }
+    if (/Unable to create the email action link/i.test(String(err?.message))) return { sent: true }
+    await recordError(db, { source: 'server', where: 'auth.changeEmail.link', error: err, now }).catch(() => {})
+    return { sent: false, fallback: true }
+  }
+  const link = hengamActionLink(firebaseLink, { language: input.language, continuePath: '/signin', env })
+  return deliver(db, { to: newEmail, kind: 'changeEmail', link, language: input.language, env, send, now })
+}

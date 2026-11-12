@@ -6,14 +6,14 @@ import {
   updateProfile,
   updatePassword,
   updatePhoneNumber,
-  verifyBeforeUpdateEmail,
   reauthenticateWithCredential,
+  reauthenticateWithPopup,
   EmailAuthProvider,
   PhoneAuthProvider,
   RecaptchaVerifier,
   linkWithCredential,
 } from 'firebase/auth'
-import { db, auth } from '../firebase'
+import { db, auth, googleProvider } from '../firebase'
 import { useAuth } from '../AuthContext'
 import { useToast } from '../components/Toast'
 import PageHero from '../components/PageHero'
@@ -21,7 +21,8 @@ import Section from '../components/Section'
 import NotificationPreferences from '../components/NotificationPreferences'
 import { callTeams } from '../utils/teamsApi'
 import { useI18n } from '../i18n'
-import { requestPasswordReset } from '../utils/authEmails'
+import { requestEmailChange, requestPasswordReset } from '../utils/authEmails'
+import { authErrorMessage } from '../utils/authErrors'
 
 const COUNTRY_CODES = [
   { code: '+1',   name: 'United States / Canada' },
@@ -194,6 +195,7 @@ function Profile() {
   }
 
   const hasPasswordProvider = currentUser?.providerData?.some(p => p.providerId === 'password')
+  const hasGoogleProvider = currentUser?.providerData?.some(p => p.providerId === 'google.com')
   const linkedPhone = currentUser?.phoneNumber
 
   async function handleEmailChange() {
@@ -201,11 +203,16 @@ function Profile() {
     setEmailChangeLoading(true)
     setEmailChangeMsg('')
     try {
-      if (hasPasswordProvider && emailReauthPassword) {
+      // Prove it is really them, right now: the server refuses an email change
+      // unless the sign-in is under five minutes old.
+      if (hasPasswordProvider) {
+        if (!emailReauthPassword) { setEmailChangeMsg(t('enterCurrentPassword')); return }
         const cred = EmailAuthProvider.credential(currentUser.email, emailReauthPassword)
         await reauthenticateWithCredential(currentUser, cred)
+      } else if (hasGoogleProvider) {
+        await reauthenticateWithPopup(currentUser, googleProvider)
       }
-      await verifyBeforeUpdateEmail(currentUser, newEmail.trim())
+      await requestEmailChange(currentUser, newEmail.trim(), language)
       setNewEmail(''); setEmailReauthPassword(''); setShowEmailChange(false)
       toast.success(`${t('verificationEmailSentTo')} ${newEmail.trim()}`)
     } catch (err) {
@@ -216,7 +223,9 @@ function Profile() {
       } else if (err.code === 'auth/email-already-in-use') {
         setEmailChangeMsg(t('emailAlreadyInUse'))
       } else {
-        setEmailChangeMsg(err.message || t('failedUpdateEmail'))
+        // Closing the Google window is their choice (no message); a blocked
+        // pop-up or a service failure gets its own explanation.
+        setEmailChangeMsg(err.code ? authErrorMessage(err.code, t) : t('failedUpdateEmail'))
       }
     } finally {
       setEmailChangeLoading(false)

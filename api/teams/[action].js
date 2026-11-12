@@ -15,7 +15,7 @@ import * as marketplace from '../_teams-marketplace.js'
 import * as schedules from '../_teams-schedules.js'
 import * as workspaces from '../_teams-workspaces.js'
 import { emailInvite, reportEvent, sendWelcome } from '../_teams-email.js'
-import { sendPasswordReset, sendVerificationEmail } from '../_auth-email.js'
+import { requestEmailChange, sendPasswordReset, sendVerificationEmail } from '../_auth-email.js'
 
 // Every Teams workflow behind one function. Vercel's Hobby plan caps a project
 // at twelve functions, and Teams will need dozens of actions.
@@ -83,6 +83,7 @@ export const ACTIONS = {
   // HENGAM-branded auth emails (verification for the signed-in user; reset
   // signed out, never revealing whether an account exists).
   sendVerificationEmail: { run: sendVerificationEmail, limit: [5, 60 * 60] },
+  requestEmailChange: { run: requestEmailChange, limit: [5, 60 * 60] },
   sendPasswordReset: { run: sendPasswordReset, auth: false, limit: [10, 60 * 60], everyone: [600, 60 * 60], failClosed: true },
   // Crashes the app caught. Sent before sign-in too, so limited by address.
   reportClientError: { run: reportClientError, auth: false, limit: [30, 60 * 60], everyone: [2400, 60 * 60] },

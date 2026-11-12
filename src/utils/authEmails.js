@@ -1,4 +1,4 @@
-import { sendEmailVerification, sendPasswordResetEmail } from 'firebase/auth'
+import { sendEmailVerification, sendPasswordResetEmail, verifyBeforeUpdateEmail } from 'firebase/auth'
 import { auth } from '../firebase'
 
 // HENGAM-branded verification and reset emails (sent by our server through
@@ -39,5 +39,28 @@ export async function requestPasswordReset(email, language = 'en') {
     if (err?.code === 'auth/too-many-requests') throw err
   }
   await sendPasswordResetEmail(auth, email)
+  return { via: 'firebase' }
+}
+
+const authError = (code) => Object.assign(new Error(code), { code })
+
+/**
+ * Starts changing the signed-in user's sign-in email: a confirmation link goes
+ * to the new address. Needs a recent sign-in, like Firebase's own email change
+ * (errors use Firebase's codes, so callers handle both paths the same way).
+ */
+export async function requestEmailChange(user, newEmail, language = 'en') {
+  try {
+    const token = await user.getIdToken(true)
+    const { status, data } = await post('requestEmailChange', { newEmail, language }, token)
+    if (status === 429 || data.reason === 'rate_limited') throw authError('auth/too-many-requests')
+    if (data.reason === 'requires_recent_login') throw authError('auth/requires-recent-login')
+    if (data.reason === 'invalid_email') throw authError('auth/invalid-email')
+    if (data.reason === 'same_email') throw authError('auth/email-already-in-use')
+    if (status === 200 && data.sent) return { via: 'hengam' }
+  } catch (err) {
+    if (String(err?.code).startsWith('auth/')) throw err
+  }
+  await verifyBeforeUpdateEmail(user, newEmail)
   return { via: 'firebase' }
 }

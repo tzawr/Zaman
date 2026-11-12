@@ -185,6 +185,17 @@ export function authActionEmail({ kind, link, language = 'en', origin = appOrigi
         paragraphs: ['Confirm this address to finish setting up your HENGAM account.', 'The link works once and expires after a while.', "If you didn't sign up for HENGAM, you can ignore this email."],
         action: { url: link, label: 'Verify email' } })
   }
+  if (kind === 'changeEmail') {
+    return fa
+      ? layout({ lang: 'fa', reason: 'security', origin, showPrefs: false,
+        subject: 'ایمیل ورود جدید HENGAM خود را تأیید کنید', heading: 'ایمیل ورود جدید را تأیید کنید',
+        paragraphs: ['درخواست شده است که این نشانی، ایمیل ورود یک حساب HENGAM شود. اگر این درخواست از شماست، روی دکمه زیر بزنید.', 'این لینک فقط یک بار کار می‌کند و پس از مدتی منقضی می‌شود. پس از تأیید، با این نشانی وارد شوید.', 'اگر شما این درخواست را نداده‌اید، این ایمیل را نادیده بگیرید؛ چیزی تغییر نمی‌کند.'],
+        action: { url: link, label: 'تأیید ایمیل جدید' } })
+      : layout({ lang: 'en', reason: 'security', origin, showPrefs: false,
+        subject: 'Confirm your new HENGAM sign-in email', heading: 'Confirm your new sign-in email',
+        paragraphs: ['Someone asked to make this address the sign-in email for a HENGAM account. If that was you, confirm it below.', 'The link works once and expires after a while. Once confirmed, sign in with this address.', "If you didn't ask for this, ignore this email — nothing changes."],
+        action: { url: link, label: 'Confirm new email' } })
+  }
   return fa
     ? layout({ lang: 'fa', reason: 'security', origin, showPrefs: false,
       subject: 'بازنشانی رمز عبور HENGAM', heading: 'رمز عبور خود را بازنشانی کنید',

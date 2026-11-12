@@ -3,7 +3,7 @@ import assert from 'node:assert/strict'
 import { deleteApp, getApps, initializeApp } from 'firebase-admin/app'
 import { getAuth } from 'firebase-admin/auth'
 import { getFirestore } from 'firebase-admin/firestore'
-import { hengamActionLink, sendPasswordReset, sendVerificationEmail } from '../../api/_auth-email.js'
+import { hengamActionLink, requestEmailChange, sendPasswordReset, sendVerificationEmail } from '../../api/_auth-email.js'
 import { AUTH, FIRESTORE, PROJECT_ID, clearAuth, clearFirestore, signUp } from './harness.js'
 
 // HENGAM-branded verification and reset emails against the Auth emulator:
@@ -108,4 +108,87 @@ test('reset: an enumeration-protected "no link" answer is treated as no account 
   assert.equal(sent.length, 0)
   const brokenAuth = { generatePasswordResetLink: async () => { throw Object.assign(new Error('backend unavailable'), { code: 'auth/internal-error' }) } }
   assert.deepEqual(await sendPasswordReset({ db, input: { email: 'someone@example.test' }, now, env: ON, send, auth: brokenAuth, limit: allow }), { ok: true, fallback: true })
+})
+
+const fresh = (user) => ({ uid: user.uid, email: user.email, auth_time: Math.floor(+now / 1000) - 30 })
+
+test('email change: one branded email to the NEW address only; the code changes the sign-in email', async () => {
+  const user = await signUp()
+  const { sent, send } = outbox()
+  const newEmail = `moved-${user.uid.slice(0, 8).toLowerCase()}@example.test`
+  assert.deepEqual(await requestEmailChange({ db, token: fresh(user), input: { newEmail, language: 'en' }, now, env: ON, send, auth, limit: allow }), { sent: true })
+  assert.equal(sent.length, 1)
+  assert.equal(sent[0].to, newEmail)
+  assert.equal(sent[0].from, 'HENGAM Security <security@mail.hengam.app>')
+  assert.match(sent[0].subject, /Confirm your new HENGAM sign-in email/)
+  const link = new URL(linkIn(sent[0]))
+  assert.equal(link.searchParams.get('mode'), 'verifyAndChangeEmail')
+  assert.equal(link.searchParams.get('continue'), '/signin')
+  assert.equal((await lookup(user.uid)).email, user.email, 'nothing changes until the link is opened')
+  assert.equal((await apply(link.searchParams.get('oobCode'))).status, 200)
+  assert.equal((await lookup(user.uid)).email, newEmail)
+  assert.notEqual((await apply(link.searchParams.get('oobCode'))).status, 200, 'used once')
+})
+
+test('email change: needs a recent sign-in; rejects bad, unchanged and over-limit requests without sending', async () => {
+  const user = await signUp()
+  const { sent, send } = outbox()
+  const base = { db, now, env: ON, send, auth, limit: allow }
+  const stale = { ...fresh(user), auth_time: Math.floor(+now / 1000) - 6 * 60 }
+  assert.equal((await requestEmailChange({ ...base, token: stale, input: { newEmail: 'new@example.test' } })).reason, 'requires_recent_login')
+  assert.equal((await requestEmailChange({ ...base, token: { ...fresh(user), auth_time: undefined }, input: { newEmail: 'new@example.test' } })).reason, 'requires_recent_login')
+  assert.equal((await requestEmailChange({ ...base, token: fresh(user), input: { newEmail: 'not an email' } })).reason, 'invalid_email')
+  assert.equal((await requestEmailChange({ ...base, token: fresh(user), input: { newEmail: user.email.toUpperCase() } })).reason, 'same_email')
+  assert.equal((await requestEmailChange({ ...base, token: fresh(user), input: { newEmail: 'new@example.test' }, limit: async () => ({ allowed: false }) })).reason, 'rate_limited')
+  assert.equal(sent.length, 0)
+  assert.equal((await lookup(user.uid)).email, user.email)
+})
+
+test('email change: email off or provider down falls back to Firebase; an address already in use gets the same answer and no email', async () => {
+  const user = await signUp()
+  const other = await signUp()
+  const { sent, send } = outbox()
+  const base = { db, token: fresh(user), now, send, auth, limit: allow }
+  assert.deepEqual(await requestEmailChange({ ...base, input: { newEmail: 'new@example.test' }, env: {} }), { sent: false, fallback: true })
+  const failing = async () => { throw new Error('provider down') }
+  assert.deepEqual(await requestEmailChange({ ...base, input: { newEmail: 'new@example.test' }, env: ON, send: failing }), { sent: false, fallback: true })
+  assert.deepEqual(await requestEmailChange({ ...base, input: { newEmail: other.email }, env: ON }), { sent: true })
+  assert.equal(sent.length, 0, 'nothing reveals that the other address has an account')
+  assert.equal((await lookup(user.uid)).email, user.email)
+})
+
+/** A Google-only account in the Auth emulator, signed in now; returns its real ID token. */
+async function googleUser(tag) {
+  const claims = { sub: `g-${tag}-${Date.now()}`, email: `google-${tag}-${Date.now()}@example.test`, email_verified: true }
+  const r = await fetch(`http://${AUTH}/identitytoolkit.googleapis.com/v1/accounts:signInWithIdp?key=demo-key`, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ postBody: `id_token=${encodeURIComponent(JSON.stringify(claims))}&providerId=google.com`, requestUri: 'http://localhost', returnSecureToken: true }),
+  })
+  const b = await r.json()
+  assert.equal(r.status, 200, JSON.stringify(b))
+  return { uid: b.localId, email: claims.email, idToken: b.idToken }
+}
+async function passwordToken(user) {
+  const r = await fetch(`http://${AUTH}/identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=demo-key`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email: user.email, password: 'test-pass-123', returnSecureToken: true }) })
+  return (await r.json()).idToken
+}
+
+test('email change, server-side: real verified tokens for password and Google-only accounts; fresh passes, five minutes later refused', async () => {
+  const pw = await signUp()
+  const g = await googleUser('ec')
+  assert.deepEqual((await lookup(g.uid)).providerData.map(p => p.providerId), ['google.com'], 'Google-only account')
+  for (const [label, uid, idToken] of [['password', pw.uid, await passwordToken(pw)], ['google', g.uid, g.idToken]]) {
+    const token = await auth.verifyIdToken(idToken)
+    assert.ok(Number(token.auth_time) > 0, `${label}: the verified token carries auth_time`)
+    const { sent, send } = outbox()
+    const signedInAt = new Date(token.auth_time * 1000)
+    const later = new Date(+signedInAt + 5 * 60 * 1000 + 1000)
+    const r1 = await requestEmailChange({ db, token, input: { newEmail: `late-${label}-${Date.now()}@example.test` }, now: later, env: ON, send, auth, limit: allow })
+    assert.equal(r1.reason, 'requires_recent_login', `${label}: refused after five minutes`)
+    assert.equal(sent.length, 0)
+    const r2 = await requestEmailChange({ db, token, input: { newEmail: `fresh-${label}-${Date.now()}@example.test` }, now: new Date(+signedInAt + 60 * 1000), env: ON, send, auth, limit: allow })
+    assert.deepEqual(r2, { sent: true }, `${label}: allowed within five minutes`)
+    assert.equal(sent.length, 1)
+    assert.equal((await lookup(uid)).email, uid === g.uid ? g.email : pw.email, `${label}: unchanged until the link is opened`)
+  }
 })

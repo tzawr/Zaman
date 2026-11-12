@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test'
-import { STAGING, signUp } from './helpers.js'
+import { STAGING, fs, signUp, verifyEmail } from './helpers.js'
 
 // HENGAM's email action page (/auth/action): reset, verification, expired and
 // broken links, in English and Persian, on a phone. Local emulators only: the
@@ -62,4 +62,79 @@ test('broken and unknown links explain themselves, never crash', async ({ page }
   await expect(page.getByText('This link is not complete')).toBeVisible()
   await page.goto('/auth/action')
   await expect(page.getByText('This link is not complete')).toBeVisible()
+})
+
+test('email change from Profile: link to the new address changes the sign-in email; the old one stops working', async ({ page }) => {
+  const user = await verifyEmail(await signUp())
+  await fs.adminSet(`users/${user.uid}`, { email: user.email, onboarded: true, tier: 'free' })
+  const newEmail = `moved-${Date.now()}@example.test`
+  await page.goto('/signin')
+  await page.locator('input[type=email]').fill(user.email)
+  await page.locator('input[type=password]').fill(user.password)
+  await page.locator('form button[type=submit]').click()
+  await expect(page).toHaveURL(/\/(dashboard|onboarding|welcome)/, { timeout: 20_000 })
+  await page.goto('/profile')
+  await page.getByRole('button', { name: 'Change', exact: true }).first().click()
+  await page.getByLabel('New email address').fill(newEmail)
+  await page.getByLabel('Current password (to confirm)').fill(user.password)
+  await page.getByRole('button', { name: 'Send verification' }).click()
+  await expect.poll(async () => (await codes(user.email)).filter(c => c.requestType === 'VERIFY_AND_CHANGE_EMAIL').length, { timeout: 15_000 }).toBe(1)
+  const { oobCode } = (await codes(user.email)).find(c => c.requestType === 'VERIFY_AND_CHANGE_EMAIL')
+
+  await page.goto(`/auth/action?mode=verifyAndChangeEmail&oobCode=${encodeURIComponent(oobCode)}&lang=en&continue=/signin`)
+  await expect(page.getByRole('heading', { name: 'Your sign-in email is updated' })).toBeVisible({ timeout: 15_000 })
+  const signIn = (email) => fetch(`http://${AUTH}/identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=demo-key`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email, password: user.password, returnSecureToken: true }) })
+  expect((await signIn(newEmail)).status).toBe(200)
+  expect((await signIn(user.email)).status).not.toBe(200)
+})
+
+/** Completes the Auth emulator's Google sign-in window as `email`. */
+async function emulatorGoogle(popup, email) {
+  await popup.waitForLoadState()
+  const existing = popup.getByText(email)
+  if (await existing.count()) { await existing.first().click(); return }
+  await popup.getByRole('button', { name: /add new account/i }).click()
+  await popup.locator('#email-input').fill(email)
+  await popup.getByRole('button', { name: /sign in with google/i }).click()
+}
+
+test('email change, Google-only account: confirms with Google first, then the link goes to the new address', async ({ page }) => {
+  const email = `google-ec-${Date.now()}@example.test`
+  await page.goto('/signin')
+  const [first] = await Promise.all([page.waitForEvent('popup'), page.getByRole('button', { name: 'Continue with Google' }).click()])
+  await emulatorGoogle(first, email)
+  await expect(page).toHaveURL(/\/(dashboard|onboarding|welcome)/, { timeout: 20_000 })
+  const users = (await (await fetch(`http://${AUTH}/identitytoolkit.googleapis.com/v1/projects/demo-hengam/accounts:lookup`, { method: 'POST', headers: { Authorization: 'Bearer owner', 'Content-Type': 'application/json' }, body: JSON.stringify({ email: [email] }) })).json()).users
+  expect(users[0].providerUserInfo.map(p => p.providerId)).toEqual(['google.com'])
+  await fs.adminSet(`users/${users[0].localId}`, { email, onboarded: true, tier: 'free' })
+
+  await page.goto('/profile')
+  await page.getByRole('button', { name: 'Change', exact: true }).first().click()
+  await expect(page.getByLabel('Current password (to confirm)')).toHaveCount(0)
+  const newEmail = `google-moved-${Date.now()}@example.test`
+  await page.getByLabel('New email address').fill(newEmail)
+  const [again] = await Promise.all([page.waitForEvent('popup'), page.getByRole('button', { name: 'Send verification' }).click()])
+  await emulatorGoogle(again, email)
+  await expect.poll(async () => (await codes(email)).filter(c => c.requestType === 'VERIFY_AND_CHANGE_EMAIL').length, { timeout: 15_000 }).toBe(1)
+  await expect(page.getByText(`${newEmail}`)).toBeVisible()
+})
+
+test('email change, password account: the current password is required (no request without it)', async ({ page }) => {
+  const user = await verifyEmail(await signUp())
+  await fs.adminSet(`users/${user.uid}`, { email: user.email, onboarded: true, tier: 'free' })
+  await page.goto('/signin')
+  await page.locator('input[type=email]').fill(user.email)
+  await page.locator('input[type=password]').fill(user.password)
+  await page.locator('form button[type=submit]').click()
+  await expect(page).toHaveURL(/\/(dashboard|onboarding|welcome)/, { timeout: 20_000 })
+  await page.goto('/profile')
+  await page.getByRole('button', { name: 'Change', exact: true }).first().click()
+  await page.getByLabel('New email address').fill(`nopass-${Date.now()}@example.test`)
+  await page.getByRole('button', { name: 'Send verification' }).click()
+  await expect(page.getByText('Enter your current password.')).toBeVisible()
+  await page.getByLabel('Current password (to confirm)').fill('not-my-password')
+  await page.getByRole('button', { name: 'Send verification' }).click()
+  await expect(page.locator('.auth-error')).toBeVisible()
+  await page.waitForTimeout(1000)
+  expect((await codes(user.email)).filter(c => c.requestType === 'VERIFY_AND_CHANGE_EMAIL').length).toBe(0)
 })
