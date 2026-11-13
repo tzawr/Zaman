@@ -111,13 +111,20 @@ export async function requestEmailChange({ db, token, input = {}, now, env = pro
   const authTime = Number(token?.auth_time) || 0
   if (Math.floor(+now / 1000) - authTime > EMAIL_CHANGE_FRESH_SECONDS) return { sent: false, reason: 'requires_recent_login' }
   let current
+  let providers = []
   try {
-    current = validEmail((await auth.getUser(token.uid)).email)
+    const account = await auth.getUser(token.uid)
+    current = validEmail(account.email)
+    providers = (account.providerData || []).map(p => p.providerId)
   } catch (err) {
     await recordError(db, { source: 'server', where: 'auth.changeEmail.user', error: err, now }).catch(() => {})
     return { sent: false, fallback: true }
   }
   if (!current) return { sent: false, fallback: true }
+  // Only an account with a password has a HENGAM-managed sign-in email. A
+  // Google-only account's email is its Google Account's: changing it here
+  // would quietly split the account from the identity people sign in with.
+  if (!providers.includes('password')) return { sent: false, reason: providers.includes('google.com') ? 'managed_by_google' : 'no_email_sign_in' }
   if (current.toLowerCase() === newEmail.toLowerCase()) return { sent: false, reason: 'same_email' }
   // Nobody's inbox can be flooded through this, whoever asks.
   const perAddress = await limit('auth-change-email-address', sha(newEmail), 3, 60 * 60, { failClosed: true })

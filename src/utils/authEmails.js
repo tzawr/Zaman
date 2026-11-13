@@ -56,10 +56,14 @@ export async function requestEmailChange(user, newEmail, language = 'en') {
     if (status === 429 || data.reason === 'rate_limited') throw authError('auth/too-many-requests')
     if (data.reason === 'requires_recent_login') throw authError('auth/requires-recent-login')
     if (data.reason === 'invalid_email') throw authError('auth/invalid-email')
-    if (data.reason === 'same_email') throw authError('auth/email-already-in-use')
+    if (data.reason === 'same_email') throw authError('hengam/same-email')
+    // A Google-only account's email belongs to Google; Firebase's own email
+    // change would not be right either, so there is no fallback for this.
+    if (data.reason === 'managed_by_google') throw authError('hengam/email-managed-by-google')
+    if (data.reason === 'no_email_sign_in') throw authError('hengam/no-email-sign-in')
     if (status === 200 && data.sent) return { via: 'hengam' }
   } catch (err) {
-    if (String(err?.code).startsWith('auth/')) throw err
+    if (/^(auth|hengam)\//.test(String(err?.code))) throw err
   }
   await verifyBeforeUpdateEmail(user, newEmail)
   return { via: 'firebase' }

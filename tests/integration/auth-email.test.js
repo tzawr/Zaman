@@ -173,11 +173,15 @@ async function passwordToken(user) {
   return (await r.json()).idToken
 }
 
-test('email change, server-side: real verified tokens for password and Google-only accounts; fresh passes, five minutes later refused', async () => {
+test('email change, server-side: real verified tokens; a password account (alone or linked to Google) may change, fresh only; Google-only is refused', async () => {
   const pw = await signUp()
-  const g = await googleUser('ec')
-  assert.deepEqual((await lookup(g.uid)).providerData.map(p => p.providerId), ['google.com'], 'Google-only account')
-  for (const [label, uid, idToken] of [['password', pw.uid, await passwordToken(pw)], ['google', g.uid, g.idToken]]) {
+  const linked = await googleUser('linked')
+  // Link a password to the Google account, as "add a password" would.
+  const lr = await fetch(`http://${AUTH}/identitytoolkit.googleapis.com/v1/accounts:update?key=demo-key`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ idToken: linked.idToken, password: 'linked-pass-123', returnSecureToken: true }) })
+  assert.equal(lr.status, 200)
+  assert.deepEqual((await lookup(linked.uid)).providerData.map(p => p.providerId).sort(), ['google.com', 'password'], 'linked account')
+  const linkedToken = (await lr.json()).idToken
+  for (const [label, uid, email, idToken] of [['password', pw.uid, pw.email, await passwordToken(pw)], ['linked', linked.uid, linked.email, linkedToken]]) {
     const token = await auth.verifyIdToken(idToken)
     assert.ok(Number(token.auth_time) > 0, `${label}: the verified token carries auth_time`)
     const { sent, send } = outbox()
@@ -189,6 +193,29 @@ test('email change, server-side: real verified tokens for password and Google-on
     const r2 = await requestEmailChange({ db, token, input: { newEmail: `fresh-${label}-${Date.now()}@example.test` }, now: new Date(+signedInAt + 60 * 1000), env: ON, send, auth, limit: allow })
     assert.deepEqual(r2, { sent: true }, `${label}: allowed within five minutes`)
     assert.equal(sent.length, 1)
-    assert.equal((await lookup(uid)).email, uid === g.uid ? g.email : pw.email, `${label}: unchanged until the link is opened`)
+    assert.equal((await lookup(uid)).email, email, `${label}: unchanged until the link is opened`)
   }
+  // The linked account's Google sign-in still works after the change is applied.
+  const { sent, send } = outbox()
+  const token = await auth.verifyIdToken(linkedToken)
+  const moved = `linked-moved-${Date.now()}@example.test`
+  await requestEmailChange({ db, token, input: { newEmail: moved }, now: new Date(token.auth_time * 1000 + 1000), env: ON, send, auth, limit: allow })
+  assert.equal((await apply(new URL(linkIn(sent[0])).searchParams.get('oobCode'))).status, 200)
+  const after = await lookup(linked.uid)
+  assert.equal(after.email, moved)
+  assert.ok(after.providerData.some(p => p.providerId === 'google.com'), 'Google stays linked')
+})
+
+test('email change, server-side: a Google-only account is refused (its email is Google\u2019s), nothing sent or changed, no limit used', async () => {
+  const g = await googleUser('gonly')
+  assert.deepEqual((await lookup(g.uid)).providerData.map(p => p.providerId), ['google.com'])
+  const token = await auth.verifyIdToken(g.idToken)
+  const { sent, send } = outbox()
+  let limited = 0
+  const counting = async () => { limited++; return { allowed: true } }
+  const r = await requestEmailChange({ db, token, input: { newEmail: `elsewhere-${Date.now()}@example.test` }, now: new Date(token.auth_time * 1000 + 1000), env: ON, send, auth, limit: counting })
+  assert.deepEqual(r, { sent: false, reason: 'managed_by_google' })
+  assert.equal(sent.length, 0)
+  assert.equal(limited, 0, 'refused before any address limit is spent')
+  assert.equal((await lookup(g.uid)).email, g.email)
 })

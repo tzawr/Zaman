@@ -21,7 +21,11 @@ const root = resolve(import.meta.dirname, '../..')
 
 /** Starts scripts/dev-api.js on a free port; resolves to { url, stop }. */
 export async function startApi(extraEnv = {}) {
-  const port = 3400 + Math.floor(Math.random() * 500)
+  // 3659 is on the fetch standard's blocked-port list (fetch refuses it with
+  // "bad port"), and it falls inside this range.
+  let port
+  do port = 3400 + Math.floor(Math.random() * 500)
+  while (port === 3659)
   const child = spawn(process.execPath, ['scripts/dev-api.js'], {
     cwd: root,
     env: {

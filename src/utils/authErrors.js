@@ -17,6 +17,7 @@ const MESSAGES = {
   'auth/user-disabled': 'authUserDisabled',
   'auth/network-request-failed': 'authNetwork',
   'auth/popup-blocked': 'authPopupBlocked',
+  'auth/user-mismatch': 'authUserMismatch',
   'auth/unauthorized-domain': 'authGoogleUnavailable',
   'auth/operation-not-allowed': 'authGoogleUnavailable',
   'auth/operation-not-supported-in-this-environment': 'authGoogleUnavailable',
@@ -41,7 +42,7 @@ export const EXPECTED_AUTH_ERRORS = new Set([
   'auth/invalid-email', 'auth/missing-email', 'auth/user-not-found', 'auth/wrong-password',
   'auth/invalid-credential', 'auth/invalid-login-credentials', 'auth/missing-password',
   'auth/email-already-in-use', 'auth/weak-password', 'auth/password-does-not-meet-requirements',
-  'auth/user-disabled', ...SILENT,
+  'auth/user-disabled', 'auth/user-mismatch', ...SILENT,
 ])
 
 /** Every message key used above, so tests can check both languages have them. */

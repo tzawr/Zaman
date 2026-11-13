@@ -7,13 +7,12 @@ import {
   updatePassword,
   updatePhoneNumber,
   reauthenticateWithCredential,
-  reauthenticateWithPopup,
   EmailAuthProvider,
   PhoneAuthProvider,
   RecaptchaVerifier,
   linkWithCredential,
 } from 'firebase/auth'
-import { db, auth, googleProvider } from '../firebase'
+import { db, auth } from '../firebase'
 import { useAuth } from '../AuthContext'
 import { useToast } from '../components/Toast'
 import PageHero from '../components/PageHero'
@@ -22,7 +21,9 @@ import NotificationPreferences from '../components/NotificationPreferences'
 import { callTeams } from '../utils/teamsApi'
 import { useI18n } from '../i18n'
 import { requestEmailChange, requestPasswordReset } from '../utils/authEmails'
-import { authErrorMessage } from '../utils/authErrors'
+import { EXPECTED_AUTH_ERRORS, authErrorMessage } from '../utils/authErrors'
+import { reportError } from '../utils/reportError'
+import { emailChangeMode } from '../utils/emailChange'
 
 const COUNTRY_CODES = [
   { code: '+1',   name: 'United States / Canada' },
@@ -195,37 +196,43 @@ function Profile() {
   }
 
   const hasPasswordProvider = currentUser?.providerData?.some(p => p.providerId === 'password')
-  const hasGoogleProvider = currentUser?.providerData?.some(p => p.providerId === 'google.com')
+  // Who controls this account's sign-in email: HENGAM (a password account,
+  // possibly also linked to Google), Google (Google-only), or nobody (no email).
+  const emailMode = emailChangeMode(currentUser)
   const linkedPhone = currentUser?.phoneNumber
 
   async function handleEmailChange() {
-    if (!newEmail.trim()) { setEmailChangeMsg(t('enterNewEmail')); return }
+    const target = newEmail.trim()
+    if (!target) { setEmailChangeMsg(t('enterNewEmail')); return }
+    if (emailMode !== 'hengam') return
+    if (!emailReauthPassword) { setEmailChangeMsg(t('enterCurrentPassword')); return }
     setEmailChangeLoading(true)
     setEmailChangeMsg('')
     try {
       // Prove it is really them, right now: the server refuses an email change
       // unless the sign-in is under five minutes old.
-      if (hasPasswordProvider) {
-        if (!emailReauthPassword) { setEmailChangeMsg(t('enterCurrentPassword')); return }
-        const cred = EmailAuthProvider.credential(currentUser.email, emailReauthPassword)
-        await reauthenticateWithCredential(currentUser, cred)
-      } else if (hasGoogleProvider) {
-        await reauthenticateWithPopup(currentUser, googleProvider)
-      }
-      await requestEmailChange(currentUser, newEmail.trim(), language)
+      const cred = EmailAuthProvider.credential(currentUser.email, emailReauthPassword)
+      await reauthenticateWithCredential(currentUser, cred)
+      await requestEmailChange(currentUser, target, language)
       setNewEmail(''); setEmailReauthPassword(''); setShowEmailChange(false)
-      toast.success(`${t('verificationEmailSentTo')} ${newEmail.trim()}`)
+      toast.success(`${t('verificationEmailSentTo')} ${target}`)
     } catch (err) {
-      if (err.code === 'auth/requires-recent-login') {
-        setEmailChangeMsg(t('confirmCurrentPassword'))
-      } else if (err.code === 'auth/wrong-password' || err.code === 'auth/invalid-credential') {
+      const code = err?.code
+      if (code === 'auth/wrong-password' || code === 'auth/invalid-credential' || code === 'auth/invalid-login-credentials') {
         setEmailChangeMsg(t('authWrongPassword'))
-      } else if (err.code === 'auth/email-already-in-use') {
+      } else if (code === 'auth/requires-recent-login') {
+        setEmailChangeMsg(t('confirmCurrentPassword'))
+      } else if (code === 'auth/email-already-in-use') {
         setEmailChangeMsg(t('emailAlreadyInUse'))
+      } else if (code === 'hengam/same-email') {
+        setEmailChangeMsg(t('emailSameAsCurrent'))
+      } else if (code === 'hengam/email-managed-by-google') {
+        setEmailChangeMsg(t('emailManagedByGoogleShort'))
       } else {
-        // Closing the Google window is their choice (no message); a blocked
-        // pop-up or a service failure gets its own explanation.
-        setEmailChangeMsg(err.code ? authErrorMessage(err.code, t) : t('failedUpdateEmail'))
+        // Anything else is unexpected: say so plainly and tell monitoring
+        // (the code only, never the addresses).
+        if (!EXPECTED_AUTH_ERRORS.has(code)) reportError('auth.changeEmail', err)
+        setEmailChangeMsg((code && code.startsWith('auth/') && authErrorMessage(code, t)) || t('failedUpdateEmail'))
       }
     } finally {
       setEmailChangeLoading(false)
@@ -447,16 +454,24 @@ function Profile() {
         <div className="rule-card">
           <div className="rule-info">
             <p className="rule-title">{t('emailAddress')}</p>
-            <p className="rule-description">{currentUser?.email}</p>
+            <p className="rule-description">{currentUser?.email || t('noEmailOnAccount')}</p>
           </div>
-          <button
-            className="settings-button"
-            onClick={() => { setShowEmailChange(v => !v); setEmailChangeMsg('') }}
-          >
-            {showEmailChange ? t('cancel') : t('change')}
-          </button>
+          {emailMode === 'hengam' && (
+            <button
+              className="settings-button"
+              onClick={() => { setShowEmailChange(v => !v); setEmailChangeMsg('') }}
+            >
+              {showEmailChange ? t('cancel') : t('change')}
+            </button>
+          )}
         </div>
-        {showEmailChange && (
+        {emailMode === 'google' && (
+          <p className="rule-description email-managed-note" data-testid="email-managed-by-google">
+            {t('emailManagedByGoogle')}{' '}
+            <a href="https://myaccount.google.com/email" target="_blank" rel="noopener noreferrer">{t('emailManagedByGoogleLink')}</a>
+          </p>
+        )}
+        {emailMode === 'hengam' && showEmailChange && (
           <div className="security-form">
             <input
               type="email"
@@ -466,17 +481,15 @@ function Profile() {
               value={newEmail}
               onChange={(e) => setNewEmail(e.target.value)}
             />
-            {hasPasswordProvider && (
-              <input
-                type="password"
-                className="input"
-                placeholder={t('currentPasswordConfirm')}
-                aria-label={t('currentPasswordConfirm')}
-                value={emailReauthPassword}
-                onChange={(e) => setEmailReauthPassword(e.target.value)}
-              />
-            )}
-            {emailChangeMsg && <div className="auth-error">{emailChangeMsg}</div>}
+            <input
+              type="password"
+              className="input"
+              placeholder={t('currentPasswordConfirm')}
+              aria-label={t('currentPasswordConfirm')}
+              value={emailReauthPassword}
+              onChange={(e) => setEmailReauthPassword(e.target.value)}
+            />
+            {emailChangeMsg && <div className="auth-error" role="alert">{emailChangeMsg}</div>}
             <button
               className="landing-cta-primary auth-submit"
               onClick={handleEmailChange}

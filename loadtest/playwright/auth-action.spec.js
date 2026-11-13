@@ -98,25 +98,64 @@ async function emulatorGoogle(popup, email) {
   await popup.getByRole('button', { name: /sign in with google/i }).click()
 }
 
-test('email change, Google-only account: confirms with Google first, then the link goes to the new address', async ({ page }) => {
-  const email = `google-ec-${Date.now()}@example.test`
+/** A Google account in the Auth emulator (optionally with a password linked), ready for the app. */
+async function googleAccount(tag, { linkPassword } = {}) {
+  const email = `${tag}-${Date.now()}@example.test`
+  const claims = { sub: `g-${tag}-${Date.now()}`, email, email_verified: true }
+  const r = await (await fetch(`http://${AUTH}/identitytoolkit.googleapis.com/v1/accounts:signInWithIdp?key=demo-key`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ postBody: `id_token=${encodeURIComponent(JSON.stringify(claims))}&providerId=google.com`, requestUri: 'http://localhost', returnSecureToken: true }) })).json()
+  if (linkPassword) await fetch(`http://${AUTH}/identitytoolkit.googleapis.com/v1/accounts:update?key=demo-key`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ idToken: r.idToken, password: linkPassword, returnSecureToken: true }) })
+  await fs.adminSet(`users/${r.localId}`, { email, onboarded: true, tier: 'free' })
+  return { email, uid: r.localId }
+}
+async function signInWithGoogle(page, email) {
   await page.goto('/signin')
-  const [first] = await Promise.all([page.waitForEvent('popup'), page.getByRole('button', { name: 'Continue with Google' }).click()])
-  await emulatorGoogle(first, email)
+  const [popup] = await Promise.all([page.waitForEvent('popup'), page.getByRole('button', { name: /Continue with Google|ادامه با گوگل/ }).click()])
+  await emulatorGoogle(popup, email)
   await expect(page).toHaveURL(/\/(dashboard|onboarding|welcome)/, { timeout: 20_000 })
-  const users = (await (await fetch(`http://${AUTH}/identitytoolkit.googleapis.com/v1/projects/demo-hengam/accounts:lookup`, { method: 'POST', headers: { Authorization: 'Bearer owner', 'Content-Type': 'application/json' }, body: JSON.stringify({ email: [email] }) })).json()).users
-  expect(users[0].providerUserInfo.map(p => p.providerId)).toEqual(['google.com'])
-  await fs.adminSet(`users/${users[0].localId}`, { email, onboarded: true, tier: 'free' })
+}
 
+test('email change, Google-only account: no change form; the email is explained as the Google Account\u2019s', async ({ page }) => {
+  const { email } = await googleAccount('google-only')
+  await signInWithGoogle(page, email)
   await page.goto('/profile')
-  await page.getByRole('button', { name: 'Change', exact: true }).first().click()
-  await expect(page.getByLabel('Current password (to confirm)')).toHaveCount(0)
-  const newEmail = `google-moved-${Date.now()}@example.test`
+  await expect(page.getByTestId('email-managed-by-google')).toContainText('You sign in with Google')
+  await expect(page.getByRole('link', { name: 'Manage your Google Account email' })).toHaveAttribute('href', 'https://myaccount.google.com/email')
+  await expect(page.getByLabel('New email address')).toHaveCount(0)
+  // The email row has no Change button (the phone row still does).
+  await expect(page.locator('.rule-card', { hasText: email }).getByRole('button', { name: 'Change' })).toHaveCount(0)
+  expect((await codes(email)).filter(c => c.requestType === 'VERIFY_AND_CHANGE_EMAIL')).toHaveLength(0)
+})
+
+test('email change, Google-only account in Persian on a phone: the explanation is Persian, right to left, and fits', async ({ page }) => {
+  await page.setViewportSize({ width: 360, height: 780 })
+  await page.addInitScript(() => { try { localStorage.setItem('hengam-language', 'fa') } catch { /* empty */ } })
+  const { email } = await googleAccount('google-fa')
+  await signInWithGoogle(page, email)
+  await page.goto('/profile')
+  const note = page.getByTestId('email-managed-by-google')
+  await expect(note).toContainText('حساب گوگل')
+  const box = await note.boundingBox()
+  expect(box.x + box.width).toBeLessThanOrEqual(360)
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true)
+})
+
+test('email change, Google account with a linked password: changed with the password; Google stays linked', async ({ page }) => {
+  const { email, uid } = await googleAccount('linked', { linkPassword: 'linked-pass-123' })
+  await signInWithGoogle(page, email)
+  await page.goto('/profile')
+  await page.locator('.rule-card', { hasText: email }).getByRole('button', { name: 'Change' }).click()
+  const newEmail = `linked-moved-${Date.now()}@example.test`
   await page.getByLabel('New email address').fill(newEmail)
-  const [again] = await Promise.all([page.waitForEvent('popup'), page.getByRole('button', { name: 'Send verification' }).click()])
-  await emulatorGoogle(again, email)
+  await page.getByLabel('Current password (to confirm)').fill('linked-pass-123')
+  await page.getByRole('button', { name: 'Send verification' }).click()
   await expect.poll(async () => (await codes(email)).filter(c => c.requestType === 'VERIFY_AND_CHANGE_EMAIL').length, { timeout: 15_000 }).toBe(1)
-  await expect(page.getByText(`${newEmail}`)).toBeVisible()
+  await expect(page.getByText(newEmail)).toBeVisible()
+  const { oobCode } = (await codes(email)).find(c => c.requestType === 'VERIFY_AND_CHANGE_EMAIL')
+  await page.goto(`/auth/action?mode=verifyAndChangeEmail&oobCode=${encodeURIComponent(oobCode)}&lang=en&continue=/signin`)
+  await expect(page.getByRole('heading', { name: 'Your sign-in email is updated' })).toBeVisible({ timeout: 15_000 })
+  const after = (await (await fetch(`http://${AUTH}/identitytoolkit.googleapis.com/v1/projects/demo-hengam/accounts:lookup`, { method: 'POST', headers: { Authorization: 'Bearer owner', 'Content-Type': 'application/json' }, body: JSON.stringify({ localId: [uid] }) })).json()).users[0]
+  expect(after.email).toBe(newEmail)
+  expect(after.providerUserInfo.map(p => p.providerId)).toContain('google.com')
 })
 
 test('email change, password account: the current password is required (no request without it)', async ({ page }) => {
@@ -132,9 +171,15 @@ test('email change, password account: the current password is required (no reque
   await page.getByLabel('New email address').fill(`nopass-${Date.now()}@example.test`)
   await page.getByRole('button', { name: 'Send verification' }).click()
   await expect(page.getByText('Enter your current password.')).toBeVisible()
+  await page.getByLabel('New email address').fill(user.email)
+  await page.getByLabel('Current password (to confirm)').fill(user.password)
+  await page.getByRole('button', { name: 'Send verification' }).click()
+  await expect(page.getByText('That is already your sign-in email.')).toBeVisible()
+  await page.getByLabel('New email address').fill(`nopass-${Date.now()}@example.test`)
+  await page.getByLabel('Current password (to confirm)').fill('')
   await page.getByLabel('Current password (to confirm)').fill('not-my-password')
   await page.getByRole('button', { name: 'Send verification' }).click()
-  await expect(page.locator('.auth-error')).toBeVisible()
+  await expect(page.getByRole('alert')).toHaveText('Incorrect password.')
   await page.waitForTimeout(1000)
   expect((await codes(user.email)).filter(c => c.requestType === 'VERIFY_AND_CHANGE_EMAIL').length).toBe(0)
 })
