@@ -4,6 +4,7 @@ import { deleteApp, getApps, initializeApp } from 'firebase-admin/app'
 import { getFirestore } from 'firebase-admin/firestore'
 import { emailInvite, sendWelcome } from '../../api/_teams-email.js'
 import { escapeHtml, inviteEmail, sendEmail, validEmail } from '../../api/_email.js'
+import { FEATURES } from '../../shared/features.js'
 
 const PROJECT_ID = 'demo-hengam'
 let db
@@ -78,7 +79,8 @@ test('welcome: once, only to the verified signed-in address, only after onboardi
   assert.equal((await sendWelcome({ db, uid: 'owner', token, now, env: ON, send })).reason, 'not_needed')
   assert.equal(sent.length, 1)
   assert.equal(sent[0].to, 'owner@example.com')
-  assert.match(sent[0].html, /dir="rtl"/)
+  // Asked for Persian: right to left while Persian is on, English otherwise (shared/features.js).
+  assert.match(sent[0].html, FEATURES.persian ? /dir="rtl"/ : /dir="ltr"/)
   await db.doc('users/emp').set({ onboarded: true, accountType: 'employee' })
   assert.equal((await sendWelcome({ db, uid: 'emp', token: { ...token, uid: 'emp' }, now, env: ON, send })).reason, 'not_needed')
 })

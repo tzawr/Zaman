@@ -1,3 +1,4 @@
+import { FEATURES } from '../features.js'
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { allows, categoryOf, languageFor, normalizePrefs, TYPE_CATEGORY } from './prefs.js'
@@ -25,7 +26,9 @@ test('stored preferences are normalized: unknown keys dropped, bad values replac
   assert.equal('evil' in n.email, false)
   assert.equal(n.inApp.team, false)
   assert.equal(n.language, null)
-  assert.equal(languageFor({ notificationPrefs: { language: 'fa' } }), 'fa')
+  // A saved Persian preference is kept, and used only while Persian is on.
+  assert.equal(normalizePrefs({ language: 'fa' }).language, 'fa')
+  assert.equal(languageFor({ notificationPrefs: { language: 'fa' } }), FEATURES.persian ? 'fa' : 'en')
   assert.equal(languageFor({}), 'en')
 })
 

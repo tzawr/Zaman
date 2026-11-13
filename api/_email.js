@@ -1,3 +1,5 @@
+import { effectiveLanguage } from '../shared/features.js'
+
 // Transactional email through Resend's REST API. Off until RESEND_API_KEY is
 // set, so nothing is ever sent from a preview or test by accident.
 //
@@ -94,7 +96,8 @@ const COPY = {
  * Renders one email. `paragraphs` are plain text (escaped here), `action` is
  * { url, label }. Returns { subject, html, text }.
  */
-export function layout({ lang = 'en', subject, preheader = '', heading, paragraphs = [], action = null, reason = 'account', origin = appOrigin(), showPrefs = true }) {
+export function layout({ lang: requestedLang = 'en', subject, preheader = '', heading, paragraphs = [], action = null, reason = 'account', origin = appOrigin(), showPrefs = true }) {
+  const lang = effectiveLanguage(requestedLang)
   const c = COPY[lang === 'fa' ? 'fa' : 'en']
   const dir = lang === 'fa' ? 'rtl' : 'ltr'
   const align = lang === 'fa' ? 'right' : 'left'
@@ -132,7 +135,7 @@ const OPEN_LABEL = {
 
 /** A notification (schedule, request, team, billing, security) as an email. */
 export function notificationEmail({ lang = 'en', type, category, title, body, actionUrl, origin = appOrigin() }) {
-  const l = lang === 'fa' ? 'fa' : 'en'
+  const l = effectiveLanguage(lang)
   const label = type === 'password_changed' ? OPEN_LABEL[l].security
     : /teams\.hengam\.app/.test(actionUrl || '') ? OPEN_LABEL[l].teams : OPEN_LABEL[l].web
   return layout({
@@ -143,7 +146,7 @@ export function notificationEmail({ lang = 'en', type, category, title, body, ac
 }
 
 export function inviteEmail({ businessName, employeeName, link, language = 'en', origin = appOrigin() }) {
-  const fa = language === 'fa'
+  const fa = effectiveLanguage(language) === 'fa'
   const biz = String(businessName || '').trim() || (fa ? 'مدیر شما' : 'Your manager')
   const who = String(employeeName || '').trim()
   return fa
@@ -160,7 +163,7 @@ export function inviteEmail({ businessName, employeeName, link, language = 'en',
 export function welcomeEmail({ name, origin = appOrigin(), language = 'en' }) {
   const who = String(name || '').trim()
   const link = `${origin}/dashboard`
-  return language === 'fa'
+  return effectiveLanguage(language) === 'fa'
     ? layout({ lang: 'fa', reason: 'account', origin, showPrefs: true,
       subject: 'به HENGAM خوش آمدید', heading: `به HENGAM خوش آمدید${who ? `، ${who}` : ''}`,
       paragraphs: ['فضای کاری شما آماده است.', 'تیم را اضافه کنید، ساعت‌های کاری را تنظیم کنید و اولین برنامه هفته را بسازید.', 'سؤالی دارید؟ به همین ایمیل پاسخ دهید.'],
@@ -173,7 +176,7 @@ export function welcomeEmail({ name, origin = appOrigin(), language = 'en' }) {
 
 /** Verification and password-reset emails (HENGAM's own, links to /auth/action). */
 export function authActionEmail({ kind, link, language = 'en', origin = appOrigin() }) {
-  const fa = language === 'fa'
+  const fa = effectiveLanguage(language) === 'fa'
   if (kind === 'verify') {
     return fa
       ? layout({ lang: 'fa', reason: 'security', origin, showPrefs: false,

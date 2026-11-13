@@ -1,4 +1,5 @@
 import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react'
+import { FEATURES, effectiveDarkMode } from '../shared/features.js'
 import { Crown, Mail, Menu, Moon, ShieldCheck, Sun, X } from 'lucide-react'
 import { BrowserRouter, Routes, Route, Link, Navigate, useLocation } from 'react-router-dom'
 import { useAuth } from './AuthContext'
@@ -85,13 +86,15 @@ function App() {
 }
 
 function AppShell() {
-  const { language, isRtl, t, toggleLanguage } = useI18n()
+  const { language, isRtl, t, toggleLanguage, languageSwitchingEnabled } = useI18n()
   const { currentUser, userData } = useAuth()
   const [resolvedTier, setResolvedTier] = useState('free')
+  // With light mode switched off (shared/features.js) this is always dark; the
+  // saved choice is left untouched for when light mode returns.
   const [darkMode, setDarkMode] = useState(() => {
-    const saved = localStorage.getItem('hengam-theme')
-    if (saved === 'light') return false
-    return true
+    let saved = null
+    try { saved = localStorage.getItem('hengam-theme') } catch { /* storage blocked */ }
+    return effectiveDarkMode(saved)
   })
 
   useEffect(() => {
@@ -166,26 +169,30 @@ function AppShell() {
                   <ShieldCheck size={16} />
                 </Link>
               )}
-              <button
-                type="button"
-                className="navbar-icon-button"
-                aria-label={t('toggleTheme')}
-                onClick={() => {
-                  const next = !darkMode
-                  setDarkMode(next)
-                  localStorage.setItem('hengam-theme', next ? 'dark' : 'light')
-                }}
-              >
-                {darkMode ? <Sun size={18} /> : <Moon size={18} />}
-              </button>
-              <button
-                type="button"
-                className="navbar-language-button"
-                aria-label={t('toggleLanguage')}
-                onClick={toggleLanguage}
-              >
-                {language === 'fa' ? 'EN' : 'فا'}
-              </button>
+              {FEATURES.lightMode && (
+                <button
+                  type="button"
+                  className="navbar-icon-button"
+                  aria-label={t('toggleTheme')}
+                  onClick={() => {
+                    const next = !darkMode
+                    setDarkMode(next)
+                    try { localStorage.setItem('hengam-theme', next ? 'dark' : 'light') } catch { /* storage blocked */ }
+                  }}
+                >
+                  {darkMode ? <Sun size={18} /> : <Moon size={18} />}
+                </button>
+              )}
+              {languageSwitchingEnabled && (
+                <button
+                  type="button"
+                  className="navbar-language-button"
+                  aria-label={t('toggleLanguage')}
+                  onClick={toggleLanguage}
+                >
+                  {language === 'fa' ? 'EN' : 'فا'}
+                </button>
+              )}
               <a className="navbar-icon-button" href="mailto:hello@hengam.app" aria-label="Email Hengam">
                 <Mail size={18} />
               </a>

@@ -9,6 +9,11 @@
     <link rel="canonical" href="https://hengam.app/" />
     <meta name="robots" content="index, follow, max-image-preview:large" />
     <meta name="theme-color" content="#0A0A0B" />
+    <!-- Dark only for now (shared/features.js lightMode: false). Painting the
+         page dark before the app loads prevents a white flash on load and
+         navigation; it matches the app's default dark theme. -->
+    <meta name="color-scheme" content="dark" />
+    <style>html,body{background:#01030a;color:#eaf2ff;color-scheme:dark}</style>
 
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="apple-touch-icon" href="/favicon.svg" />

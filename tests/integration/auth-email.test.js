@@ -1,3 +1,4 @@
+import { FEATURES } from '../../shared/features.js'
 import { after, before, beforeEach, test } from 'node:test'
 import assert from 'node:assert/strict'
 import { deleteApp, getApps, initializeApp } from 'firebase-admin/app'
@@ -54,7 +55,9 @@ test('verification: one branded email to the signed-in address; the code verifie
   assert.equal(sent[0].to, user.email)
   assert.equal(sent[0].from, 'HENGAM Security <security@mail.hengam.app>')
   assert.match(sent[0].subject, /HENGAM/)
-  assert.match(sent[0].html, /dir="rtl"/)
+  // Asked for Persian: Persian and right to left while Persian is on, otherwise English.
+  assert.match(sent[0].html, FEATURES.persian ? /dir="rtl"/ : /dir="ltr"/)
+  if (!FEATURES.persian) assert.equal(sent[0].subject, 'Verify your email for HENGAM')
   const link = new URL(linkIn(sent[0]))
   assert.equal(link.searchParams.get('mode'), 'verifyEmail')
   assert.equal(link.searchParams.get('continue'), '/dashboard')

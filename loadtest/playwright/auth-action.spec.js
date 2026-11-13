@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test'
 import { STAGING, fs, signUp, verifyEmail } from './helpers.js'
+import { FEATURES } from '../../shared/features.js'
 
 // HENGAM's email action page (/auth/action): reset, verification, expired and
 // broken links, in English and Persian, on a phone. Local emulators only: the
@@ -10,6 +11,7 @@ const AUTH = process.env.FIREBASE_AUTH_EMULATOR_HOST || '127.0.0.1:9099'
 const codes = async (email) => (await (await fetch(`http://${AUTH}/emulator/v1/projects/demo-hengam/oobCodes`)).json()).oobCodes.filter(c => c.email === email)
 
 test('reset from "Forgot password", in Persian on a phone: new password works, old one does not', async ({ page }) => {
+  test.skip(!FEATURES.persian, 'Persian is switched off (shared/features.js)')
   const user = await signUp()
   await page.setViewportSize({ width: 360, height: 780 })
   await page.addInitScript(() => { try { localStorage.setItem('hengam-language', 'fa') } catch { /* empty */ } })
@@ -127,6 +129,7 @@ test('email change, Google-only account: no change form; the email is explained 
 })
 
 test('email change, Google-only account in Persian on a phone: the explanation is Persian, right to left, and fits', async ({ page }) => {
+  test.skip(!FEATURES.persian, 'Persian is switched off (shared/features.js)')
   await page.setViewportSize({ width: 360, height: 780 })
   await page.addInitScript(() => { try { localStorage.setItem('hengam-language', 'fa') } catch { /* empty */ } })
   const { email } = await googleAccount('google-fa')

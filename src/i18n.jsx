@@ -1,5 +1,6 @@
 /* eslint-disable react-refresh/only-export-components */
-import { createContext, useContext, useEffect, useMemo, useState } from 'react'
+import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react'
+import { FEATURES, effectiveLanguage } from '../shared/features.js'
 
 const translations = {
   en: {
@@ -2312,19 +2313,34 @@ const translations = {
 
 const I18nContext = createContext(null)
 
+function readSavedLanguage() {
+  try { return localStorage.getItem('hengam-language') || 'en' } catch { return 'en' }
+}
+
 export function I18nProvider({ children }) {
-  const [language, setLanguage] = useState(() => localStorage.getItem('hengam-language') || 'en')
+  // The saved choice is kept as it is. With Persian switched off
+  // (shared/features.js) the app reads English whatever was saved, and never
+  // overwrites the saved value, so turning Persian back on restores it.
+  const [savedLanguage, setSavedLanguage] = useState(readSavedLanguage)
+  const language = effectiveLanguage(savedLanguage)
+  const setLanguage = useCallback((next) => {
+    if (!FEATURES.persian) return
+    setSavedLanguage(prev => (typeof next === 'function' ? next(prev) : next))
+  }, [])
 
   useEffect(() => {
-    localStorage.setItem('hengam-language', language)
+    if (FEATURES.persian) {
+      try { localStorage.setItem('hengam-language', savedLanguage) } catch { /* storage blocked */ }
+    }
     document.documentElement.lang = language === 'fa' ? 'fa' : 'en'
     document.documentElement.dir = 'ltr'
-  }, [language])
+  }, [language, savedLanguage])
 
   const value = useMemo(() => ({
     language,
     isRtl: language === 'fa',
     direction: language === 'fa' ? 'rtl' : 'ltr',
+    languageSwitchingEnabled: FEATURES.persian,
     setLanguage,
     toggleLanguage: () => setLanguage(prev => prev === 'fa' ? 'en' : 'fa'),
     t: (key) => translations[language]?.[key] || translations.en[key] || key,
@@ -2336,7 +2352,7 @@ export function I18nProvider({ children }) {
         params && params[name] !== undefined ? params[name] : match
       ))
     },
-  }), [language])
+  }), [language, setLanguage])
 
   return (
     <I18nContext.Provider value={value}>

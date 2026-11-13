@@ -1203,7 +1203,8 @@
 }
 
 .signin-nav-button {
-  background: #4A90E2;
+  /* #2F6FC4: white text at 5.0:1 (WCAG AA); #4A90E2 was 3.3:1. */
+  background: #2F6FC4;
   color: white;
   border: none;
   padding: 10px 20px;
@@ -1216,7 +1217,7 @@
 }
 
 .signin-nav-button:hover {
-  background: #3A7BC8;
+  background: #285FA0;
   transform: translateY(-1px);
   box-shadow: 0 4px 12px rgba(74, 144, 226, 0.25);
 }

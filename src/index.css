@@ -1,3 +1,7 @@
+/* Dark until light mode returns (shared/features.js); see also index.html. */
+html,
 body {
   margin: 0;
+  background: #01030a;
+  color-scheme: dark;
 }

@@ -9,6 +9,7 @@ import { reportEvent } from '../../api/_teams-email.js'
 import { createHmac } from 'node:crypto'
 import * as ws from '../../api/_teams-workspaces.js'
 import * as sched from '../../api/_teams-schedules.js'
+import { FEATURES } from '../../shared/features.js'
 
 const PROJECT_ID = 'demo-hengam'
 let db
@@ -108,13 +109,19 @@ test('with email off, nothing is sent and nothing is lost', async () => {
   assert.equal((await db.doc('emailOutbox/mgr_k4').get()).data().status, 'pending')
 })
 
-test('Persian readers get Persian email with right-to-left layout', async () => {
+test('Persian readers get Persian email with right-to-left layout (English while Persian is switched off)', async () => {
   await db.doc('users/mgr').set({ notificationPrefs: { language: 'fa' } })
   const { sent, send } = outbox()
   const r = await persistNotifications(db, [entry('mgr', 'k5')], now)
   await drainEmailOutbox(db, { ids: r.emails, now, env: ON, send, address })
-  assert.match(sent[0].html, /dir="rtl"/)
-  assert.match(sent[0].subject, /به تیم پیوست/)
+  if (FEATURES.persian) {
+    assert.match(sent[0].html, /dir="rtl"/)
+    assert.match(sent[0].subject, /به تیم پیوست/)
+  } else {
+    assert.match(sent[0].html, /dir="ltr"/)
+    assert.doesNotMatch(sent[0].subject + sent[0].text, /[\u0600-\u06FF]/)
+    assert.equal((await db.doc('users/mgr').get()).data().notificationPrefs.language, 'fa', 'the saved preference is kept')
+  }
 })
 
 test('Teams workflow events reach email with safe facts and a Teams link', async () => {

@@ -7,6 +7,7 @@ import { useI18n } from '../i18n'
 import { useToast } from './Toast'
 import Section from './Section'
 import { CATEGORIES, normalizePrefs } from '../../shared/notify/prefs.js'
+import { FEATURES } from '../../shared/features.js'
 
 // Which switches each kind of account sees. Employees do not manage a team or
 // a plan, so those rows would only confuse.
@@ -89,14 +90,16 @@ function NotificationPreferences() {
             ))}
           </tbody>
         </table>
-        <div className="notif-prefs-lang">
-          <label htmlFor={`${id}-lang`}>{t('notificationPrefsLanguage')}</label>
-          <select id={`${id}-lang`} className="input" value={prefs.language || language}
-            onChange={e => { const language = e.target.value; save(p => ({ ...p, language })) }}>
-            <option value="en">English</option>
-            <option value="fa">فارسی</option>
-          </select>
-        </div>
+        {FEATURES.persian && (
+          <div className="notif-prefs-lang">
+            <label htmlFor={`${id}-lang`}>{t('notificationPrefsLanguage')}</label>
+            <select id={`${id}-lang`} className="input" value={prefs.language || language}
+              onChange={e => { const language = e.target.value; save(p => ({ ...p, language })) }}>
+              <option value="en">English</option>
+              <option value="fa">فارسی</option>
+            </select>
+          </div>
+        )}
         <p id={`${id}-essential`} className="notif-prefs-note">{t('notificationPrefsEssential')}</p>
       </Section>
     </div>

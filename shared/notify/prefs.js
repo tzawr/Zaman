@@ -1,3 +1,5 @@
+import { effectiveLanguage } from '../features.js'
+
 // What each notification is about, and who may turn it off.
 //
 // Every notification has a `type`. Its category decides which preference
@@ -62,5 +64,6 @@ export function allows(rawPrefs, type, channel) {
 /** The language a person reads notifications in. */
 export function languageFor(user) {
   const l = user?.notificationPrefs?.language || user?.language
-  return LANGUAGES.includes(l) ? l : 'en'
+  // The saved preference is kept; Persian may be switched off (shared/features.js).
+  return effectiveLanguage(LANGUAGES.includes(l) ? l : 'en')
 }

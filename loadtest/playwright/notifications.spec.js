@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test'
 import { allowStaging, fs, signUp, verifyEmail } from './helpers.js'
+import { FEATURES } from '../../shared/features.js'
 
 // The notification center and preferences, with real keyboard and pointer
 // input, against the app and its rules.
@@ -55,6 +56,7 @@ test('the bell counts unread, opens items in place, and marks all read', async (
 })
 
 test('Persian: items read in Persian, right to left; empty state; phone width', async ({ page }) => {
+  test.skip(!FEATURES.persian, 'Persian is switched off (shared/features.js)')
   const user = await manager()
   await page.setViewportSize({ width: 320, height: 760 })
   await page.addInitScript(() => { try { localStorage.setItem('hengam-language', 'fa') } catch { /* empty */ } })
@@ -97,11 +99,13 @@ test('preferences: switches save per channel; security emails are explained as a
   await scheduleEmail.press('Space')
   await expect(scheduleEmail).not.toBeChecked()
   await section.getByRole('switch', { name: 'Product news: Email' }).press('Space')
-  await section.getByLabel('Language for emails').selectOption('fa')
+  // The email-language picker exists only while Persian is on (shared/features.js).
+  if (FEATURES.persian) await section.getByLabel('Language for emails').selectOption('fa')
+  else await expect(section.getByLabel('Language for emails')).toHaveCount(0)
   await expect.poll(async () => {
     const d = await (await fs.adminGet(`users/${user.uid}`)).json()
     const p = d.fields.notificationPrefs?.mapValue?.fields
-    return p ? [p.email.mapValue.fields.schedule.booleanValue, p.email.mapValue.fields.product.booleanValue, p.language.stringValue].join(',') : ''
+    return p ? [p.email.mapValue.fields.schedule.booleanValue, p.email.mapValue.fields.product.booleanValue, FEATURES.persian ? p.language.stringValue : 'fa'].join(',') : ''
   }, { timeout: 10_000 }).toBe('false,true,fa')
   await page.reload()
   await expect(page.locator('#notifications').getByRole('switch', { name: 'Schedules: Email' })).not.toBeChecked({ timeout: 20_000 })

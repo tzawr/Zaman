@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test'
 import { allowStaging, fs, signUp, verifyEmail } from './helpers.js'
+import { FEATURES } from '../../shared/features.js'
 
 // The independent production QA findings other than the two scheduling bugs
 // (dates.spec.js, revalidate.spec.js), each checked with real keyboard and
@@ -113,8 +114,9 @@ test.describe('signed out', () => {
     await menu.click()
     await expect(menu).toHaveAttribute('aria-expanded', 'true')
     for (const name of ['About', 'Pricing', 'Security']) await expect(page.locator('#site-links').getByRole('link', { name })).toBeVisible()
-    const box = await page.getByRole('button', { name: 'Toggle theme' }).boundingBox().catch(() => null)
-    if (box) expect(box.height).toBeGreaterThanOrEqual(44)
+    // The theme button exists only while light mode is on (shared/features.js).
+    const themeButton = page.getByRole('button', { name: 'Toggle theme' })
+    if (await themeButton.count()) expect((await themeButton.boundingBox()).height).toBeGreaterThanOrEqual(44)
     await page.locator('#site-links').getByRole('link', { name: 'Pricing' }).click()
     await expect(page).toHaveURL(/\/pricing$/)
     await expect(page.locator('#site-links')).not.toHaveClass(/open/)
@@ -225,6 +227,7 @@ test.describe('signed in', () => {
   })
 
   test('HQA-15 Persian review items are in Persian and the panel is right-to-left', async ({ page }) => {
+    test.skip(!FEATURES.persian, 'Persian is switched off (shared/features.js)')
     const user = await manager()
     await addEmployee(user, 'Mira'); await addEmployee(user, 'Theo')
     await seedWeek(user, ['Monday: needs 2 staff from 07:00–08:00 — only 1 on shift', 'Theo: only 7h scheduled but target is 8h — no unused available days remain'])
